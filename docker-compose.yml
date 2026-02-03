@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # --- Layer 2: The Nervous System (Kafka + Zookeeper) ---
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper
+    container_name: catalyst_zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka
+    container_name: catalyst_kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+  # --- Layer 5: The Memory (Postgres/Timescale + Redis) ---
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: catalyst_db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: catalyst_user
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: catalyst_db
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: catalyst_redis
+    ports:
+      - "6379:6379"
+
+  # --- Tools: Kafka UI (Visualize your data streams) ---
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: catalyst_kafka_ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
