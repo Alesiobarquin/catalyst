@@ -1,2 +1,2 @@
 # Catalyst
-High-Fidelity Market Signal Generator. Python, Kafka, Java Spring Boot, Next.js.
+High-Fidelity Market Signal Generator. Python, Kafka, Java, Spring Boot, Next.js.
