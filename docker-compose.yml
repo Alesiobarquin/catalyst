@@ -1,4 +1,6 @@
-version: '3.8'
+networks:
+  catalyst-network:
+    driver: bridge
 
 services:
   # --- Layer 2: The Nervous System (Kafka + Zookeeper) ---
@@ -11,6 +13,8 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - catalyst-network
 
   kafka:
     image: confluentinc/cp-kafka:7.5.0
@@ -27,6 +31,8 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    networks:
+      - catalyst-network
 
   # --- Layer 5: The Memory (Postgres/Timescale + Redis) ---
   timescaledb:
@@ -35,17 +41,26 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: catalyst_user
-      POSTGRES_PASSWORD: password123
+      POSTGRES_USER: catalyst_user   # <--- Created automatically on startup
+      POSTGRES_PASSWORD: password123 # <--- Created automatically on startup
       POSTGRES_DB: catalyst_db
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data # <--- Saves data to your project folder
+    networks:
+      - catalyst-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catalyst_user -d catalyst_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     container_name: catalyst_redis
     ports:
       - "6379:6379"
+    networks:
+      - catalyst-network
 
   # --- Tools: Kafka UI (Visualize your data streams) ---
   kafka-ui:
@@ -53,7 +68,11 @@ services:
     container_name: catalyst_kafka_ui
     ports:
       - "8080:8080"
+    depends_on:
+      - kafka
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - catalyst-network
