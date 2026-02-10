@@ -10,3 +10,5 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # Playwright Configuration
 HEADLESS_MODE = os.getenv("HEADLESS_MODE", "True").lower() == "true"
+
+FINVIZ_SQUEEZE_URL = "https://finviz.com/screener.ashx?v=111&f=sh_short_o20"

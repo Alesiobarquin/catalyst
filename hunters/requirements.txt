@@ -1,5 +1,6 @@
 #SQUEEZE HUNTER
-playwright==1.41.0
-pandas==2.2.0
-kafka-python-ng==2.2.0
-lxml==5.1.0
+playwright
+pandas
+lxml  # Required by pandas read_html
+html5lib # Alternative parser for pandas
+kafka-python-ng

@@ -1,7 +1,44 @@
-version: '3.8'
-
 services:
-  # --- Layer 2: The Nervous System (Kafka + Zookeeper) ---
+  # ==========================================
+  # LAYER 1: THE HUNTERS (PYTHON INGESTION)
+  # ==========================================
+  
+  # 1. HUNTER BASE (The Builder)
+  # This service builds the Docker image once. All other hunters use this image.
+  hunter-base:
+    build:
+      context: ./hunters        # Looks up one folder to 'catalyst/hunters'
+      dockerfile: Dockerfile     # Uses the Dockerfile we created
+    image: alpha-stream-hunters  # Names the image so we can reuse it
+    environment:
+      - KAFKA_BROKER=kafka:29092 # Connects internally to Kafka
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - kafka
+      - redis
+    # This prevents this specific container from running on its own
+    # It exists only to be extended by the others.
+    entrypoint: ["echo", "Base Image Ready"]
+
+  # 2. SQUEEZE HUNTER (The Instance)
+  hunter-squeeze:
+    extends: hunter-base         # Inherits the build/image from above
+    container_name: hunter_squeeze
+    command: ["python", "main.py", "squeeze"] # Runs specific logic
+    restart: on-failure
+
+  # 3. INSIDER HUNTER (The Instance)
+  hunter-insider:
+    extends: hunter-base
+    container_name: hunter_insider
+    command: ["python", "main.py", "insider"]
+    restart: always
+
+  # ==========================================
+  # LAYER 2: THE NERVOUS SYSTEM (KAFKA)
+  # ==========================================
+  
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     hostname: zookeeper
@@ -24,11 +61,17 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      # CRITICAL: 
+      # - 'kafka:29092' is for internal Docker services (Hunters/Java)
+      # - 'localhost:9092' is for your laptop (Java running in IntelliJ)
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
 
-  # --- Layer 5: The Memory (Postgres/Timescale + Redis) ---
+  # ==========================================
+  # LAYER 5: THE MEMORY (DB + CACHE)
+  # ==========================================
+
   timescaledb:
     image: timescale/timescaledb:latest-pg16
     container_name: catalyst_db
@@ -39,6 +82,7 @@ services:
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: catalyst_db
     volumes:
+      # Persist data so you don't lose trades when you restart Docker
       - ./data/postgres:/var/lib/postgresql/data
 
   redis:
@@ -47,12 +91,17 @@ services:
     ports:
       - "6379:6379"
 
-  # --- Tools: Kafka UI (Visualize your data streams) ---
+  # ==========================================
+  # TOOLS (VISUALIZATION)
+  # ==========================================
+  
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: catalyst_kafka_ui
     ports:
       - "8080:8080"
+    depends_on:
+      - kafka
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
