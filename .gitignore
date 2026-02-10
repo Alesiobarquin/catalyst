@@ -42,3 +42,5 @@ out/
 .vercel
 # Next.js build output
 .build/
+# Docker data
+data/
