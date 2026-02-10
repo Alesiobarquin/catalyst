@@ -1,0 +1,5 @@
+#SQUEEZE HUNTER
+playwright==1.41.0
+pandas==2.2.0
+kafka-python-ng==2.2.0
+lxml==5.1.0
