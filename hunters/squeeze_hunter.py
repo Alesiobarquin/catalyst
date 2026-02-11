@@ -9,14 +9,16 @@ from .common.kafka_client import KafkaClient
 
 logger = get_logger("squeeze_hunter")
 
-# The URL filters for "Short Float > 20%" (f=sh_short_o20)
+
+# The URL filters for "Short Float > 20%" (f=sh_short_o20) and uses the "Financial" view (v=131)
 # We add &r={} to handle pagination
-BASE_URL = "https://finviz.com/screener.ashx?v=111&f=sh_short_o20&r={}"
+BASE_URL = "https://finviz.com/screener.ashx?v=131&f=sh_short_o20&r={}"
 
 async def fetch_squeeze_targets():
     """
     Scrapes Finviz for high short interest stocks using a headless browser.
     Iterates through pages until no more data is found or a limit is reached.
+    Uses 'Financial' view (v=131) to ensure 'Short Float' data is present.
     """
     logger.info("🕵️ Squeeze Hunter waking up...")
     
@@ -38,9 +40,6 @@ async def fetch_squeeze_targets():
                 # Extract the page HTML content
                 content = await page.content()
                 
-                # Check directly if there are results by looking for the "No matches" text or similar
-                # Finviz shows "Total: 0" or similar if empty, but checking table existence is robust
-                
                 # Use Pandas to find the table automatically
                 # WRAPPED in StringIO to silence FutureWarning
                 dfs = pd.read_html(io.StringIO(content))
@@ -50,64 +49,114 @@ async def fetch_squeeze_targets():
                 # Debugging: Log what we found
                 logger.info(f"   -> Found {len(dfs)} tables on page.")
                 
+                # Intelligent Table Selection
+                best_len = 0
                 for i, df in enumerate(dfs):
-                    logger.debug(f"   Table {i} columns: {df.columns.tolist()}")
-                    # Loose matching: Just look for 'Ticker'
-                    if 'Ticker' in df.columns:
-                        target_df = df
-                        break
-                
-                if target_df is None and dfs:
-                    # Fallback: Try the largest table if we found any
-                    logger.warning("   -> Exact match not found. Trying largest table.")
-                    target_df = max(dfs, key=lambda x: len(x))
+                    cols = [str(c).lower() for c in df.columns]
+                    # Score based on essential columns
+                    score = 0
+                    if any('ticker' in c for c in cols): score += 3
+                    if any('price' in c for c in cols): score += 2
+                    if any('volume' in c for c in cols): score += 2
+                    if any('float' in c for c in cols) or any('short' in c for c in cols): score += 2
+                    
+                    # Log candidate tables
+                    if score >= 5:
+                         logger.debug(f"   Candidate Table {i}: Score {score}, Shape {df.shape}")
+                         if len(df) > best_len:
+                             target_df = df
+                             best_len = len(df)
 
                 if target_df is None:
-                    logger.info("   -> No data tables found. Stopping.")
+                    logger.info("   -> No valid data tables found. Stopping.")
                     break
 
                 # --- DATA CLEANING ---
-                target_df.columns = [str(c).lower().replace(' ', '_') for c in target_df.columns]
+                # Normalize columns
+                target_df.columns = [str(c).lower().strip().replace(' ', '_') for c in target_df.columns]
                 
-                # Filter out the header rows that are repeated in the table sometimes
+                # Filter out garbage rows
                 if 'ticker' in target_df.columns:
-                    clean_df = target_df[target_df['ticker'] != 'Ticker'].copy()
+                    # 1. Drop rows where ticker is NaN/None
+                    clean_df = target_df.dropna(subset=['ticker']).copy()
+                    
+                    # 2. Drop rows where ticker equals the header 'Ticker' or contains 'Ticker'
+                    clean_df = clean_df[clean_df['ticker'].astype(str).str.lower() != 'ticker']
+                    
+                    # 3. Drop rows with "Reset Filters" or other UI text (length > 10 usually junk for a ticker)
+                    clean_df = clean_df[clean_df['ticker'].astype(str).str.len() < 10]
                 else:
-                    clean_df = target_df.copy()
+                    logger.warning("   -> 'ticker' column not found in selected table. Skipping page.")
+                    break
                 
                 if clean_df.empty:
-                    logger.info("   -> Page empty. Stopping.")
+                    logger.info("   -> Page empty (after cleaning). Stopping.")
                     break
 
                 # Helper function to convert "20.50%" string to 0.205 float
                 def clean_percent(x):
                     if isinstance(x, str) and '%' in x:
                         try:
+                            # Handle cases like "23.40%" -> 0.234
                             return float(x.strip('%')) / 100
                         except ValueError:
                             return 0.0
                     return 0.0
+                
+                # Helper function to clean numeric strings with commas/suffixes
+                def clean_number(x):
+                    if pd.isna(x): return None
+                    x = str(x).replace(',', '').strip()
+                    if x == '-': return None
+                    try:
+                        return float(x)
+                    except:
+                        return None
 
-                if 'float_short' in clean_df.columns:
-                    clean_df['short_float'] = clean_df['float_short'].apply(clean_percent)
+                # Find correct columns (fuzzy match if needed, but view 131 is usually stable)
+                # View 131 columns: Ticker, Market Cap, Outstanding, Float, Insider Own, Insider Trans, Inst Own, Inst Trans, Short Float, Short Ratio, Avg Volume, Price, Change, Volume
+                
+                # Map 'short_float'
+                if 'short_float' in clean_df.columns:
+                     clean_df['short_float_val'] = clean_df['short_float'].apply(clean_percent)
                 else:
-                    clean_df['short_float'] = 0.0
+                     clean_df['short_float_val'] = 0.0
 
-                clean_df['price'] = pd.to_numeric(clean_df['price'], errors='coerce')
-                clean_df['volume'] = pd.to_numeric(clean_df['volume'], errors='coerce')
+                # Clean Price and Volume
+                # Ensure we are using the correct columns
+                if 'price' in clean_df.columns:
+                    clean_df['price_val'] = clean_df['price'].apply(clean_number)
+                else:
+                     clean_df['price_val'] = None
+
+                if 'volume' in clean_df.columns:
+                    clean_df['volume_val'] = clean_df['volume'].apply(clean_number)
+                else:
+                     clean_df['volume_val'] = None
 
                 # --- FORMATTING OUTPUT ---
                 page_results = []
                 for _, row in clean_df.iterrows():
+                    # Validations
+                    if pd.isna(row['ticker']) or not row['ticker']: continue
+                    
+                    # Filter out invalid numeric data if strictness is required
+                    # For now, we allow nulls but prefer valid data
+                    
                     signal = {
                         "hunter": "squeeze",
-                        "ticker": row['ticker'],
-                        "price": row['price'],
-                        "short_float": row['short_float'],
-                        "volume": row['volume'],
+                        "ticker": str(row['ticker']),
+                        "price": row['price_val'],
+                        "short_float": row['short_float_val'],
+                        "volume": int(row['volume_val']) if row['volume_val'] is not None and not pd.isna(row['volume_val']) else None,
                         "timestamp": datetime.now().isoformat()
                     }
-                    page_results.append(signal)
+                    
+
+                    # Final sanity check to avoid sending "Header-like" rows that slipped through
+                    # "export" is a link at the bottom of the table sometimes picked up
+                    if signal['ticker'] and len(signal['ticker']) <= 6 and signal['ticker'].lower() != 'export': 
+                        page_results.append(signal)
                 
                 all_results.extend(page_results)
                 logger.info(f"   -> Scraped {len(page_results)} items from this page.")
@@ -124,10 +173,13 @@ async def fetch_squeeze_targets():
 
             except Exception as e:
                 logger.error(f"   ❌ Error on index {start_index}: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
                 break
     
     logger.info(f"   ✅ Success: Found total {len(all_results)} potential squeeze targets.")
     return all_results
+
 
 async def run():
     # 1. Scrape

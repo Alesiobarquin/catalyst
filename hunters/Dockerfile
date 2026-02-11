@@ -15,5 +15,5 @@ COPY . /app/hunters/
 # Set Python path to include /app so "hunters.common" imports work
 ENV PYTHONPATH=/app
 
-ENTRYPOINT ["python", "-m", "hunters.main"]
-CMD ["all"]
+# Default command, can be overridden by docker-compose
+CMD ["python", "-m", "hunters.main", "all"]

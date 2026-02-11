@@ -11,7 +11,7 @@ services:
       dockerfile: Dockerfile # Uses the Dockerfile we created
     image: alpha-stream-hunters # Names the image so we can reuse it
     environment:
-      - KAFKA_BROKER=kafka:29092 # Connects internally to Kafka
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092 # Connects internally to Kafka
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     depends_on:
@@ -19,13 +19,12 @@ services:
       - redis
     # This prevents this specific container from running on its own
     # It exists only to be extended by the others.
-    entrypoint: [ "echo", "Base Image Ready" ]
 
-  # 2. SQUEEZE HUNTER (The Instance)
+    # 2. SQUEEZE HUNTER (The Instance)
   hunter-squeeze:
     extends: hunter-base
     container_name: hunter_squeeze
-    command: [ "python", "main.py", "squeeze" ]
+    command: [ "python", "-m", "hunters.main", "squeeze" ]
     restart: on-failure
     volumes:
       - ./hunters:/app/hunters
