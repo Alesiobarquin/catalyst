@@ -1,19 +1,14 @@
 
-FROM python:3.9-slim
+# Official Playwright image with browsers and dependencies pre-installed
+FROM mcr.microsoft.com/playwright/python:v1.49.0-jammy
 
 WORKDIR /app
-
-# Install system dependencies for Playwright
-RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers
-RUN playwright install --with-deps chromium
+# Browsers are included in the base image, but we ensure chromium is specifically ready
+RUN playwright install chromium
 
 COPY . /app/hunters/
 

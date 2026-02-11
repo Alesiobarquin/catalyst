@@ -1,143 +1,144 @@
 import asyncio
-import json
+import io
 import pandas as pd
 from datetime import datetime
-from typing import List, Dict, Any
+from .common.config import KAFKA_TOPIC_SQUEEZE
+from .common.logger import get_logger
+from .common.playwright_context import BrowserContext
+from .common.kafka_client import KafkaClient
 
-# Internal imports based on your file structure
-from hunters.common.logger import setup_logger
-from hunters.common.kafka_client import KafkaProducerWrapper
-from hunters.common.config import KAFKA_TOPIC_SQUEEZE, FINVIZ_SQUEEZE_URL
-from hunters.common.playwright_context import PlaywrightContext
+logger = get_logger("squeeze_hunter")
 
-# Initialize Logger
-logger = setup_logger("squeeze_hunter")
+# The URL filters for "Short Float > 20%" (f=sh_short_o20)
+# We add &r={} to handle pagination
+BASE_URL = "https://finviz.com/screener.ashx?v=111&f=sh_short_o20&r={}"
 
-class SqueezeHunter:
-    def __init__(self):
-        self.producer = KafkaProducerWrapper()
-        self.url = FINVIZ_SQUEEZE_URL  # https://finviz.com/screener.ashx?v=111&f=sh_short_o20
-        self.columns_map = {
-            'Ticker': 'ticker',
-            'Company': 'company',
-            'Sector': 'sector',
-            'Industry': 'industry',
-            'Country': 'country',
-            'Market Cap': 'market_cap',
-            'P/E': 'pe_ratio',
-            'Price': 'price',
-            'Change': 'change_pct',
-            'Volume': 'volume',
-            'Float Short': 'short_float' # The key metric
-        }
-
-    async def fetch_squeeze_targets(self) -> List[Dict[str, Any]]:
-        """
-        Uses Playwright to render Finviz and extracts the table data using Pandas.
-        """
-        logger.info(f"Starting hunt on: {self.url}")
+async def fetch_squeeze_targets():
+    """
+    Scrapes Finviz for high short interest stocks using a headless browser.
+    Iterates through pages until no more data is found or a limit is reached.
+    """
+    logger.info("🕵️ Squeeze Hunter waking up...")
+    
+    all_results = []
+    start_index = 1
+    max_results = 200  # Safety limit to prevent infinite loops
+    
+    async with BrowserContext() as context:
+        page = await context.new_page()
         
-        async with PlaywrightContext() as page:
-            try:
-                # Navigate to Finviz with the specific Short Interest filter
-                await page.goto(self.url, wait_until="domcontentloaded")
-                
-                # Finviz creates the table dynamically. Wait for the main table row.
-                # The table usually has a class 'table-light' or similar generic identifiers.
-                # We wait for a specific ticker link to ensure data is loaded.
-                await page.wait_for_selector("table.table-light", timeout=10000)
-
-                # Extract the HTML content
-                html_content = await page.content()
-                
-                # Use Pandas to parse the HTML table efficiently
-                # We look for the table containing "Ticker" and "Price"
-                dfs = pd.read_html(html_content, match="Ticker")
-                
-                if not dfs:
-                    logger.warning("No tables found on Finviz page.")
-                    return []
-
-                # usually the main screener table is the last one or the largest one
-                df = dfs[-1] 
-
-                # Clean up the dataframe
-                # 1. Rename columns to match our internal schema
-                df = df.rename(columns=self.columns_map)
-                
-                # 2. Filter for only the columns we care about
-                target_columns = [c for c in self.columns_map.values() if c in df.columns]
-                df = df[target_columns]
-
-                # 3. Data Cleaning (Convert percentages, numbers)
-                # Remove '%' from change_pct and short_float if present
-                if 'short_float' in df.columns:
-                    df['short_float'] = df['short_float'].astype(str).str.rstrip('%').replace('-', '0')
-                
-                if 'change_pct' in df.columns:
-                    df['change_pct'] = df['change_pct'].astype(str).str.rstrip('%').replace('-', '0')
-
-                # Convert to list of dicts
-                targets = df.to_dict(orient='records')
-                
-                logger.info(f"Successfully extracted {len(targets)} potential squeeze targets.")
-                return targets
-
-            except Exception as e:
-                logger.error(f"Failed to fetch data from Finviz: {e}")
-                return []
-
-    async def publish_signals(self, targets: List[Dict[str, Any]]):
-        """
-        Publishes valid squeeze targets to the 'signal-squeeze' Kafka topic.
-        """
-        for target in targets:
-            # Basic validation: Ensure we actually have a ticker and high short interest
-            if not target.get('ticker') or target.get('short_float') == '0':
-                continue
-
-            message = {
-                "source": "SqueezeHunter",
-                "timestamp": datetime.utcnow().isoformat(),
-                "event_type": "short_squeeze_candidate",
-                "data": target
-            }
+        while len(all_results) < max_results:
+            url = BASE_URL.format(start_index)
+            logger.info(f"   -> Navigating to Finviz (Start Index: {start_index})...")
             
-            # Key the message by Ticker to ensure partition ordering
-            await self.producer.send(
-                topic=KAFKA_TOPIC_SQUEEZE, 
-                key=target['ticker'], 
-                value=message
-            )
-            logger.debug(f"Published signal for {target['ticker']}")
-
-    async def run(self):
-        """
-        Main execution loop.
-        """
-        logger.info("Squeeze Hunter initialized. Stalking high short interest stocks...")
-        
-        while True:
             try:
-                # 1. Hunt
-                targets = await self.fetch_squeeze_targets()
+                # 'domcontentloaded' is faster than 'networkidle'
+                await page.goto(url, wait_until="domcontentloaded")
                 
-                # 2. Publish
-                if targets:
-                    await self.publish_signals(targets)
+                # Extract the page HTML content
+                content = await page.content()
                 
-                # 3. Sleep
-                # Finviz data doesn't change second-by-second. 
-                # Checking every 15-30 minutes is usually sufficient to catch intraday moves.
-                # Adjust based on your API limits/preference.
-                sleep_minutes = 15
-                logger.info(f"Hunt complete. Sleeping for {sleep_minutes} minutes.")
-                await asyncio.sleep(sleep_minutes * 60)
+                # Check directly if there are results by looking for the "No matches" text or similar
+                # Finviz shows "Total: 0" or similar if empty, but checking table existence is robust
+                
+                # Use Pandas to find the table automatically
+                # WRAPPED in StringIO to silence FutureWarning
+                dfs = pd.read_html(io.StringIO(content))
+                
+                target_df = None
+                
+                # Debugging: Log what we found
+                logger.info(f"   -> Found {len(dfs)} tables on page.")
+                
+                for i, df in enumerate(dfs):
+                    logger.debug(f"   Table {i} columns: {df.columns.tolist()}")
+                    # Loose matching: Just look for 'Ticker'
+                    if 'Ticker' in df.columns:
+                        target_df = df
+                        break
+                
+                if target_df is None and dfs:
+                    # Fallback: Try the largest table if we found any
+                    logger.warning("   -> Exact match not found. Trying largest table.")
+                    target_df = max(dfs, key=lambda x: len(x))
+
+                if target_df is None:
+                    logger.info("   -> No data tables found. Stopping.")
+                    break
+
+                # --- DATA CLEANING ---
+                target_df.columns = [str(c).lower().replace(' ', '_') for c in target_df.columns]
+                
+                # Filter out the header rows that are repeated in the table sometimes
+                if 'ticker' in target_df.columns:
+                    clean_df = target_df[target_df['ticker'] != 'Ticker'].copy()
+                else:
+                    clean_df = target_df.copy()
+                
+                if clean_df.empty:
+                    logger.info("   -> Page empty. Stopping.")
+                    break
+
+                # Helper function to convert "20.50%" string to 0.205 float
+                def clean_percent(x):
+                    if isinstance(x, str) and '%' in x:
+                        try:
+                            return float(x.strip('%')) / 100
+                        except ValueError:
+                            return 0.0
+                    return 0.0
+
+                if 'float_short' in clean_df.columns:
+                    clean_df['short_float'] = clean_df['float_short'].apply(clean_percent)
+                else:
+                    clean_df['short_float'] = 0.0
+
+                clean_df['price'] = pd.to_numeric(clean_df['price'], errors='coerce')
+                clean_df['volume'] = pd.to_numeric(clean_df['volume'], errors='coerce')
+
+                # --- FORMATTING OUTPUT ---
+                page_results = []
+                for _, row in clean_df.iterrows():
+                    signal = {
+                        "hunter": "squeeze",
+                        "ticker": row['ticker'],
+                        "price": row['price'],
+                        "short_float": row['short_float'],
+                        "volume": row['volume'],
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    page_results.append(signal)
+                
+                all_results.extend(page_results)
+                logger.info(f"   -> Scraped {len(page_results)} items from this page.")
+
+                # If we got fewer than 20 results, it's likely the last page
+                if len(page_results) < 20:
+                    break
+                
+                # Move to next page
+                start_index += 20
+                
+                # Be nice to the server
+                await asyncio.sleep(1)
 
             except Exception as e:
-                logger.error(f"Critical error in Squeeze Hunter loop: {e}")
-                await asyncio.sleep(60) # Short sleep on error before retrying
+                logger.error(f"   ❌ Error on index {start_index}: {e}")
+                break
+    
+    logger.info(f"   ✅ Success: Found total {len(all_results)} potential squeeze targets.")
+    return all_results
+
+async def run():
+    # 1. Scrape
+    signals = await fetch_squeeze_targets()
+    
+    # 2. Push
+    if signals:
+        for signal in signals:
+             KafkaClient.send_message(KAFKA_TOPIC_SQUEEZE, signal)
+    else:
+        logger.info("No signals to push.")
 
 if __name__ == "__main__":
-    hunter = SqueezeHunter()
-    asyncio.run(hunter.run())
+    asyncio.run(run())

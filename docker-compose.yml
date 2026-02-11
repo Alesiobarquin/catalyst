@@ -2,14 +2,14 @@ services:
   # ==========================================
   # LAYER 1: THE HUNTERS (PYTHON INGESTION)
   # ==========================================
-  
+
   # 1. HUNTER BASE (The Builder)
   # This service builds the Docker image once. All other hunters use this image.
   hunter-base:
     build:
-      context: ./hunters        # Looks up one folder to 'catalyst/hunters'
-      dockerfile: Dockerfile     # Uses the Dockerfile we created
-    image: alpha-stream-hunters  # Names the image so we can reuse it
+      context: ./hunters # Looks up one folder to 'catalyst/hunters'
+      dockerfile: Dockerfile # Uses the Dockerfile we created
+    image: alpha-stream-hunters # Names the image so we can reuse it
     environment:
       - KAFKA_BROKER=kafka:29092 # Connects internally to Kafka
       - REDIS_HOST=redis
@@ -19,26 +19,30 @@ services:
       - redis
     # This prevents this specific container from running on its own
     # It exists only to be extended by the others.
-    entrypoint: ["echo", "Base Image Ready"]
+    entrypoint: [ "echo", "Base Image Ready" ]
 
   # 2. SQUEEZE HUNTER (The Instance)
   hunter-squeeze:
-    extends: hunter-base         # Inherits the build/image from above
-    container_name: hunter_squeeze
-    command: ["python", "main.py", "squeeze"] # Runs specific logic
-    restart: on-failure
-
-  # 3. INSIDER HUNTER (The Instance)
-  hunter-insider:
     extends: hunter-base
-    container_name: hunter_insider
-    command: ["python", "main.py", "insider"]
-    restart: always
+    container_name: hunter_squeeze
+    command: [ "python", "main.py", "squeeze" ]
+    restart: on-failure
+    volumes:
+      - ./hunters:/app/hunters
+
+  #   # 3. INSIDER HUNTER (The Instance)
+  #   hunter-insider:
+  #     extends: hunter-base
+  #     container_name: hunter_insider
+  #     command: ["python", "main.py", "insider"]
+  #     restart: always
+  #     volumes:
+  #       - ./hunters:/app/hunters
 
   # ==========================================
   # LAYER 2: THE NERVOUS SYSTEM (KAFKA)
   # ==========================================
-  
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     hostname: zookeeper
@@ -94,7 +98,7 @@ services:
   # ==========================================
   # TOOLS (VISUALIZATION)
   # ==========================================
-  
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: catalyst_kafka_ui
