@@ -39,7 +39,7 @@ services:
   #       - ./hunters:/app/hunters
 
   # ==========================================
-  # LAYER 2: THE NERVOUS SYSTEM (KAFKA)
+  # LAYER 2: KAFKA INFRASTRUCTURE
   # ==========================================
 
   zookeeper:
