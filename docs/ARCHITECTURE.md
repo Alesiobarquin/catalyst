@@ -61,6 +61,23 @@ We monitor 6 distinct data streams (The "Hunters").
 *   **Topic 2:** `validated-signals` $\rightarrow$ Enriched JSON from Gemini (Layer 3).
 *   **Topic 3:** `trade-orders` $\rightarrow$ Final calculated trade instructions from Spring Boot (Layer 4).
 
+### Layer 2.5: The Gatekeeper (Triage Service)
+**Role:** The Sniper Scope.
+This layer prevents "garbage in, garbage out" and saves API costs by filtering raw events from the Hunters before they reach the expensive AI analysis layer.
+
+*   **The Rule:** The AI only gets woken up if a ticker passes a Hard Metric Threshold or shows Confluence.
+*   **Aggregation (The Wait):**
+    *   Consumes `raw-events`.
+    *   Holds data in a 5-minute rolling window using Redis.
+    *   **Goal:** Detect if multiple Hunters spot the same ticker (e.g., Squeeze + Insider).
+*   **Hard Filters (The Kill):**
+    *   **Liquidity Check:** Is Pre-Market Volume > 50k? (If No $\rightarrow$ Drop).
+    *   **Momentum Check:** Is Relative Volume > 1.5? (If No $\rightarrow$ Drop).
+*   **The Trigger Logic:**
+    *   IF **Confluence_Count > 1** (Two sources confirm)
+    *   OR **Technical_Score > 70** (Massive outlier event)
+    *   THEN $\rightarrow$ Push to `triage-priority` (or directly to `validated-signals` for analysis).
+
 ### Layer 3: The Brain (Gemini 1.5 Pro)
 **Role:** The Synthesizer. It classifies context.
 *   **Input:** Reads from `raw-events`. Fetches recent news headlines + Sector Sentiment.

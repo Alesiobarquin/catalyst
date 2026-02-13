@@ -16,8 +16,9 @@ The system follows a microservices architecture powered by **Docker** and **Kafk
 
 ```mermaid
 graph LR
-    H[Hunters] -->|Signals| K[Kafka]
-    K -->|Stream| E[Engine]
+    H[Hunters] -->|Raw Events| K[Kafka]
+    K -->|Stream| G[Gatekeeper]
+    G -->|Filtered| E[Engine]
     E -->|Analysis| D[(TimescaleDB)]
     E -->|Alerts| F[Frontend]
 ```
@@ -33,6 +34,12 @@ Independent Python agents that scour the web for raw data and market signals.
 The central messaging backbone. Decouples data collection from analysis, allowing hunters to run asynchronously and scale indefinitely.
 - **Broker**: Confluent Kafka
 - **Topics**: `signal-squeeze`, `signal-insider`, `signal-whale`, etc.
+
+### 2.5. `hunters/gatekeeper.py` (The Triage)
+**The Sniper Scope.** A filter that sits between ingestion and analysis to prevent "garbage in, garbage out".
+- **Aggregation**: Holds raw signals in a 5-minute rolling window.
+- **Hard Filters**: Drops tickers with low liquidity or momentum.
+- **Trigger**: Only passes tickers with **Confluence** (multiple sources) or **High Tech Score**.
 
 ### 3. `engine/` (The Brain)
 *Coming Soon*. The core analysis unit (Java/Python) that:
