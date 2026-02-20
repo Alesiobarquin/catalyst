@@ -44,3 +44,8 @@ out/
 .build/
 # Docker data
 data/
+
+.gemini/
+gha-creds-*.json
+
+# === NODE / NEXT.JS ===
