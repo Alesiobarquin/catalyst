@@ -59,6 +59,7 @@ You will see logs in your terminal.
 ## 3. Option B: Docker Testing (Full Integration)
 Use this method to test the entire pipeline (Scraping -> Kafka -> Database).
 
+
 ### Step 1: Start Infrastructure (Kafka, Zookeeper, Redis, UI)
 Start the core services first so they are healthy:
 ```bash
