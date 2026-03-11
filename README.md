@@ -18,7 +18,8 @@ The system follows a microservices architecture powered by **Docker** and **Kafk
 graph LR
     H[Hunters] -->|Raw Events| K[Kafka]
     K -->|Stream| G[Gatekeeper]
-    G -->|Filtered| E[Engine]
+ sudo xcodebuild -license accept    G -->|Filtered| A[Gemini AI]
+    A -->|Validated| E[Engine]
     E -->|Analysis| D[(TimescaleDB)]
     E -->|Alerts| F[Frontend]
 ```
@@ -41,14 +42,20 @@ The central messaging backbone. Decouples data collection from analysis, allowin
 - **Hard Filters**: Drops tickers with low liquidity or momentum.
 - **Trigger**: Only passes tickers with **Confluence** (multiple sources) or **High Tech Score**.
 
-### 3. `engine/` (The Brain)
-*Coming Soon*. The core analysis unit (Java/Python) that:
-- Consumes raw signals from Kafka.
-- Backtests against historical data.
-- Filters noise using technical validation (RSI, MACD, Volume Profile).
-- Exposes an API for the frontend.
+### 3. `ai/` (The Synthesizer)
+*Coming Soon*. The AI context engine (Gemini 3.1 Pro) that:
+- Reads filtered signals from Gatekeeper.
+- Analyzes confluence, fetches recent news, and determines the overall narrative (e.g., trap scenarios or short squeezes).
+- Outputs validated, structured JSON signals to Kafka (`validated-signals`).
 
-### 4. `frontend/` (The Face)
+### 4. `engine/` (The Strategist)
+*Coming Soon*. The core execution unit (Java Spring Boot) that:
+- Consumes validated signals from the AI layer.
+- Applies strict math, Kelly Criterion sizing, and regime filters (VIX).
+- Determines exit logic and micro-structure triggers for execution.
+- Exposes an API and publishes final trade blueprints (`trade-orders`).
+
+### 5. `frontend/` (The Face)
 *Coming Soon*. A modern web dashboard to visualize:
 - Live signal feeds.
 - Strategy performance metrics.
