@@ -18,7 +18,7 @@ The system follows a microservices architecture powered by **Docker** and **Kafk
 graph LR
     H[Hunters] -->|Raw Events| K[Kafka]
     K -->|Stream| G[Gatekeeper]
- sudo xcodebuild -license accept    G -->|Filtered| A[Gemini AI]
+    G -->|Filtered| A[Gemini AI]
     A -->|Validated| E[Engine]
     E -->|Analysis| D[(TimescaleDB)]
     E -->|Alerts| F[Frontend]
