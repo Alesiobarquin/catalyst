@@ -29,14 +29,23 @@ services:
     volumes:
       - ./hunters:/app/hunters
 
-  #   # 3. INSIDER HUNTER (The Instance)
-  #   hunter-insider:
-  #     extends: hunter-base
-  #     container_name: hunter_insider
-  #     command: ["python", "main.py", "insider"]
-  #     restart: always
-  #     volumes:
-  #       - ./hunters:/app/hunters
+     # 3. INSIDER HUNTER (The Instance)
+  hunter-insider:
+    extends: hunter-base
+    container_name: hunter_insider
+    command: ["python", "main.py", "insider"]
+    restart: always
+    volumes:
+      - ./hunters:/app/hunters
+
+  # 4. BIOTECH HUNTER (The Instance)
+  hunter-biotech:
+    extends: hunter-base
+    container_name: hunter_biotech
+    command: ["python", "hunters/main.py", "biotech"]
+    restart: always
+    volumes:
+      - .:/app    
 
   # ==========================================
   # LAYER 2: KAFKA INFRASTRUCTURE
