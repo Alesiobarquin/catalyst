@@ -15,8 +15,10 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     depends_on:
-      - kafka
-      - redis
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     # This prevents this specific container from running on its own
     # It exists only to be extended by the others.
 
@@ -29,12 +31,12 @@ services:
     volumes:
       - ./hunters:/app/hunters
 
-     # 3. INSIDER HUNTER (The Instance)
+  # 3. INSIDER HUNTER (The Instance)
   hunter-insider:
     extends: hunter-base
     container_name: hunter_insider
-    command: ["python", "main.py", "insider"]
-    restart: always
+    command: ["python", "-m", "hunters.main", "insider"]
+    restart: on-failure
     volumes:
       - ./hunters:/app/hunters
 
@@ -42,10 +44,10 @@ services:
   hunter-biotech:
     extends: hunter-base
     container_name: hunter_biotech
-    command: ["python", "hunters/main.py", "biotech"]
-    restart: always
+    command: ["python", "-m", "hunters.main", "biotech"]
+    restart: on-failure
     volumes:
-      - .:/app    
+      - ./hunters:/app/hunters
 
   # ==========================================
   # LAYER 2: KAFKA INFRASTRUCTURE
@@ -79,6 +81,12 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
 
   # ==========================================
   # LAYER 5: THE MEMORY (DB + CACHE)
@@ -102,6 +110,63 @@ services:
     container_name: catalyst_redis
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ==========================================
+  # LAYER 2.5: GATEKEEPER
+  # ==========================================
+
+  gatekeeper:
+    build:
+      context: .
+      dockerfile: gatekeeper/Dockerfile
+    container_name: catalyst_gatekeeper
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./gatekeeper:/app/gatekeeper
+
+  # ==========================================
+  # LAYER 3: AI ANALYSIS
+  # ==========================================
+
+  ai-layer:
+    build:
+      context: .
+      dockerfile: ai_layer/Dockerfile
+    container_name: catalyst_ai_layer
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL}
+      - GEMINI_TEMPERATURE=${GEMINI_TEMPERATURE}
+      - GEMINI_MAX_RETRIES=${GEMINI_MAX_RETRIES}
+      - GEMINI_INITIAL_BACKOFF_SECONDS=${GEMINI_INITIAL_BACKOFF_SECONDS}
+      - AI_MIN_CONVICTION_SCORE=${AI_MIN_CONVICTION_SCORE}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      gatekeeper:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./ai_layer:/app/ai_layer
 
   # ==========================================
   # TOOLS (VISUALIZATION)
@@ -118,3 +183,12 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: catalyst_redisinsight
+    ports:
+      - "5540:5540"
+    depends_on:
+      redis:
+        condition: service_healthy

@@ -3,7 +3,8 @@ import httpx
 import xml.etree.ElementTree as ET
 from .common.logger import get_logger
 from .common.kafka_client import KafkaClient
-from .common.config import KAFKA_TOPIC_INSIDER, SEC_RSS_URL
+from .common.config import SEC_RSS_URL
+from .common.topics import KAFKA_TOPIC_INSIDER, RAW_EVENTS_TOPIC
 
 logger = get_logger("insider_hunter")
 
@@ -50,14 +51,16 @@ async def run():
                             payload = {
                                 "cik": cik,
                                 "ticker": data.get("tickers", [None])[0],
-                                "accessionNumber": accession,
-                                "reportDate": report_date,
-                                "isConfirmingCopy": is_confirmatory,
-                                "transactionCode": "P", # Placeholder for Purchase
-                                "source": "edgar_api_json"
+                                "accession_number": accession,
+                                "report_date": report_date,
+                                "is_confirming_copy": is_confirmatory,
+                                "transaction_code": "P",  # Placeholder for Purchase
+                                "source": "edgar_api_json",
+                                "hunter": "insider",
                             }
 
                             KafkaClient.send_message(KAFKA_TOPIC_INSIDER, payload)
+                            KafkaClient.send_message(RAW_EVENTS_TOPIC, payload)
                             logger.info(f"Signal sent for CIK {cik}: Accession {accession}")
             except Exception as e:
                 logger.error(f"Error scraping CIK {cik}: {e}")

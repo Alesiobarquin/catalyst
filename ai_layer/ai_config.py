@@ -1,0 +1,19 @@
+import os
+
+
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+TRIAGE_PRIORITY_TOPIC = os.getenv("TRIAGE_PRIORITY_TOPIC", "triage-priority")
+VALIDATED_SIGNALS_TOPIC = os.getenv("VALIDATED_SIGNALS_TOPIC", "validated-signals")
+KAFKA_CONSUMER_GROUP = os.getenv("AI_LAYER_CONSUMER_GROUP", "ai-analysis-service")
+KAFKA_AUTO_OFFSET_RESET = os.getenv("AI_LAYER_AUTO_OFFSET_RESET", "earliest")
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-pro")
+GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", "0.2"))
+GEMINI_RESPONSE_MIME_TYPE = "application/json"
+GEMINI_MAX_RETRIES = int(os.getenv("GEMINI_MAX_RETRIES", "3"))
+GEMINI_INITIAL_BACKOFF_SECONDS = float(
+    os.getenv("GEMINI_INITIAL_BACKOFF_SECONDS", "1")
+)
+
+MIN_CONVICTION_SCORE = int(os.getenv("AI_MIN_CONVICTION_SCORE", "50"))
