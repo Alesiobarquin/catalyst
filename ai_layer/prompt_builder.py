@@ -5,18 +5,18 @@ from textwrap import dedent
 def build_analysis_prompt(triage_payload):
     ticker = triage_payload.get("ticker", "UNKNOWN")
     signal_blocks = format_signal_blocks(triage_payload.get("signals", []))
+    metadata = {
+        "ticker": ticker,
+        "timestamp_utc": triage_payload.get("timestamp_utc"),
+        "confluence_count": triage_payload.get("confluence_count"),
+        "confluence_sources": triage_payload.get("confluence_sources", []),
+        "liquidity_metrics": triage_payload.get("liquidity_metrics", {}),
+        "market_cap": triage_payload.get("market_cap"),
+        "float_shares": triage_payload.get("float_shares"),
+    }
+
     metadata_block = json.dumps(
-        {
-            "ticker": ticker,
-            "timestamp_utc": triage_payload.get("timestamp_utc"),
-            "confluence_count": triage_payload.get("confluence_count"),
-            "confluence_sources": triage_payload.get("confluence_sources", []),
-            "liquidity_metrics": triage_payload.get("liquidity_metrics", {}),
-            "price_change_1d_pct": triage_payload.get("price_change_1d_pct"),
-            "market_cap": triage_payload.get("market_cap"),
-            "float_shares": triage_payload.get("float_shares"),
-            "sector": triage_payload.get("sector"),
-        },
+        metadata,
         indent=2,
         sort_keys=True,
     )

@@ -57,19 +57,49 @@ logger = logging.getLogger("gatekeeper")
 
 class GatekeeperService:
     def __init__(self):
-        self.redis = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
-        self.consumer = KafkaConsumer(
-            RAW_EVENTS_TOPIC,
-            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-            auto_offset_reset=KAFKA_AUTO_OFFSET_RESET,
-            enable_auto_commit=True,
-            group_id=KAFKA_CONSUMER_GROUP,
-            value_deserializer=lambda value: json.loads(value.decode("utf-8")),
-        )
-        self.producer = KafkaProducer(
-            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-            value_serializer=lambda value: json.dumps(value).encode("utf-8"),
-        )
+        try:
+            self.redis = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+            # Fail fast if Redis is not reachable.
+            self.redis.ping()
+        except Exception as exc:
+            logger.error(
+                "Failed to connect to Redis at %s:%s: %s",
+                REDIS_HOST,
+                REDIS_PORT,
+                exc,
+            )
+            raise SystemExit(1) from exc
+
+        kafka_backoff = 1
+        last_error = None
+        for attempt in range(1, 4):
+            try:
+                self.consumer = KafkaConsumer(
+                    RAW_EVENTS_TOPIC,
+                    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                    auto_offset_reset=KAFKA_AUTO_OFFSET_RESET,
+                    enable_auto_commit=False,
+                    group_id=KAFKA_CONSUMER_GROUP,
+                    value_deserializer=lambda value: json.loads(value.decode("utf-8")),
+                )
+                self.producer = KafkaProducer(
+                    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                    value_serializer=lambda value: json.dumps(value).encode("utf-8"),
+                )
+                break
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "Kafka connection attempt %s/3 failed: %s. Retrying in %ss",
+                    attempt,
+                    exc,
+                    kafka_backoff,
+                )
+                time.sleep(kafka_backoff)
+                kafka_backoff *= 2
+
+        if last_error is not None and not hasattr(self, "consumer"):
+            raise RuntimeError("Failed to initialize Kafka consumer/producer") from last_error
 
     def run(self):
         logger.info(
@@ -128,6 +158,10 @@ class GatekeeperService:
         }
         self.producer.send(TRIAGE_PRIORITY_TOPIC, triage_payload)
         self.producer.flush()
+        try:
+            self.consumer.commit()
+        except Exception as exc:
+            logger.warning("Kafka commit failed after forwarding triage payload: %s", exc)
         self.mark_sent(ticker)
         logger.info(
             "Forwarded %s to %s (confluence=%s, technical_score=%s)",
@@ -189,7 +223,8 @@ class GatekeeperService:
     def coerce_squeeze(self, raw_event):
         signal_fields = {
             "short_float_pct": self.normalize_short_float_pct(
-                self.first(raw_event, "short_float_pct", "short_float")
+                self.first(raw_event, "short_float_pct", "short_float"),
+                is_fraction=False,
             ),
             "days_to_cover": self.first(raw_event, "days_to_cover", "short_ratio"),
             "borrow_fee_rate": self.first(raw_event, "borrow_fee_rate", "borrow_fee"),
@@ -374,11 +409,17 @@ class GatekeeperService:
             "source_hunter": normalized["source_hunter"],
             "signal_data": normalized["signal_data"],
         }
-        self.redis.rpush(signal_key, json.dumps(payload))
-        self.redis.expire(signal_key, ROLLING_WINDOW_SECONDS)
 
-        self.redis.sadd(source_key, normalized["source_hunter"])
-        self.redis.expire(source_key, ROLLING_WINDOW_SECONDS)
+        # Cap per-ticker signal history to avoid unbounded growth.
+        MAX_SIGNALS_PER_WINDOW = 200
+        pipe = self.redis.pipeline()
+        pipe.lpush(signal_key, json.dumps(payload))
+        pipe.ltrim(signal_key, 0, MAX_SIGNALS_PER_WINDOW - 1)
+        pipe.expire(signal_key, ROLLING_WINDOW_SECONDS)
+
+        pipe.sadd(source_key, normalized["source_hunter"])
+        pipe.expire(source_key, ROLLING_WINDOW_SECONDS)
+        pipe.execute()
 
     def get_sources(self, ticker):
         source_key = REDIS_SOURCES_KEY.format(ticker=ticker)
@@ -427,14 +468,23 @@ class GatekeeperService:
         return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
     @staticmethod
-    def normalize_short_float_pct(value):
+    def normalize_short_float_pct(value, is_fraction=False):
         numeric_value = GatekeeperService.to_float(value, default=0.0)
-        # Finviz renders short interest as strings like "23.40%". The squeeze hunter now
-        # publishes that as 23.40 percentage points. For backward compatibility, still
-        # up-convert legacy fractional payloads like 0.234 to 23.4 so Gemini always sees percent units.
-        if numeric_value <= 1.0:
-            return round(numeric_value * 100.0, 4)
-        return round(numeric_value, 4)
+        if numeric_value is None:
+            return 0.0
+
+        # Only treat as a fraction when explicitly indicated or when clearly in (0,1]
+        # and scaling would still keep the result within 0–100%.
+        if is_fraction or (0 < numeric_value <= 1.0 and numeric_value * 100.0 <= 100.0):
+            numeric_value *= 100.0
+
+        numeric_value = round(numeric_value, 4)
+        # Clamp to a realistic percentage range.
+        if numeric_value < 0.0:
+            numeric_value = 0.0
+        if numeric_value > 100.0:
+            numeric_value = 100.0
+        return numeric_value
 
     @staticmethod
     def to_float(value, default=None):

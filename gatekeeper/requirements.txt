@@ -1,2 +1,2 @@
-kafka-python-ng
-redis
+kafka-python-ng==2.2.0
+redis==5.2.1

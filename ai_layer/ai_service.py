@@ -67,18 +67,38 @@ class AIAnalysisService:
         )
         self.model_name = model_name
         logger.info("Using Gemini model %s", model_name)
-        self.consumer = KafkaConsumer(
-            TRIAGE_PRIORITY_TOPIC,
-            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-            auto_offset_reset=KAFKA_AUTO_OFFSET_RESET,
-            enable_auto_commit=True,
-            group_id=KAFKA_CONSUMER_GROUP,
-            value_deserializer=lambda value: json.loads(value.decode("utf-8")),
-        )
-        self.producer = KafkaProducer(
-            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-            value_serializer=lambda value: json.dumps(value).encode("utf-8"),
-        )
+
+        # Kafka connections with basic retry to handle transient bootstrap issues.
+        kafka_backoff = 1
+        last_error = None
+        for attempt in range(1, 4):
+            try:
+                self.consumer = KafkaConsumer(
+                    TRIAGE_PRIORITY_TOPIC,
+                    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                    auto_offset_reset=KAFKA_AUTO_OFFSET_RESET,
+                    enable_auto_commit=False,
+                    group_id=KAFKA_CONSUMER_GROUP,
+                    value_deserializer=lambda value: json.loads(value.decode("utf-8")),
+                )
+                self.producer = KafkaProducer(
+                    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                    value_serializer=lambda value: json.dumps(value).encode("utf-8"),
+                )
+                break
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "Kafka connection attempt %s/3 failed: %s. Retrying in %ss",
+                    attempt,
+                    exc,
+                    kafka_backoff,
+                )
+                time.sleep(kafka_backoff)
+                kafka_backoff *= 2
+
+        if last_error is not None and not hasattr(self, "consumer"):
+            raise RuntimeError("Failed to initialize Kafka consumer/producer") from last_error
 
     def run(self):
         logger.info(
@@ -101,7 +121,7 @@ class AIAnalysisService:
             )
             return
 
-        conviction_score = int(analysis.get("conviction_score", 0))
+        conviction_score = analysis.get("conviction_score", 0)
         if conviction_score < MIN_CONVICTION_SCORE:
             logger.info(
                 "Dropped %s: conviction_score %s below threshold %s",
@@ -114,6 +134,11 @@ class AIAnalysisService:
         validated_signal = self.merge_payload(triage_payload, analysis)
         self.producer.send(VALIDATED_SIGNALS_TOPIC, validated_signal)
         self.producer.flush()
+        # Commit offsets only after successful processing to avoid message loss.
+        try:
+            self.consumer.commit()
+        except Exception as exc:
+            logger.warning("Kafka commit failed after publishing validated signal: %s", exc)
         logger.info(
             "Published validated signal for %s with conviction %s",
             validated_signal["ticker"],
@@ -149,7 +174,10 @@ class AIAnalysisService:
                 time.sleep(backoff_seconds)
                 backoff_seconds *= 2
 
-        raise RuntimeError(str(last_error))
+        # Preserve original exception type and traceback for observability.
+        if last_error is not None:
+            raise RuntimeError("Gemini analysis failed after max retries") from last_error
+        raise RuntimeError("Gemini analysis failed after max retries with unknown error")
 
     def merge_payload(self, triage_payload, analysis):
         return {
@@ -176,8 +204,30 @@ class AIAnalysisService:
 
     @staticmethod
     def normalize_analysis(parsed):
+        def _safe_int_from_field(obj, field, default=0):
+            raw = obj.get(field)
+            if raw is None:
+                return default
+            try:
+                # Handle cases like "85", "85.0", " 90 %"
+                if isinstance(raw, str):
+                    cleaned = raw.replace("%", "").strip()
+                    if not cleaned:
+                        return default
+                    try:
+                        return int(cleaned)
+                    except ValueError:
+                        return int(float(cleaned))
+                if isinstance(raw, (int, float)):
+                    return int(raw)
+                return default
+            except (TypeError, ValueError):
+                return default
+
+        conviction_score = _safe_int_from_field(parsed, "conviction_score", default=0)
+
         return {
-            "conviction_score": int(parsed.get("conviction_score", 0)),
+            "conviction_score": conviction_score,
             "catalyst_type": str(parsed.get("catalyst_type", "UNKNOWN")).upper(),
             "is_trap": bool(parsed.get("is_trap", False)),
             "trap_reason": parsed.get("trap_reason"),

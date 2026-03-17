@@ -68,7 +68,8 @@ def clean_number(value):
 
 def compute_relative_volume(redis_client, ticker, current_volume, avg_volume):
     baseline_key = f"vol_baseline:{ticker}"
-    baseline_volume = avg_volume
+    # Establish a sane, non-zero baseline.
+    baseline_volume = avg_volume if avg_volume and avg_volume > 0 else None
 
     if redis_client is not None:
         stored_baseline = redis_client.get(baseline_key)
@@ -76,19 +77,22 @@ def compute_relative_volume(redis_client, ticker, current_volume, avg_volume):
             try:
                 baseline_volume = float(stored_baseline)
             except ValueError:
-                baseline_volume = avg_volume
+                baseline_volume = baseline_volume
 
     relative_volume = 0.0
-    if baseline_volume and baseline_volume > 0:
+    if baseline_volume and baseline_volume > 0 and current_volume and current_volume > 0:
         relative_volume = float(current_volume) / float(baseline_volume)
 
-    if redis_client is not None:
-        next_baseline = float(current_volume)
-        if baseline_volume and baseline_volume > 0:
+    if redis_client is not None and current_volume and current_volume > 0:
+        # If we still do not have a baseline, seed it from the current volume.
+        if not baseline_volume or baseline_volume <= 0:
+            next_baseline = float(current_volume)
+        else:
             next_baseline = (EMA_ALPHA * float(current_volume)) + (
                 (1 - EMA_ALPHA) * float(baseline_volume)
             )
-        redis_client.set(baseline_key, next_baseline)
+        if next_baseline > 0:
+            redis_client.set(baseline_key, next_baseline)
 
     return round(relative_volume, 4)
 

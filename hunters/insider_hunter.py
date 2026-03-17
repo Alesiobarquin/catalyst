@@ -51,13 +51,12 @@ async def run():
                             payload = {
                                 "cik": cik,
                                 "ticker": data.get("tickers", [None])[0],
-                                "accessionNumber": accession,
-                                "reportDate": report_date,
-                                "isConfirmingCopy": is_confirmatory,
-                                "transactionCode": "P", # Placeholder for Purchase
-                                "transaction_code": "P",
+                                "accession_number": accession,
+                                "report_date": report_date,
+                                "is_confirming_copy": is_confirmatory,
+                                "transaction_code": "P",  # Placeholder for Purchase
                                 "source": "edgar_api_json",
-                                "hunter": "insider"
+                                "hunter": "insider",
                             }
 
                             KafkaClient.send_message(KAFKA_TOPIC_INSIDER, payload)
