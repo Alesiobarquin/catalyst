@@ -198,6 +198,12 @@ async def fetch_squeeze_targets():
                 else:
                     clean_df['avg_volume_val'] = None
 
+                # short_ratio is Finviz's days-to-cover (short shares / avg daily volume)
+                if 'short_ratio' in clean_df.columns:
+                    clean_df['short_ratio_val'] = clean_df['short_ratio'].apply(clean_number)
+                else:
+                    clean_df['short_ratio_val'] = None
+
                 # --- FORMATTING OUTPUT ---
                 page_results = []
                 for _, row in clean_df.iterrows():
@@ -223,6 +229,12 @@ async def fetch_squeeze_targets():
                         avg_volume=avg_volume,
                     )
                     
+                    days_to_cover = (
+                        float(row['short_ratio_val'])
+                        if row['short_ratio_val'] is not None and not pd.isna(row['short_ratio_val'])
+                        else None
+                    )
+
                     signal = {
                         "hunter": "squeeze",
                         "ticker": ticker,
@@ -230,9 +242,31 @@ async def fetch_squeeze_targets():
                         "short_float": row['short_float_val'],
                         "volume": int(current_volume),
                         "relative_volume": relative_volume,
+                        "days_to_cover": days_to_cover,
                         "timestamp": datetime.now().isoformat()
                     }
-                    
+
+                    # --- PRE-EMISSION FILTERS ---
+                    price = signal['price']
+                    if price is None or not (2.00 <= price <= 60.00):
+                        logger.debug("SKIP %s: price %.2f out of range [2.00, 60.00]", ticker, price or 0)
+                        continue
+
+                    if current_volume < 200_000:
+                        logger.debug("SKIP %s: volume %d below 200,000", ticker, int(current_volume))
+                        continue
+
+                    if relative_volume < 2.0:
+                        logger.debug("SKIP %s: relative_volume %.2f below 2.0", ticker, relative_volume)
+                        continue
+
+                    if signal['short_float'] < 25.0:
+                        logger.debug("SKIP %s: short_float %.2f%% below 25%%", ticker, signal['short_float'])
+                        continue
+
+                    if days_to_cover is not None and days_to_cover < 3.0:
+                        logger.debug("SKIP %s: days_to_cover %.2f below 3.0", ticker, days_to_cover)
+                        continue
 
                     # Final sanity check to avoid sending "Header-like" rows that slipped through
                     # "export" is a link at the bottom of the table sometimes picked up

@@ -11,6 +11,8 @@ try:
         KAFKA_AUTO_OFFSET_RESET,
         KAFKA_BOOTSTRAP_SERVERS,
         KAFKA_CONSUMER_GROUP,
+        MAX_PRICE,
+        MIN_PRICE,
         MIN_RELATIVE_VOLUME,
         MIN_VOLUME,
         RAW_EVENTS_TOPIC,
@@ -29,6 +31,8 @@ except ImportError:
         KAFKA_AUTO_OFFSET_RESET,
         KAFKA_BOOTSTRAP_SERVERS,
         KAFKA_CONSUMER_GROUP,
+        MAX_PRICE,
+        MIN_PRICE,
         MIN_RELATIVE_VOLUME,
         MIN_VOLUME,
         RAW_EVENTS_TOPIC,
@@ -119,6 +123,8 @@ class GatekeeperService:
             "confluence_sources": confluence_sources,
             "liquidity_metrics": normalized["liquidity_metrics"],
             "signals": self.get_accumulated_signals(ticker),
+            "float_shares": normalized.get("float_shares"),
+            "market_cap": normalized.get("market_cap"),
         }
         self.producer.send(TRIAGE_PRIORITY_TOPIC, triage_payload)
         self.producer.flush()
@@ -264,6 +270,8 @@ class GatekeeperService:
             "liquidity_metrics": liquidity_metrics,
             "signal_data": signal_data,
             "_technical_score": self.to_float(technical_score, default=0.0),
+            "float_shares": self.to_float(self.first(raw_event, "float_shares", "float")),
+            "market_cap": self.first(raw_event, "market_cap", "cap"),
         }
 
     def extract_liquidity_metrics(self, raw_event, overrides):
@@ -351,6 +359,11 @@ class GatekeeperService:
                 f"relative_volume {relative_volume} below minimum "
                 f"{MIN_RELATIVE_VOLUME}"
             )
+        price = liquidity.get("price") or 0.0
+        if price > 0 and price < MIN_PRICE:
+            return f"price {price} below minimum {MIN_PRICE}"
+        if price > 0 and price > MAX_PRICE:
+            return f"price {price} above maximum {MAX_PRICE}"
         return None
 
     def track_signal(self, ticker, normalized):

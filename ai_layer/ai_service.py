@@ -12,7 +12,6 @@ try:
         GEMINI_INITIAL_BACKOFF_SECONDS,
         GEMINI_MAX_RETRIES,
         GEMINI_MODEL,
-        GEMINI_RESPONSE_MIME_TYPE,
         GEMINI_TEMPERATURE,
         KAFKA_AUTO_OFFSET_RESET,
         KAFKA_BOOTSTRAP_SERVERS,
@@ -28,7 +27,6 @@ except ImportError:
         GEMINI_INITIAL_BACKOFF_SECONDS,
         GEMINI_MAX_RETRIES,
         GEMINI_MODEL,
-        GEMINI_RESPONSE_MIME_TYPE,
         GEMINI_TEMPERATURE,
         KAFKA_AUTO_OFFSET_RESET,
         KAFKA_BOOTSTRAP_SERVERS,
@@ -62,9 +60,10 @@ class AIAnalysisService:
 
         model_name = self.resolve_model_name(GEMINI_MODEL)
         self.client = genai.Client(api_key=GEMINI_API_KEY)
+        tools = [types.Tool(google_search=types.GoogleSearch())]
         self.generation_config = types.GenerateContentConfig(
             temperature=GEMINI_TEMPERATURE,
-            response_mime_type=GEMINI_RESPONSE_MIME_TYPE,
+            tools=tools,
         )
         self.model_name = model_name
         logger.info("Using Gemini model %s", model_name)
@@ -183,11 +182,13 @@ class AIAnalysisService:
             "is_trap": bool(parsed.get("is_trap", False)),
             "trap_reason": parsed.get("trap_reason"),
             "rationale": str(parsed.get("rationale", "")).strip(),
-            "news_sentiment": str(parsed.get("news_sentiment", "neutral")).lower(),
+            "news_sentiment": str(parsed.get("news_sentiment", "unknown")).lower(),
             "risk_level": str(parsed.get("risk_level", "high")).lower(),
             "suggested_timeframe": str(parsed.get("suggested_timeframe", "intraday")).lower(),
             "key_risks": AIAnalysisService.normalize_key_risks(parsed.get("key_risks")),
             "raw_signals_summary": str(parsed.get("raw_signals_summary", "")).strip(),
+            "suggested_entry_zone": str(parsed.get("suggested_entry_zone", "no clear level")).strip(),
+            "suggested_stop": str(parsed.get("suggested_stop", "no clear level")).strip(),
         }
 
     @staticmethod

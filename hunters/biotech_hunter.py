@@ -3,7 +3,7 @@ from .common.logger import get_logger
 from .common.kafka_client import KafkaClient
 from .common.playwright_context import BrowserContext
 from .common.config import BIOPHARM_URL
-from .common.topics import KAFKA_TOPIC_BIOTECH
+from .common.topics import KAFKA_TOPIC_BIOTECH, RAW_EVENTS_TOPIC
 import json
 from datetime import datetime
 
@@ -43,12 +43,12 @@ async def scrape_biopharm(page):
                 if any(x in stage.upper() for x in ["PHASE 3", "PDUFA", "NDA", "BLA"]):
                     catalysts.append({
                         "ticker": ticker,
-                        "drug": drug,
+                        "drug_name": drug,
                         "catalyst_type": stage,
                         "event_date": catalyst_date,
                         "source": "BioPharmCatalyst",
                         "timestamp": datetime.utcnow().isoformat(),
-                        "hunter": "biotech_hunter"
+                        "hunter": "biotech"
                     })
                     
     except Exception as e:
@@ -79,9 +79,12 @@ async def run():
                 for entry in found_catalysts:
                     logger.info(f"Found Catalyst: {entry['ticker']} - {entry['catalyst_type']}")
                     
-                    # Produce to Kafka (raw-events topic)
                     kafka.send_message(
-                        topic=KAFKA_TOPIC_BIOTECH, 
+                        topic=KAFKA_TOPIC_BIOTECH,
+                        value=entry
+                    )
+                    kafka.send_message(
+                        topic=RAW_EVENTS_TOPIC,
                         value=entry
                     )
 

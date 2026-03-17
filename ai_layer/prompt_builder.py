@@ -12,6 +12,10 @@ def build_analysis_prompt(triage_payload):
             "confluence_count": triage_payload.get("confluence_count"),
             "confluence_sources": triage_payload.get("confluence_sources", []),
             "liquidity_metrics": triage_payload.get("liquidity_metrics", {}),
+            "price_change_1d_pct": triage_payload.get("price_change_1d_pct"),
+            "market_cap": triage_payload.get("market_cap"),
+            "float_shares": triage_payload.get("float_shares"),
+            "sector": triage_payload.get("sector"),
         },
         indent=2,
         sort_keys=True,
@@ -26,6 +30,14 @@ def build_analysis_prompt(triage_payload):
 
         TRIAGE METADATA:
         {metadata_block}
+
+        GROUNDING INSTRUCTION:
+        You have access to Google Search. Before scoring, search for:
+        - "{ticker} news today"
+        - "{ticker} SEC filing" if an insider signal is present
+        - "{ticker} short squeeze" if a squeeze signal is present
+        Use search results to populate news_sentiment and inform is_trap. If search returns
+        nothing relevant, say so in the rationale.
 
         SIGNAL DATA:
         {signal_blocks}
@@ -51,6 +63,8 @@ def build_analysis_prompt(triage_payload):
         - 50-69: Moderate, single dominant signal
         - Below 50: Do not trade
         - If is_trap=true, conviction_score must be below 40
+        - Binary events (FDA PDUFA decision, earnings same day): single-source signals can
+          score 80+ if the event is confirmed imminent via search or signal data
 
         OUTPUT SCHEMA:
         Return ONLY a JSON object with this exact shape and no markdown:
@@ -60,11 +74,13 @@ def build_analysis_prompt(triage_payload):
           "is_trap": false,
           "trap_reason": null,
           "rationale": "1-2 sentences explaining the edge",
-          "news_sentiment": "bullish|bearish|neutral",
+          "news_sentiment": "bullish|bearish|neutral|unknown (only populate from grounded search results; if no search results, return 'unknown')",
           "risk_level": "low|medium|high|extreme",
           "suggested_timeframe": "scalp|intraday|swing",
           "key_risks": ["string", "string"],
-          "raw_signals_summary": "one sentence digest of the hunter data"
+          "raw_signals_summary": "one sentence digest of the hunter data",
+          "suggested_entry_zone": "string describing price range or 'no clear level'",
+          "suggested_stop": "string describing stop logic or 'no clear level'"
         }}
         """
     ).strip()
