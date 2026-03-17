@@ -1,11 +1,15 @@
 import asyncio
 import io
-import pandas as pd
 from datetime import datetime
-from .common.config import KAFKA_TOPIC_SQUEEZE
+
+import pandas as pd
+from redis import Redis
+
+from .common.config import REDIS_HOST, REDIS_PORT
+from .common.kafka_client import KafkaClient
 from .common.logger import get_logger
 from .common.playwright_context import BrowserContext
-from .common.kafka_client import KafkaClient
+from .common.topics import KAFKA_TOPIC_SQUEEZE, RAW_EVENTS_TOPIC
 
 logger = get_logger("squeeze_hunter")
 
@@ -13,6 +17,80 @@ logger = get_logger("squeeze_hunter")
 # The URL filters for "Short Float > 20%" (f=sh_short_o20) and uses the "Financial" view (v=131)
 # We add &r={} to handle pagination
 BASE_URL = "https://finviz.com/screener.ashx?v=131&f=sh_short_o20&r={}"
+EMA_ALPHA = 0.2
+
+
+def get_redis_client():
+    try:
+        client = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+        client.ping()
+        return client
+    except Exception as exc:
+        logger.warning("Redis unavailable for squeeze volume baselines: %s", exc)
+        return None
+
+
+def clean_percent(value):
+    if isinstance(value, str) and "%" in value:
+        try:
+            # Finviz returns short interest as percentage strings like "23.40%".
+            # Keep the numeric value in percentage units so downstream logic sees 23.40, not 0.234.
+            return float(value.strip("%"))
+        except ValueError:
+            return 0.0
+    return 0.0
+
+
+def clean_number(value):
+    if pd.isna(value):
+        return None
+
+    text = str(value).replace(",", "").strip().upper()
+    if text in {"", "-"}:
+        return None
+
+    multiplier = 1.0
+    if text.endswith("K"):
+        multiplier = 1_000.0
+        text = text[:-1]
+    elif text.endswith("M"):
+        multiplier = 1_000_000.0
+        text = text[:-1]
+    elif text.endswith("B"):
+        multiplier = 1_000_000_000.0
+        text = text[:-1]
+
+    try:
+        return float(text) * multiplier
+    except ValueError:
+        return None
+
+
+def compute_relative_volume(redis_client, ticker, current_volume, avg_volume):
+    baseline_key = f"vol_baseline:{ticker}"
+    baseline_volume = avg_volume
+
+    if redis_client is not None:
+        stored_baseline = redis_client.get(baseline_key)
+        if stored_baseline is not None:
+            try:
+                baseline_volume = float(stored_baseline)
+            except ValueError:
+                baseline_volume = avg_volume
+
+    relative_volume = 0.0
+    if baseline_volume and baseline_volume > 0:
+        relative_volume = float(current_volume) / float(baseline_volume)
+
+    if redis_client is not None:
+        next_baseline = float(current_volume)
+        if baseline_volume and baseline_volume > 0:
+            next_baseline = (EMA_ALPHA * float(current_volume)) + (
+                (1 - EMA_ALPHA) * float(baseline_volume)
+            )
+        redis_client.set(baseline_key, next_baseline)
+
+    return round(relative_volume, 4)
 
 async def fetch_squeeze_targets():
     """
@@ -25,6 +103,7 @@ async def fetch_squeeze_targets():
     all_results = []
     start_index = 1
     max_results = 200  # Safety limit to prevent infinite loops
+    redis_client = get_redis_client()
     
     async with BrowserContext() as context:
         page = await context.new_page()
@@ -93,26 +172,6 @@ async def fetch_squeeze_targets():
                     logger.info("   -> Page empty (after cleaning). Stopping.")
                     break
 
-                # Helper function to convert "20.50%" string to 0.205 float
-                def clean_percent(x):
-                    if isinstance(x, str) and '%' in x:
-                        try:
-                            # Handle cases like "23.40%" -> 0.234
-                            return float(x.strip('%')) / 100
-                        except ValueError:
-                            return 0.0
-                    return 0.0
-                
-                # Helper function to clean numeric strings with commas/suffixes
-                def clean_number(x):
-                    if pd.isna(x): return None
-                    x = str(x).replace(',', '').strip()
-                    if x == '-': return None
-                    try:
-                        return float(x)
-                    except:
-                        return None
-
                 # Find correct columns (fuzzy match if needed, but view 131 is usually stable)
                 # View 131 columns: Ticker, Market Cap, Outstanding, Float, Insider Own, Insider Trans, Inst Own, Inst Trans, Short Float, Short Ratio, Avg Volume, Price, Change, Volume
                 
@@ -132,30 +191,52 @@ async def fetch_squeeze_targets():
                 if 'volume' in clean_df.columns:
                     clean_df['volume_val'] = clean_df['volume'].apply(clean_number)
                 else:
-                     clean_df['volume_val'] = None
+                    clean_df['volume_val'] = None
+
+                if 'avg_volume' in clean_df.columns:
+                    clean_df['avg_volume_val'] = clean_df['avg_volume'].apply(clean_number)
+                else:
+                    clean_df['avg_volume_val'] = None
 
                 # --- FORMATTING OUTPUT ---
                 page_results = []
                 for _, row in clean_df.iterrows():
                     # Validations
-                    if pd.isna(row['ticker']) or not row['ticker']: continue
+                    if pd.isna(row['ticker']) or not row['ticker']:
+                        continue
+                    if row['volume_val'] is None or pd.isna(row['volume_val']):
+                        continue
                     
                     # Filter out invalid numeric data if strictness is required
                     # For now, we allow nulls but prefer valid data
+                    ticker = str(row['ticker']).strip().upper()
+                    current_volume = float(row['volume_val'])
+                    avg_volume = (
+                        float(row['avg_volume_val'])
+                        if row['avg_volume_val'] is not None and not pd.isna(row['avg_volume_val'])
+                        else None
+                    )
+                    relative_volume = compute_relative_volume(
+                        redis_client=redis_client,
+                        ticker=ticker,
+                        current_volume=current_volume,
+                        avg_volume=avg_volume,
+                    )
                     
                     signal = {
                         "hunter": "squeeze",
-                        "ticker": str(row['ticker']),
+                        "ticker": ticker,
                         "price": row['price_val'],
                         "short_float": row['short_float_val'],
-                        "volume": int(row['volume_val']) if row['volume_val'] is not None and not pd.isna(row['volume_val']) else None,
+                        "volume": int(current_volume),
+                        "relative_volume": relative_volume,
                         "timestamp": datetime.now().isoformat()
                     }
                     
 
                     # Final sanity check to avoid sending "Header-like" rows that slipped through
                     # "export" is a link at the bottom of the table sometimes picked up
-                    if signal['ticker'] and len(signal['ticker']) <= 6 and signal['ticker'].lower() != 'export': 
+                    if signal['ticker'] and len(signal['ticker']) <= 6 and signal['ticker'].lower() != 'export':
                         page_results.append(signal)
                 
                 all_results.extend(page_results)
@@ -188,7 +269,8 @@ async def run():
     # 2. Push
     if signals:
         for signal in signals:
-             KafkaClient.send_message(KAFKA_TOPIC_SQUEEZE, signal)
+            KafkaClient.send_message(KAFKA_TOPIC_SQUEEZE, signal)
+            KafkaClient.send_message(RAW_EVENTS_TOPIC, signal)
     else:
         logger.info("No signals to push.")
 
