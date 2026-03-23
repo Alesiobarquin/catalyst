@@ -95,6 +95,7 @@ services:
   timescaledb:
     image: timescale/timescaledb:latest-pg16
     container_name: catalyst_db
+    hostname: timescaledb
     ports:
       - "5432:5432"
     environment:
@@ -167,6 +168,32 @@ services:
     restart: unless-stopped
     volumes:
       - ./ai_layer:/app/ai_layer
+
+  # ==========================================
+  # PERSISTENCE (TimescaleDB consumer)
+  # ==========================================
+
+  persistence:
+    build:
+      context: .
+      dockerfile: persistence/Dockerfile
+    container_name: catalyst_persistence
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - VALIDATED_SIGNALS_TOPIC=validated-signals
+      - TIMESCALE_HOST=timescaledb
+      - TIMESCALE_PORT=5432
+      - TIMESCALE_USER=catalyst_user
+      - TIMESCALE_PASSWORD=password123
+      - TIMESCALE_DB=catalyst_db
+    depends_on:
+      kafka:
+        condition: service_healthy
+      timescaledb:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./persistence:/app/persistence
 
   # ==========================================
   # TOOLS (VISUALIZATION)

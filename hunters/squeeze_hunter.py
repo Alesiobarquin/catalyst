@@ -96,6 +96,7 @@ def compute_relative_volume(redis_client, ticker, current_volume, avg_volume):
 
     return round(relative_volume, 4)
 
+
 async def fetch_squeeze_targets():
     """
     Scrapes Finviz for high short interest stocks using a headless browser.
@@ -103,52 +104,56 @@ async def fetch_squeeze_targets():
     Uses 'Financial' view (v=131) to ensure 'Short Float' data is present.
     """
     logger.info("🕵️ Squeeze Hunter waking up...")
-    
+
     all_results = []
     start_index = 1
     max_results = 200  # Safety limit to prevent infinite loops
     redis_client = get_redis_client()
-    
+
     async with BrowserContext() as context:
         page = await context.new_page()
-        
+
         while len(all_results) < max_results:
             url = BASE_URL.format(start_index)
             logger.info(f"   -> Navigating to Finviz (Start Index: {start_index})...")
-            
+
             try:
                 # 'domcontentloaded' is faster than 'networkidle'
                 await page.goto(url, wait_until="domcontentloaded")
-                
+
                 # Extract the page HTML content
                 content = await page.content()
-                
+
                 # Use Pandas to find the table automatically
                 # WRAPPED in StringIO to silence FutureWarning
                 dfs = pd.read_html(io.StringIO(content))
-                
+
                 target_df = None
-                
+
                 # Debugging: Log what we found
                 logger.info(f"   -> Found {len(dfs)} tables on page.")
-                
+
                 # Intelligent Table Selection
                 best_len = 0
                 for i, df in enumerate(dfs):
                     cols = [str(c).lower() for c in df.columns]
                     # Score based on essential columns
                     score = 0
-                    if any('ticker' in c for c in cols): score += 3
-                    if any('price' in c for c in cols): score += 2
-                    if any('volume' in c for c in cols): score += 2
-                    if any('float' in c for c in cols) or any('short' in c for c in cols): score += 2
-                    
+                    if any("ticker" in c for c in cols):
+                        score += 3
+                    if any("price" in c for c in cols):
+                        score += 2
+                    if any("volume" in c for c in cols):
+                        score += 2
+                    if any("float" in c for c in cols) or any("short" in c for c in cols):
+                        score += 2
+
                     # Log candidate tables
                     if score >= 5:
-                         logger.debug(f"   Candidate Table {i}: Score {score}, Shape {df.shape}")
-                         if len(df) > best_len:
-                             target_df = df
-                             best_len = len(df)
+                        logger.debug(f"   Candidate Table {i}: Score {score}, Shape {df.shape}")
+                        if len(df) > best_len:
+                            target_df = df
+                            best_len = len(df)
 
                 if target_df is None:
                     logger.info("   -> No valid data tables found. Stopping.")
@@ -156,74 +161,78 @@ async def fetch_squeeze_targets():
 
                 # --- DATA CLEANING ---
                 # Normalize columns
-                target_df.columns = [str(c).lower().strip().replace(' ', '_') for c in target_df.columns]
-                
+                target_df.columns = [
+                    str(c).lower().strip().replace(" ", "_") for c in target_df.columns
+                ]
+
                 # Filter out garbage rows
-                if 'ticker' in target_df.columns:
+                if "ticker" in target_df.columns:
                     # 1. Drop rows where ticker is NaN/None
-                    clean_df = target_df.dropna(subset=['ticker']).copy()
-                    
+                    clean_df = target_df.dropna(subset=["ticker"]).copy()
+
                     # 2. Drop rows where ticker equals the header 'Ticker' or contains 'Ticker'
-                    clean_df = clean_df[clean_df['ticker'].astype(str).str.lower() != 'ticker']
-                    
+                    clean_df = clean_df[clean_df["ticker"].astype(str).str.lower() != "ticker"]
+
                     # 3. Drop rows with "Reset Filters" or other UI text (length > 10 usually junk for a ticker)
-                    clean_df = clean_df[clean_df['ticker'].astype(str).str.len() < 10]
+                    clean_df = clean_df[clean_df["ticker"].astype(str).str.len() < 10]
                 else:
-                    logger.warning("   -> 'ticker' column not found in selected table. Skipping page.")
+                    logger.warning(
+                        "   -> 'ticker' column not found in selected table. Skipping page."
+                    )
                     break
-                
+
                 if clean_df.empty:
                     logger.info("   -> Page empty (after cleaning). Stopping.")
                     break
 
                 # Find correct columns (fuzzy match if needed, but view 131 is usually stable)
                 # View 131 columns: Ticker, Market Cap, Outstanding, Float, Insider Own, Insider Trans, Inst Own, Inst Trans, Short Float, Short Ratio, Avg Volume, Price, Change, Volume
-                
+
                 # Map 'short_float'
-                if 'short_float' in clean_df.columns:
-                     clean_df['short_float_val'] = clean_df['short_float'].apply(clean_percent)
+                if "short_float" in clean_df.columns:
+                    clean_df["short_float_val"] = clean_df["short_float"].apply(clean_percent)
                 else:
-                     clean_df['short_float_val'] = 0.0
+                    clean_df["short_float_val"] = 0.0
 
                 # Clean Price and Volume
                 # Ensure we are using the correct columns
-                if 'price' in clean_df.columns:
-                    clean_df['price_val'] = clean_df['price'].apply(clean_number)
+                if "price" in clean_df.columns:
+                    clean_df["price_val"] = clean_df["price"].apply(clean_number)
                 else:
-                     clean_df['price_val'] = None
+                    clean_df["price_val"] = None
 
-                if 'volume' in clean_df.columns:
-                    clean_df['volume_val'] = clean_df['volume'].apply(clean_number)
+                if "volume" in clean_df.columns:
+                    clean_df["volume_val"] = clean_df["volume"].apply(clean_number)
                 else:
-                    clean_df['volume_val'] = None
+                    clean_df["volume_val"] = None
 
-                if 'avg_volume' in clean_df.columns:
-                    clean_df['avg_volume_val'] = clean_df['avg_volume'].apply(clean_number)
+                if "avg_volume" in clean_df.columns:
+                    clean_df["avg_volume_val"] = clean_df["avg_volume"].apply(clean_number)
                 else:
-                    clean_df['avg_volume_val'] = None
+                    clean_df["avg_volume_val"] = None
 
                 # short_ratio is Finviz's days-to-cover (short shares / avg daily volume)
-                if 'short_ratio' in clean_df.columns:
-                    clean_df['short_ratio_val'] = clean_df['short_ratio'].apply(clean_number)
+                if "short_ratio" in clean_df.columns:
+                    clean_df["short_ratio_val"] = clean_df["short_ratio"].apply(clean_number)
                 else:
-                    clean_df['short_ratio_val'] = None
+                    clean_df["short_ratio_val"] = None
 
                 # --- FORMATTING OUTPUT ---
                 page_results = []
                 for _, row in clean_df.iterrows():
                     # Validations
-                    if pd.isna(row['ticker']) or not row['ticker']:
+                    if pd.isna(row["ticker"]) or not row["ticker"]:
                         continue
-                    if row['volume_val'] is None or pd.isna(row['volume_val']):
+                    if row["volume_val"] is None or pd.isna(row["volume_val"]):
                         continue
-                    
+
                     # Filter out invalid numeric data if strictness is required
                     # For now, we allow nulls but prefer valid data
-                    ticker = str(row['ticker']).strip().upper()
-                    current_volume = float(row['volume_val'])
+                    ticker = str(row["ticker"]).strip().upper()
+                    current_volume = float(row["volume_val"])
                     avg_volume = (
-                        float(row['avg_volume_val'])
-                        if row['avg_volume_val'] is not None and not pd.isna(row['avg_volume_val'])
+                        float(row["avg_volume_val"])
+                        if row["avg_volume_val"] is not None and not pd.isna(row["avg_volume_val"])
                         else None
                     )
                     relative_volume = compute_relative_volume(
@@ -232,40 +241,49 @@ async def fetch_squeeze_targets():
                         current_volume=current_volume,
                         avg_volume=avg_volume,
                     )
-                    
+
                     days_to_cover = (
-                        float(row['short_ratio_val'])
-                        if row['short_ratio_val'] is not None and not pd.isna(row['short_ratio_val'])
+                        float(row["short_ratio_val"])
+                        if row["short_ratio_val"] is not None
+                        and not pd.isna(row["short_ratio_val"])
                         else None
                     )
 
                     signal = {
                         "hunter": "squeeze",
                         "ticker": ticker,
-                        "price": row['price_val'],
-                        "short_float": row['short_float_val'],
+                        "price": row["price_val"],
+                        "short_float": row["short_float_val"],
                         "volume": int(current_volume),
                         "relative_volume": relative_volume,
                         "days_to_cover": days_to_cover,
-                        "timestamp": datetime.now().isoformat()
+                        "timestamp": datetime.now().isoformat(),
                     }
 
                     # --- PRE-EMISSION FILTERS ---
-                    price = signal['price']
+                    price = signal["price"]
                     if price is None or not (2.00 <= price <= 60.00):
-                        logger.debug("SKIP %s: price %.2f out of range [2.00, 60.00]", ticker, price or 0)
+                        logger.debug(
+                            "SKIP %s: price %.2f out of range [2.00, 60.00]", ticker, price or 0
+                        )
                         continue
 
                     if current_volume < 200_000:
-                        logger.debug("SKIP %s: volume %d below 200,000", ticker, int(current_volume))
+                        logger.debug(
+                            "SKIP %s: volume %d below 200,000", ticker, int(current_volume)
+                        )
                         continue
 
                     if relative_volume < 2.0:
-                        logger.debug("SKIP %s: relative_volume %.2f below 2.0", ticker, relative_volume)
+                        logger.debug(
+                            "SKIP %s: relative_volume %.2f below 2.0", ticker, relative_volume
+                        )
                         continue
 
-                    if signal['short_float'] < 25.0:
-                        logger.debug("SKIP %s: short_float %.2f%% below 25%%", ticker, signal['short_float'])
+                    if signal["short_float"] < 25.0:
+                        logger.debug(
+                            "SKIP %s: short_float %.2f%% below 25%%", ticker, signal["short_float"]
+                        )
                         continue
 
                     if days_to_cover is not None and days_to_cover < 3.0:
@@ -274,28 +292,33 @@ async def fetch_squeeze_targets():
 
                     # Final sanity check to avoid sending "Header-like" rows that slipped through
                     # "export" is a link at the bottom of the table sometimes picked up
-                    if signal['ticker'] and len(signal['ticker']) <= 6 and signal['ticker'].lower() != 'export':
+                    if (
+                        signal["ticker"]
+                        and len(signal["ticker"]) <= 6
+                        and signal["ticker"].lower() != "export"
+                    ):
                         page_results.append(signal)
-                
+
                 all_results.extend(page_results)
                 logger.info(f"   -> Scraped {len(page_results)} items from this page.")
 
                 # If we got fewer than 20 results, it's likely the last page
                 if len(page_results) < 20:
                     break
-                
+
                 # Move to next page
                 start_index += 20
-                
+
                 # Be nice to the server
                 await asyncio.sleep(1)
 
             except Exception as e:
                 logger.error(f"   ❌ Error on index {start_index}: {e}")
                 import traceback
+
                 logger.error(traceback.format_exc())
                 break
-    
+
     logger.info(f"   ✅ Success: Found total {len(all_results)} potential squeeze targets.")
     return all_results
 
@@ -303,7 +326,7 @@ async def fetch_squeeze_targets():
 async def run():
     # 1. Scrape
     signals = await fetch_squeeze_targets()
-    
+
     # 2. Push
     if signals:
         for signal in signals:
@@ -311,6 +334,7 @@ async def run():
             KafkaClient.send_message(RAW_EVENTS_TOPIC, signal)
     else:
         logger.info("No signals to push.")
+
 
 if __name__ == "__main__":
     asyncio.run(run())

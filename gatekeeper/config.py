@@ -1,6 +1,5 @@
 import os
 
-
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 RAW_EVENTS_TOPIC = os.getenv("RAW_EVENTS_TOPIC", "raw-events")
 TRIAGE_PRIORITY_TOPIC = os.getenv("TRIAGE_PRIORITY_TOPIC", "triage-priority")
