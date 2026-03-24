@@ -120,10 +120,12 @@ Generated after the Gatekeeper passes the event to Gemini, and the AI provides a
 ---
 
 ## 3. Topic: `trade-orders`
-**Producer:** Java Strategy Engine
-**Consumer:** Frontend Dashboard / Broker API (Alpaca)
+**Producer:** Java Strategy Engine (`engine/`)  
+**Consumer:** Frontend Dashboard / Broker API (Alpaca) / any Kafka consumer
 
-The final actionable trade blueprint. Evaluated using strict probability math (Kelly Criterion, Regime Checks) based on the AI narrative logic.
+The final actionable **trade blueprint** (not a live broker order). Built from `validated-signals` plus regime checks, per-strategy prices, and Half-Kelly sizing. **Concepts (Kelly, VIX, stops, targets):** [ENGINE.md](ENGINE.md).
+
+**Serialization:** JSON only — the Spring Kafka producer does **not** attach Spring `__TypeId__` headers, so Python or Node consumers can read the payload without special deserializers.
 
 ```json
 {
@@ -138,3 +140,29 @@ The final actionable trade blueprint. Evaluated using strict probability math (K
   "rationale": "Supernova Pattern identified by Gemini, regime filter passed (VIX < 30)."
 }
 ```
+
+---
+
+## 4. TimescaleDB: `trade_orders` (Engine persistence)
+
+**Writer:** Java engine (Flyway migration `engine/src/main/resources/db/migration/`, JPA entity `TradeOrderEntity`).
+
+The **Kafka** payload (§3) is the user-facing contract. The **database** row adds **analytics columns** so dashboards can filter historic recommendations without re-deriving regime state:
+
+| Column | Source |
+|--------|--------|
+| `ticker`, `timestamp_utc`, `action`, `strategy_used`, `recommended_size_usd`, `limit_price`, `stop_loss`, `target_price`, `rationale` | Same as Kafka message |
+| `conviction_score`, `catalyst_type` | Copied from `validated-signals` at persist time |
+| `regime_vix`, `spy_above_200sma` | Snapshot from regime filter at processing time |
+
+**Hypertable:** Partitioned on `timestamp_utc` (weekly chunks) for time-range queries.
+
+---
+
+## 5. TimescaleDB: `validated_signals` (Python persistence)
+
+**Writer:** `persistence/` consumer (separate from the Java engine).
+
+Stores **AI outputs** as they appear on `validated-signals`. This is **not** the same table as `trade_orders`: one answers “what did Gemini emit?” the other “what did the engine recommend after risk math?”
+
+See `persistence/schema.sql` and [TESTING.md](TESTING.md) for verification queries.

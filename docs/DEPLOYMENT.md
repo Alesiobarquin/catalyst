@@ -73,7 +73,9 @@ This document covers how to deploy Catalyst beyond local Docker Compose—optimi
 
 ### What It Is
 
-A single t3.micro EC2 instance running `docker compose up`—the same stack you run locally. No ECS, no Fargate, no MSK. Kafka, Redis, Gatekeeper, AI Layer, and Hunters all run in containers on one machine.
+A single t3.micro EC2 instance running `docker compose up`—the same stack you run locally. No ECS, no Fargate, no MSK. Kafka, Redis, Gatekeeper, AI Layer, Hunters, and the **Java strategy engine** (`engine` service) all run in containers on one machine.
+
+**Strategy engine note:** The `engine` container consumes `validated-signals`, calls Yahoo Finance for SPY/VIX (outbound HTTPS). Ensure **security groups** allow egress to the internet (or the engine’s regime filter will fail and signals may be skipped). Health: port **8081** (`/actuator/health`). Details: [ENGINE.md](ENGINE.md).
 
 ### Why It's Best for Students
 
@@ -94,14 +96,14 @@ EventBridge (6:50 AM ET)  →  Lambda (catalyst-startup)
 ┌─────────────────────────────────────────────────────────────────┐
 │  EC2 (t3.micro)                                                 │
 │                                                                 │
-│  ┌─────────┐  ┌─────────┐  ┌──────────┐  ┌──────────┐          │
-│  │ Kafka   │  │ Redis   │  │Gatekeeper│  │ AI Layer │          │
-│  │Zookeeper│  │         │  │          │  │ (Gemini) │          │
-│  └────┬────┘  └────┬────┘  └────┬─────┘  └────┬─────┘          │
-│       │            │            │              │                 │
-│       └────────────┴────────────┴──────────────┘                 │
-│                            │                                     │
-│                     validated-signals                            │
+│  ┌─────────┐  ┌─────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐ │
+│  │ Kafka   │  │ Redis   │  │Gatekeeper│  │ AI Layer │  │ Engine   │ │
+│  │Zookeeper│  │         │  │          │  │ (Gemini) │  │ (Java)   │ │
+│  └────┬────┘  └────┬────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘ │
+│       │            │            │              │              │      │
+│       └────────────┴────────────┴──────────────┴──────────────┘      │
+│                            │                                        │
+│                     validated-signals → trade-orders                 │
 └─────────────────────────────────────────────────────────────────┘
                                     │
 EventBridge (4:00 PM ET)  →  Lambda (catalyst-shutdown)

@@ -2,7 +2,7 @@
 
 **Purpose:** Single source of truth for implementation priorities, dependencies, and agent reference. Use this document when planning work, estimating effort, or deciding what to build next.
 
-**Last updated:** March 2025
+**Last updated:** March 2026
 
 ---
 
@@ -37,8 +37,9 @@
 | Gatekeeper | ✅ Fully working | Redis 5-min window, confluence ≥ 2, hard filters (volume, price). |
 | AI Layer | ✅ Fully working | Gemini + Search grounding, structured JSON, conviction threshold. |
 | End-to-end pipeline | ✅ Verified | Squeeze → Gatekeeper → AI → validated-signals. Tested with synthetic events. |
-| Docker Compose | ✅ Working | Kafka, Redis, TimescaleDB, Gatekeeper, AI Layer, hunters, Kafka UI, RedisInsight. |
+| Docker Compose | ✅ Working | Kafka, Redis, TimescaleDB, Gatekeeper, AI Layer, hunters, **engine**, Kafka UI, RedisInsight. |
 | Deployment docs | ✅ Complete | DEPLOYMENT.md: EC2 + Lambda scheduling, ~$15/mo. |
+| Java Strategy Engine | ✅ Implemented | `engine/`: consumes `validated-signals`, regime + Half-Kelly, `trade-orders` + `trade_orders` DB. See [ENGINE.md](ENGINE.md). |
 
 ### What's Broken or Partial
 
@@ -54,14 +55,13 @@
 
 | Component | Status |
 |-----------|--------|
-| Persistence | TimescaleDB in compose; no consumer writes to it |
-| Tests | Zero unit or integration tests |
+| Automated tests | Few or no unit/integration tests across Python + Java |
 | CI | Placeholder only (echo in GitHub Actions) |
-| Java Spring Boot engine | Designed in ARCHITECTURE.md, not implemented |
-| API | No HTTP endpoints |
-| Dashboard | Not built |
-| Alpaca integration | Not built |
-| Auth (Clerk) | Not built |
+| Read API for trade history | FastAPI / HTTP not built (Phase 2.2) |
+| Dashboard | Not built (Phase 2.3) |
+| Alpaca integration | Not built (Phase 3) |
+| Auth (Clerk) | Not built (Phase 3) |
+| OFI / micro-structure gate | Described in ARCHITECTURE.md; **not** in engine (see [ENGINE.md](ENGINE.md)) |
 
 ---
 
@@ -76,7 +76,9 @@
 | Fix Insider/Biotech liquidity gap | Only squeeze works E2E; confluence never fires | 6–8h | Confluence story | **High** |
 | Unit tests (Gatekeeper coercers, filters; AI normalize; Squeeze filters) | Zero tests = no credibility | 8–10h | CI | **High** |
 | CI: pytest + ruff in GitHub Actions | Placeholder CI = bad signal | 4–5h | — | **High** |
-| TimescaleDB persistence consumer | Signals ephemeral; no queryable history | 6–8h | API, Dashboard, Engine | **High** |
+| TimescaleDB persistence consumer | Queryable AI signals (`validated_signals`) | 6–8h | API, Dashboard, Engine | **High** |
+
+**Persistence note:** Python `persistence/` writes **`validated_signals`**. The Java **`engine`** writes **`trade_orders`** — both are queryable history; scope differs (see [schemas.md](schemas.md)).
 
 **Insider/Biotech fix options:**
 - **A (recommended):** Add price/volume lookup per ticker before emission (e.g., yfinance or FMP free tier). ~15 lines per hunter.
@@ -92,20 +94,22 @@
 
 **Resume staying power:** Demonstrates polyglot design, JVM ecosystem, Kafka consumer, and algorithmic risk management.
 
-| Task | Why | Est. Time | Blocker For |
-|------|-----|-----------|-------------|
-| Spring Boot 3.2+ project, Java 21 | Base for engine | 4h | — |
-| Kafka consumer for `validated-signals` | Ingest from pipeline | 4–6h | — |
-| Regime filter (SPY 200 SMA, VIX thresholds) | Kill switch per ARCHITECTURE | 4–6h | — |
-| Kelly Sizer (Half-Kelly from conviction_score) | Position sizing | 4–6h | — |
-| Strategy Router (Supernova, Scalper, Follower, Drifter) | Catalyst-type-specific exit logic | 8–10h | — |
-| Producer for `trade-orders` topic | Output actionable blueprints | 2–4h | Dashboard, Alpaca |
-| Persist trade-orders to TimescaleDB | For dashboard history | 4–6h | Dashboard |
+**Status (March 2026):** Core engine **shipped** in `engine/`. Reference: [ENGINE.md](ENGINE.md), [TESTING.md](TESTING.md).
 
-**Total: ~30–40h** for full engine.
+| Task | Why | Est. Time | Status |
+|------|-----|-----------|--------|
+| Spring Boot 3.2+ project, Java 21 | Base for engine | 4h | ✅ |
+| Kafka consumer for `validated-signals` | Ingest from pipeline | 4–6h | ✅ |
+| Regime filter (SPY 200 SMA, VIX thresholds) | Kill switch per ARCHITECTURE | 4–6h | ✅ |
+| Kelly Sizer (Half-Kelly from conviction_score) | Position sizing | 4–6h | ✅ |
+| Strategy Router (Supernova, Scalper, Follower, Drifter) | Catalyst-type-specific exit logic | 8–10h | ✅ |
+| Producer for `trade-orders` topic | Output actionable blueprints | 2–4h | ✅ |
+| Persist trade-orders to TimescaleDB | For dashboard history | 4–6h | ✅ |
+
+**Follow-on (not in initial scope):** Order-flow / OFI gate, live ATR/ADX feeds, Alpaca execution — see [ENGINE.md §9](ENGINE.md).
 
 **Input:** `validated-signals` (see `docs/schemas.md`).  
-**Output:** `trade-orders` (ticker, action, limit_price, stop_loss, target_price, recommended_size_usd, strategy_used, rationale).
+**Output:** `trade-orders` Kafka topic + `trade_orders` hypertable (see `docs/schemas.md` §3–4).
 
 ### 4.2 API Layer
 
@@ -246,7 +250,9 @@ Phase 3 (Auth, Alpaca)
 ## 11. Schema Reference
 
 - **raw-events, validated-signals, trade-orders:** `docs/schemas.md`
+- **Strategy engine (behavior + trading concepts):** `docs/ENGINE.md`
 - **Architecture:** `docs/ARCHITECTURE.md`
+- **Testing (Python + Java):** `docs/TESTING.md`
 - **Deployment:** `docs/DEPLOYMENT.md`
 
 ---
@@ -258,6 +264,8 @@ Phase 3 (Auth, Alpaca)
 | Hunter entrypoint | `hunters/main.py` |
 | Gatekeeper (Kafka retry bug) | `gatekeeper/gatekeeper.py` |
 | AI Layer | `ai_layer/ai_service.py` |
+| Strategy Engine (Java) | `engine/` |
+| Validated-signals → TimescaleDB | `persistence/` |
 | Docker Compose | `docker-compose.yml` |
 | Lambda startup/shutdown | `deploy/lambda_startup.py`, `deploy/lambda_shutdown.py` |
 | CI workflow | `.github/workflows/ci.yml` |

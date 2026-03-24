@@ -34,10 +34,10 @@
 - **Trade-off:** Premature. No frontend exists; Kafka UI and RedisInsight cover current debugging needs. A CLI or Grafana would suffice for now.
 - **Honest take:** Next.js is "nice to have" for a polished demo, not essential for the pipeline itself.
 
-**Spring Boot for engine (planned, not built)**
-- **Why:** Strategy engine would consume validated signals, apply Kelly sizing, and publish trade blueprints. Java chosen for type safety, mature Kafka client, and alignment with typical trading infra.
-- **Trade-off:** Python could do this. Java adds deployment complexity and a second language. Chose Java to demonstrate polyglot design and exposure to JVM ecosystems.
-- **Honest take:** If building solo, Python end-to-end would be simpler. Java makes sense in a team with existing JVM infra.
+**Spring Boot for engine (implemented — `engine/`)**
+- **Why:** Consumes `validated-signals`, applies regime filter + Half-Kelly sizing, routes by catalyst type, publishes `trade-orders`, persists `trade_orders` to TimescaleDB. Java chosen for type safety, mature Kafka client, and JVM ecosystem story.
+- **Trade-off:** Python could do this; Java adds a second language and container. Documented in depth in [ENGINE.md](ENGINE.md).
+- **Honest take:** Not a production execution system — Yahoo Finance + heuristic Kelly are portfolio-grade, not fund-grade.
 
 ---
 

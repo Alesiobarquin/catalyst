@@ -17,8 +17,9 @@ Catalyst discovers market catalysts by aggregating signals from multiple sources
 | **Insider Hunter** | ⚠️ Partial | Emits to Kafka; rarely passes Gatekeeper (lacks liquidity fields). |
 | **Biotech Hunter** | ⚠️ Partial | Emits to Kafka; rarely passes Gatekeeper (lacks liquidity fields). |
 | **Whale / Drifter / Shadow** | 📋 Stubs | Not implemented. Need data source research. |
-| **Persistence** | ❌ Not built | Signals live in Kafka only. TimescaleDB wired in compose but unused. |
-| **Frontend / Engine** | ❌ Not built | Designed, not implemented. |
+| **Persistence** | ⚠️ Partial | TimescaleDB: Python service writes `validated_signals`; Java engine writes `trade_orders`. |
+| **Strategy Engine** | ✅ Implemented | Java Spring Boot in `engine/`: regime, Half-Kelly, strategies, `trade-orders` + DB. See [docs/ENGINE.md](docs/ENGINE.md). |
+| **Frontend / API** | ❌ Not built | Dashboard and FastAPI planned (Phase 2). |
 
 *See [Components](#components) for details on each hunter and the pipeline.*
 
@@ -33,7 +34,9 @@ graph LR
     G -->|Confluence >= 2| T[Kafka: triage-priority]
     T --> A[AI Layer / Gemini]
     A -->|Conviction >= 50| V[Kafka: validated-signals]
-    V --> E[Engine - planned]
+    V --> E[Engine / Java]
+    E --> O[Kafka: trade-orders]
+    E --> DB[(TimescaleDB: trade_orders)]
 ```
 
 ### Why This Architecture
@@ -52,7 +55,7 @@ graph LR
 | 1 | Hunters | — | `raw-events` | Scheduled scrape |
 | 2 | Gatekeeper | `raw-events` | `triage-priority` | Confluence ≥ 2 within 5 min |
 | 3 | AI Layer | `triage-priority` | `validated-signals` | Conviction ≥ 50 |
-| 4 | Engine *(planned)* | `validated-signals` | `trade-orders` | Kelly sizing, regime filter |
+| 4 | Engine (`engine/`) | `validated-signals` | `trade-orders` + DB | Regime (SPY/VIX), Half-Kelly, strategy router |
 
 ---
 
@@ -201,7 +204,7 @@ docker logs catalyst_gatekeeper 2>&1 | grep JUNK
 
 ## Implementation Roadmap
 
-For prioritized tasks, dependencies, and agent reference, see [docs/IMPLEMENTATION_ROADMAP.md](docs/IMPLEMENTATION_ROADMAP.md). Covers Phase 1 (bugs, tests, persistence), Phase 2 (Java engine, API, dashboard), and Phase 3 (Clerk auth, Alpaca paper trading).
+For prioritized tasks, dependencies, and agent reference, see [docs/IMPLEMENTATION_ROADMAP.md](docs/IMPLEMENTATION_ROADMAP.md). Covers Phase 1 (bugs, tests, persistence), Phase 2 (Java engine ✅, API, dashboard), and Phase 3 (Clerk auth, Alpaca paper trading). **Strategy layer detail:** [docs/ENGINE.md](docs/ENGINE.md).
 
 ## Deployment
 
@@ -215,7 +218,8 @@ For AWS deployment, cost estimates, and scaling considerations, see [docs/DEPLOY
 
 - **Kafka UI:** [http://localhost:8080](http://localhost:8080) — browse topics
 - **RedisInsight:** [http://localhost:5540](http://localhost:5540) — inspect gatekeeper state
-- **Logs:** `docker logs -f catalyst_gatekeeper` or `catalyst_ai_layer`
+- **Engine health:** [http://localhost:8081/actuator/health](http://localhost:8081/actuator/health) — Java strategy service
+- **Logs:** `docker logs -f catalyst_gatekeeper`, `catalyst_ai_layer`, or `catalyst_engine`
 
 ---
 
@@ -227,7 +231,11 @@ For AWS deployment, cost estimates, and scaling considerations, see [docs/DEPLOY
 | Messaging | Apache Kafka (Confluent), Zookeeper |
 | State | Redis 7 |
 | AI | Google Gemini (Flash/Pro) with Search grounding |
+| Strategy engine | Java 21, Spring Boot 3.4, Spring Kafka, JPA, Flyway |
+| Persistence | PostgreSQL 16 + TimescaleDB extension |
 | Infrastructure | Docker, Docker Compose |
+
+**Docs:** [ENGINE.md](docs/ENGINE.md) (strategy layer + trading concepts), [TESTING.md](docs/TESTING.md), [schemas.md](docs/schemas.md).
 
 ---
 
@@ -235,6 +243,6 @@ For AWS deployment, cost estimates, and scaling considerations, see [docs/DEPLOY
 
 - **Whale / Drifter / Shadow hunters:** Implement or remove stubs
 - **Insider / Biotech:** Add liquidity lookup or relax Gatekeeper for binary-event sources
-- **Persistence:** Consumer that writes validated signals to TimescaleDB
-- **Strategy engine:** Kelly sizing, regime filter, trade blueprints (Java Spring Boot planned)
+- **Persistence:** Expand tests/CI; optional consolidation of `validated_signals` vs `trade_orders` APIs
+- **Strategy engine:** OFI / micro-structure gate (see [docs/ENGINE.md](docs/ENGINE.md)); optional broker execution
 - **Frontend:** Dashboard for live signals (Next.js planned)

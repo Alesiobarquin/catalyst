@@ -196,6 +196,48 @@ services:
       - ./persistence:/app/persistence
 
   # ==========================================
+  # LAYER 4: JAVA STRATEGY ENGINE
+  # ==========================================
+
+  engine:
+    build:
+      context: ./engine
+      dockerfile: Dockerfile
+    container_name: catalyst_engine
+    ports:
+      - "8081:8081"
+    environment:
+      # Kafka
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - VALIDATED_SIGNALS_TOPIC=validated-signals
+      - TRADE_ORDERS_TOPIC=trade-orders
+      # TimescaleDB
+      - TIMESCALE_HOST=timescaledb
+      - TIMESCALE_PORT=5432
+      - TIMESCALE_USER=catalyst_user
+      - TIMESCALE_PASSWORD=password123
+      - TIMESCALE_DB=catalyst_db
+      # Kelly sizing
+      - PORTFOLIO_VALUE=100000
+      - MAX_KELLY_FRACTION=0.25
+      # Regime thresholds
+      - VIX_HALT_THRESHOLD=40.0
+      - VIX_SCALPER_ONLY_THRESHOLD=30.0
+      - REGIME_REFRESH_MS=300000
+    depends_on:
+      kafka:
+        condition: service_healthy
+      timescaledb:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # ==========================================
   # TOOLS (VISUALIZATION)
   # ==========================================
 
