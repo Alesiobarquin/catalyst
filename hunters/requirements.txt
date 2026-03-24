@@ -1,4 +1,5 @@
 # SQUEEZE HUNTER & COMMON
+yfinance>=0.2.40
 playwright==1.49.0
 pandas==2.2.0
 kafka-python-ng==2.2.0

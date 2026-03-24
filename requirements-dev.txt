@@ -1,0 +1,11 @@
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+ruff>=0.6.0
+# Gatekeeper tests
+redis>=5.0
+kafka-python-ng>=2.0
+# AI layer tests (mock Gemini)
+# Squeeze hunter tests
+pandas>=2.0
+# Hunters liquidity lookup
+yfinance>=0.2.40

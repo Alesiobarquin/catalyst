@@ -1,0 +1,88 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: catalyst-engine
+
+  # Virtual threads (Project Loom): Kafka listener callbacks + RestClient calls
+  # run on virtual threads — no blocked carrier threads during Yahoo Finance HTTP calls.
+  threads:
+    virtual:
+      enabled: true
+
+  # TimescaleDB connection (PostgreSQL wire protocol)
+  datasource:
+    url: jdbc:postgresql://${TIMESCALE_HOST:localhost}:${TIMESCALE_PORT:5432}/${TIMESCALE_DB:catalyst_db}
+    username: ${TIMESCALE_USER:catalyst_user}
+    password: ${TIMESCALE_PASSWORD:password123}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      # validate: Hibernate checks the schema matches entities, but does NOT auto-create.
+      # Flyway owns schema creation — these two must not conflict.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # Kafka: consumer reads validated-signals, producer writes trade-orders.
+  # Most deserialization config lives here to avoid magic in KafkaConfig.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: catalyst-engine
+      auto-offset-reset: earliest
+      # The AI layer (Python) produces plain JSON without Spring type headers.
+      # Setting use.type.headers=false and value.default.type tells the
+      # JsonDeserializer to always target ValidatedSignal, ignoring absent headers.
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.catalyst.engine.model"
+        spring.json.value.default.type: com.catalyst.engine.model.ValidatedSignal
+        spring.json.use.type.headers: "false"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: "false"
+
+# Engine-specific config: all exposed as env vars for Docker Compose
+engine:
+  validated-signals-topic: ${VALIDATED_SIGNALS_TOPIC:validated-signals}
+  trade-orders-topic: ${TRADE_ORDERS_TOPIC:trade-orders}
+
+  # Kelly sizing parameters
+  portfolio-value: ${PORTFOLIO_VALUE:100000}
+  max-kelly-fraction: ${MAX_KELLY_FRACTION:0.25}
+
+  # Regime filter thresholds
+  regime:
+    refresh-interval-ms: ${REGIME_REFRESH_MS:300000}
+    vix-halt-threshold: ${VIX_HALT_THRESHOLD:40.0}
+    vix-scalper-only-threshold: ${VIX_SCALPER_ONLY_THRESHOLD:30.0}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.catalyst.engine: DEBUG
+    org.apache.kafka: WARN
+    org.springframework.kafka: INFO
+    org.hibernate.SQL: WARN
+    org.flywaydb: INFO

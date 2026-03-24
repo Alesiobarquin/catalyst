@@ -1,11 +1,7 @@
-import asyncio
 from .common.logger import get_logger
-from .common.kafka_client import KafkaClient
-from .common.playwright_context import BrowserContext
-from .common.config import BARCHART_URL
-from .common.topics import KAFKA_TOPIC_WHALE
 
 logger = get_logger("whale_hunter")
+
 
 async def run():
     logger.info("Whale Hunter starting...")

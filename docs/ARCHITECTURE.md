@@ -93,26 +93,24 @@ This layer prevents "garbage in, garbage out" and saves API costs by filtering r
     ```
 
 ### Layer 4: The Strategist (Java Spring Boot)
-**Role:** Strict Math. The Strategy Pattern.
-This layer consumes `validated-signals` and turns a "feeling" into a "plan."
+**Role:** Strict Math. The Strategy Pattern.  
+**Implementation:** `engine/` — Spring Boot 3.x, Java 21, Kafka consumer/producer, JPA + Flyway on TimescaleDB.
+
+This layer consumes `validated-signals` and turns a narrative into a **trade blueprint** (limit, stop, target, suggested size). **Full walkthrough, trading glossary (VIX, Kelly, SMA, etc.), and config:** [ENGINE.md](ENGINE.md).
 
 *   **Step 1: The Regime Filter (The "Kill Switch")**
-    *   Check: Is SPY > 200 SMA? Is VIX < 30?
-    *   Logic: If VIX > 30, Reject all Swing strategies. Only "Scalper" signals are passed. If VIX > 40, Hard Stop (System Halt).
+    *   **Data:** SPY price, SPY **200-day simple moving average (SMA)**, and **VIX** (fetched from Yahoo Finance on a schedule; see [ENGINE.md §4](ENGINE.md)).
+    *   **Logic:** If VIX ≥ halt threshold (default 40) → **halt** (no orders). If VIX is in the elevated band (default ≥ 30) but below halt → **scalper-only** (only `catalyst_type == SCALPER` passes). If VIX is calm but SPY is **below** 200 SMA → **pass bearish** (still route trades, but **half** Kelly dollar size). If SPY **above** 200 SMA and VIX calm → **pass**.
 *   **Step 2: The Kelly Sizer (Money Management)**
-    *   Input: Gemini Conviction Score (e.g., 92%).
-    *   Formula: Fractional Kelly Criterion (Half-Kelly).
-    *   Output: "Recommended Position Size: $12,400".
+    *   **Input:** Gemini `conviction_score` (0–100) as a proxy for win probability; **reward-to-risk** \(b\) from the strategy’s limit, stop, and target prices.
+    *   **Formula:** Half-Kelly with a **maximum fraction** cap (see [ENGINE.md §5](ENGINE.md)).
+    *   **Output:** `recommended_size_usd` on the `trade-orders` payload.
 *   **Step 3: The Strategy Router**
-    *   Assigns the Exit Logic based on the Catalyst Type:
-        *   A. Supernova (Short Squeeze): Exit when Short Interest drops by 10%.
-        *   B. Scalper (Biotech): Exit when Bollinger Bands tighten. Time limit: 60 mins.
-        *   C. Follower (Insider): Chandelier Exit (Trailing Stop).
-        *   D. Drifter (Earnings): Exit if ADX < 25.
-*   **Step 4: The Micro-Structure Gate (The Trigger)**
-    *   The Check: Order Flow Imbalance (OFI).
-    *   Logic: Are trades hitting the Ask? (Aggressor == BUY).
-    *   Result: If validated, publish to `trade-orders`.
+    *   Maps `catalyst_type` → strategy implementation (Supernova, Scalper, Follower, Drifter; unknown → Fallback).
+    *   Each strategy sets **entry premium**, **stop**, **target**; rationale text references **exit concepts** (e.g. Chandelier, ADX) for the dashboard — **live** ATR/ADX/short-interest feeds are **not** required for the blueprint to be emitted.
+*   **Step 4: The Micro-Structure Gate (The Trigger) — *not implemented***
+    *   **Original design:** Order Flow Imbalance (OFI) — only publish if aggressive buyers hit the ask.
+    *   **Current code:** Signals that pass Steps 1–3 are published to `trade-orders` and persisted. Adding OFI would require a **separate market data feed** and new logic; see [ENGINE.md §9](ENGINE.md).
 
 ### Layer 5: The Memory (PostgreSQL)
 **Role:** Persistence.

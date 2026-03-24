@@ -1,6 +1,5 @@
 import os
 
-
 RAW_EVENTS_TOPIC = os.getenv("RAW_EVENTS_TOPIC", "raw-events")
 KAFKA_TOPIC_SQUEEZE = os.getenv("KAFKA_TOPIC_SQUEEZE", "signal-squeeze")
 KAFKA_TOPIC_INSIDER = os.getenv("KAFKA_TOPIC_INSIDER", "signal-insider")

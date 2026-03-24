@@ -1,9 +1,11 @@
 import json
 import logging
+import time
 from datetime import datetime, timezone
 
-from kafka import KafkaConsumer, KafkaProducer
 from redis import Redis
+
+from kafka import KafkaConsumer, KafkaProducer
 
 try:
     from gatekeeper.config import (
@@ -128,8 +130,7 @@ class GatekeeperService:
         confluence_count = len(confluence_sources)
         technical_score = float(normalized.get("_technical_score") or 0.0)
         should_trigger = (
-            confluence_count >= CONFLUENCE_THRESHOLD
-            or technical_score >= TECHNICAL_SCORE_THRESHOLD
+            confluence_count >= CONFLUENCE_THRESHOLD or technical_score >= TECHNICAL_SCORE_THRESHOLD
         )
 
         if not should_trigger:
@@ -273,7 +274,9 @@ class GatekeeperService:
 
     def coerce_drifter(self, raw_event):
         signal_fields = {
-            "surprise_percent": self.first(raw_event, "surprise_percent", "earnings_surprise_percent"),
+            "surprise_percent": self.first(
+                raw_event, "surprise_percent", "earnings_surprise_percent"
+            ),
             "eps_estimate": self.first(raw_event, "eps_estimate"),
             "eps_actual": self.first(raw_event, "eps_actual"),
             "revenue_estimate": self.first(raw_event, "revenue_estimate"),
@@ -294,7 +297,9 @@ class GatekeeperService:
         signal_data = self.extract_signal_data(raw_event, signal_fields)
         technical_score = self.first(raw_event, "_technical_score", "technical_score")
         if technical_score is None and isinstance(signal_data, dict):
-            technical_score = signal_data.get("_technical_score") or signal_data.get("technical_score")
+            technical_score = signal_data.get("_technical_score") or signal_data.get(
+                "technical_score"
+            )
 
         return {
             "source_hunter": source_hunter,
@@ -390,10 +395,7 @@ class GatekeeperService:
         if volume < MIN_VOLUME:
             return f"volume {volume} below minimum {MIN_VOLUME}"
         if relative_volume < MIN_RELATIVE_VOLUME:
-            return (
-                f"relative_volume {relative_volume} below minimum "
-                f"{MIN_RELATIVE_VOLUME}"
-            )
+            return f"relative_volume {relative_volume} below minimum {MIN_RELATIVE_VOLUME}"
         price = liquidity.get("price") or 0.0
         if price > 0 and price < MIN_PRICE:
             return f"price {price} below minimum {MIN_PRICE}"
@@ -411,10 +413,10 @@ class GatekeeperService:
         }
 
         # Cap per-ticker signal history to avoid unbounded growth.
-        MAX_SIGNALS_PER_WINDOW = 200
+        max_signals_per_window = 200
         pipe = self.redis.pipeline()
         pipe.lpush(signal_key, json.dumps(payload))
-        pipe.ltrim(signal_key, 0, MAX_SIGNALS_PER_WINDOW - 1)
+        pipe.ltrim(signal_key, 0, max_signals_per_window - 1)
         pipe.expire(signal_key, ROLLING_WINDOW_SECONDS)
 
         pipe.sadd(source_key, normalized["source_hunter"])
@@ -444,7 +446,11 @@ class GatekeeperService:
         for key in keys:
             if key in raw_event and raw_event[key] is not None:
                 return raw_event[key]
-            if isinstance(signal_data, dict) and key in signal_data and signal_data[key] is not None:
+            if (
+                isinstance(signal_data, dict)
+                and key in signal_data
+                and signal_data[key] is not None
+            ):
                 return signal_data[key]
         return None
 

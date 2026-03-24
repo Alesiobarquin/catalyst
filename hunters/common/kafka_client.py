@@ -1,10 +1,12 @@
-
 import json
+
 from kafka import KafkaProducer
+
 from .config import KAFKA_BOOTSTRAP_SERVERS
 from .logger import get_logger
 
 logger = get_logger("kafka_client")
+
 
 class KafkaClient:
     _instance = None
@@ -16,7 +18,7 @@ class KafkaClient:
             try:
                 cls._producer = KafkaProducer(
                     bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+                    value_serializer=lambda v: json.dumps(v).encode("utf-8"),
                 )
                 logger.info(f"Connected to Kafka at {KAFKA_BOOTSTRAP_SERVERS}")
             except Exception as e:
@@ -38,4 +40,3 @@ class KafkaClient:
                 logger.error(f"Failed to send message to '{topic}': {e}")
         else:
             logger.warning(f"Kafka producer not available. Skipping message: {data}")
-

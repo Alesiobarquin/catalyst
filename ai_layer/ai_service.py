@@ -4,6 +4,7 @@ import time
 
 from google import genai
 from google.genai import types
+
 from kafka import KafkaConsumer, KafkaProducer
 
 try:
@@ -237,7 +238,9 @@ class AIAnalysisService:
             "suggested_timeframe": str(parsed.get("suggested_timeframe", "intraday")).lower(),
             "key_risks": AIAnalysisService.normalize_key_risks(parsed.get("key_risks")),
             "raw_signals_summary": str(parsed.get("raw_signals_summary", "")).strip(),
-            "suggested_entry_zone": str(parsed.get("suggested_entry_zone", "no clear level")).strip(),
+            "suggested_entry_zone": str(
+                parsed.get("suggested_entry_zone", "no clear level")
+            ).strip(),
             "suggested_stop": str(parsed.get("suggested_stop", "no clear level")).strip(),
         }
 

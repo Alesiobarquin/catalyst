@@ -1,4 +1,3 @@
-
 import os
 
 # Kafka and Redis Configuration
