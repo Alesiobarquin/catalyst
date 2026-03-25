@@ -2,6 +2,8 @@
 
 This guide covers how to test **Python hunters** (data ingestion), the **Java strategy engine** (risk + sizing + `trade-orders`), and **full-stack** flows locally and in Docker.
 
+**What “one compose command” does and does not guarantee (event-driven pipeline, gatekeeper, Gemini):** [PIPELINE_EXPLAINED.md](PIPELINE_EXPLAINED.md)
+
 **Deep dive (engine math, VIX, Kelly, etc.):** [ENGINE.md](ENGINE.md)
 
 ---
@@ -17,7 +19,154 @@ This guide covers how to test **Python hunters** (data ingestion), the **Java st
 
 ---
 
-## 2. Option A: Local Python Testing (Fast Iteration)
+## 2. Recommended: Full Stack In One Command
+
+This is the primary test flow for the whole chain from hunters to the Java engine.
+
+### Step 1: Start Everything
+
+From the **project root**:
+
+```bash
+docker compose up -d --build
+```
+
+This starts Kafka, Redis, TimescaleDB, all configured hunters, Gatekeeper, AI, persistence, Kafka UI, RedisInsight, and the Java `engine`.
+
+**Required:** `GEMINI_API_KEY` must be set in `.env` or exported in your shell before startup.
+
+### Step 2: Verify Containers And Engine Health
+
+```bash
+docker compose ps
+curl -s http://localhost:8081/actuator/health | jq .
+```
+
+Pass criteria:
+
+- `kafka`, `redis`, `timescaledb`, `gatekeeper`, `ai-layer`, `persistence`, and `engine` are running.
+- Engine health returns `{"status":"UP"}`.
+
+### Step 3: Verify Hunters Are Emitting Raw Events
+
+There are two good ways to verify the first stage:
+
+1. Open **Kafka UI:** [http://localhost:8080](http://localhost:8080)
+2. Check topics such as `signal-squeeze` and `raw-events`
+3. Confirm messages are appearing
+
+You can also tail a hunter directly:
+
+```bash
+docker logs -f hunter_squeeze
+```
+
+Pass criteria:
+
+- A hunter logs successful scrape/output activity.
+- `raw-events` receives JSON messages.
+
+### Step 4: Force A Deterministic Gatekeeper + AI Test
+
+Live hunters are useful, but this synthetic test proves the downstream chain deterministically.
+
+First event: should buffer only.
+
+```bash
+docker run --rm --network catalyst_default confluentinc/cp-kafka:7.5.0 bash -c "
+echo '{\"hunter\":\"squeeze\",\"ticker\":\"TEST1\",\"price\":8.50,\"volume\":900000,\"relative_volume\":3.5,\"short_float\":28.4,\"days_to_cover\":4.8,\"timestamp\":\"2026-01-01T12:00:00\"}' \
+  | kafka-console-producer --broker-list kafka:29092 --topic raw-events
+"
+docker logs catalyst_gatekeeper 2>&1 | grep TEST1
+```
+
+Second event: should create confluence and forward.
+
+```bash
+docker run --rm --network catalyst_default confluentinc/cp-kafka:7.5.0 bash -c "
+echo '{\"hunter\":\"insider\",\"ticker\":\"TEST1\",\"transaction_code\":\"P\",\"transaction_amount_usd\":750000,\"volume\":900000,\"relative_volume\":3.5,\"price\":8.50,\"source\":\"edgar_api_json\",\"timestamp\":\"2026-01-01T12:00:05\"}' \
+  | kafka-console-producer --broker-list kafka:29092 --topic raw-events
+"
+docker logs catalyst_gatekeeper 2>&1 | grep TEST1
+```
+
+Pass criteria:
+
+- First message is buffered but not forwarded.
+- Second message triggers confluence and Gatekeeper forwards `TEST1`.
+
+**If the second event still logs “buffered” with `confluence=1`:** the gatekeeper only counts **distinct hunter sources per ticker** in Redis (`squeeze` and `insider` are two sources). That set **expires** after `GATEKEEPER_ROLLING_WINDOW_SECONDS` (default **300** = 5 minutes). So you must run the **squeeze** producer and then the **insider** producer **within that window**, and you must run **squeeze first** (otherwise Redis only has `insider` and confluence stays 1). Confirm sources before the second message:
+
+```bash
+docker exec -it catalyst_redis redis-cli SMEMBERS gk:sources:TEST1
+```
+
+After the first (squeeze) message you should see `squeeze` in the set; after the second, both `squeeze` and `insider`. If the set is empty or only shows one source, the window expired or the first message never landed (check gatekeeper logs for `Dropped` / `unknown schema`).
+
+### Step 5: Verify AI Output Reaches `validated-signals`
+
+```bash
+docker logs catalyst_ai_layer 2>&1 | grep -E "TEST1|Published|Dropped"
+docker run --rm --network catalyst_default confluentinc/cp-kafka:7.5.0 bash -c "
+  kafka-console-consumer --bootstrap-server kafka:29092 \
+    --topic validated-signals --from-beginning \
+    --max-messages 20 --timeout-ms 5000
+" 2>&1 | grep TEST1
+```
+
+Pass criteria:
+
+- AI logs mention `TEST1`.
+- A `validated-signals` message appears for `TEST1`.
+
+### Step 6: Verify The Java Engine Consumes And Produces `trade-orders`
+
+```bash
+docker logs catalyst_engine 2>&1 | grep -E "validated-signals|trade-orders|TEST1|Produced|Published"
+docker exec -it catalyst_kafka kafka-console-consumer \
+  --bootstrap-server localhost:9092 \
+  --topic trade-orders \
+  --from-beginning \
+  --max-messages 5
+```
+
+Pass criteria:
+
+- Engine stays healthy and does not crash loop.
+- A `trade-orders` message appears with fields like `limit_price`, `stop_loss`, `target_price`, `recommended_size_usd`, `strategy_used`.
+
+### Step 7: Verify Database Persistence
+
+```bash
+docker exec -it catalyst_db psql -U catalyst_user -d catalyst_db -c \
+  "SELECT ticker, strategy_used, recommended_size_usd, limit_price, stop_loss, target_price, regime_vix, spy_above_200sma
+   FROM trade_orders ORDER BY timestamp_utc DESC LIMIT 5;"
+```
+
+Pass criteria:
+
+- A row for `TEST1` appears in `trade_orders`.
+
+### Step 8: Verify A Negative Path
+
+This confirms the Gatekeeper still rejects bad input even when the stack is healthy.
+
+```bash
+docker run --rm --network catalyst_default confluentinc/cp-kafka:7.5.0 bash -c "
+echo '{\"hunter\":\"squeeze\",\"ticker\":\"JUNK\",\"price\":3.50,\"volume\":10000,\"relative_volume\":1.2,\"short_float\":22.0,\"timestamp\":\"2026-01-01T12:01:00\"}' \
+  | kafka-console-producer --broker-list kafka:29092 --topic raw-events
+"
+docker logs catalyst_gatekeeper 2>&1 | grep JUNK
+```
+
+Pass criteria:
+
+- Gatekeeper logs a drop for `JUNK`.
+- No downstream `validated-signals` or `trade-orders` message is created for `JUNK`.
+
+---
+
+## 3. Option A: Local Python Testing (Fast Iteration)
 
 Use when writing or debugging hunter logic (scrapers, filters).
 
@@ -56,38 +205,35 @@ python3 -m hunters.main
 
 ---
 
-## 3. Option B: Docker — Infrastructure + Hunters
+## 4. Option B: Docker — Focused Service Runs
 
-Use to match production-like networking (`kafka:29092`, etc.).
+Use these when you want narrower Docker runs instead of the full stack.
 
-### Step 1: Start Core Services
-
-```bash
-docker compose up -d zookeeper kafka redis kafka-ui timescaledb
-```
-
-Wait ~30 seconds for Kafka health.
-
-### Step 2: Build and Run a Hunter
+### Infrastructure Only
 
 ```bash
-docker compose build hunter-squeeze
-docker compose up hunter-squeeze
+docker compose up -d zookeeper kafka redis timescaledb kafka-ui redisinsight gatekeeper ai-layer persistence engine
 ```
 
-### Step 3: Verify Kafka
+### Single Hunter Only
+
+```bash
+docker compose up -d --build hunter-squeeze
+```
+
+### Verify Kafka
 
 1. Open **Kafka UI:** [http://localhost:8080](http://localhost:8080)
-2. **Topics** → e.g. `signal-squeeze` or `raw-events`
-3. **Messages** tab — JSON should appear when the hunter emits
+2. Check `raw-events` or service-specific topics
+3. Confirm messages are appearing
 
 ---
 
-## 4. Option C: Java Strategy Engine (`engine/`)
+## 5. Option C: Java Strategy Engine (`engine/`)
 
 The engine **consumes** `validated-signals` and **produces** `trade-orders`, **persisting** to TimescaleDB table `trade_orders`.
 
-### 4.1 What You Are Verifying
+### 5.1 What You Are Verifying
 
 | Check | Pass criteria |
 |-------|----------------|
@@ -97,14 +243,12 @@ The engine **consumes** `validated-signals` and **produces** `trade-orders`, **p
 | Persistence | Row appears in `trade_orders` with expected ticker and prices |
 | Health | `GET /actuator/health` returns `UP` |
 
-### 4.2 Run Engine via Docker Compose
+### 5.2 Run Engine via Docker Compose
 
 From the **project root**:
 
 ```bash
-docker compose up -d zookeeper kafka timescaledb
-# Wait for Kafka healthy, then:
-docker compose up -d --build engine
+docker compose up -d --build engine kafka timescaledb
 ```
 
 **Health check:**
@@ -119,7 +263,7 @@ curl -s http://localhost:8081/actuator/health | jq .
 docker logs -f catalyst_engine
 ```
 
-### 4.3 Send a Synthetic `validated-signals` Message
+### 5.3 Send a Synthetic `validated-signals` Message
 
 Use a JSON line that matches [schemas.md §2](schemas.md) (required fields: `ticker`, `timestamp_utc`, `conviction_score`, `catalyst_type`, `rationale`, `is_trap`, `confluence_sources`).
 
@@ -137,7 +281,7 @@ Paste (one line):
 {"ticker":"NVDA","timestamp_utc":"2026-03-23T14:30:00Z","conviction_score":82,"catalyst_type":"SUPERNOVA","rationale":"High short interest + insider buy","is_trap":false,"confluence_sources":["squeeze","insider"]}
 ```
 
-### 4.4 Read `trade-orders`
+### 5.4 Read `trade-orders`
 
 ```bash
 docker exec -it catalyst_kafka kafka-console-consumer \
@@ -149,7 +293,7 @@ docker exec -it catalyst_kafka kafka-console-consumer \
 
 You should see JSON with `limit_price`, `stop_loss`, `target_price`, `recommended_size_usd`, `strategy_used`.
 
-### 4.5 Verify TimescaleDB Persistence
+### 5.5 Verify TimescaleDB Persistence
 
 ```bash
 docker exec -it catalyst_db psql -U catalyst_user -d catalyst_db -c \
@@ -159,11 +303,11 @@ docker exec -it catalyst_db psql -U catalyst_user -d catalyst_db -c \
 
 If the table is missing, check engine logs for **Flyway** migration errors (first startup creates the hypertable).
 
-### 4.6 Trap Signal (Should NOT Produce an Order)
+### 5.6 Trap Signal (Should NOT Produce an Order)
 
 Send `is_trap: true` — engine should **drop** and you should **not** see a new `trade-orders` message for that tick (or check logs for “trap”).
 
-### 4.7 Local Maven Build (Optional, No Docker)
+### 5.7 Local Maven Build (Optional, No Docker)
 
 Requires **Java 21** and **Maven** installed:
 
@@ -175,7 +319,7 @@ mvn -q package -DskipTests
 
 Run the JAR against local Kafka/Postgres (set env vars to match `application.yml` defaults or export `KAFKA_BOOTSTRAP_SERVERS`, `TIMESCALE_*`).
 
-### 4.8 What to Mock / Stub in Unit Tests
+### 5.8 What to Mock / Stub in Unit Tests
 
 | Component | Mock |
 |-----------|------|
@@ -184,16 +328,6 @@ Run the JAR against local Kafka/Postgres (set env vars to match `application.yml
 | `RegimeFilter` | `MarketDataService.getMarketSnapshot()` returning fixed SPY/VIX/SMA |
 | Kafka | `@EmbeddedKafka` + `KafkaTemplate` (Spring Boot test slice) |
 | Database | `@DataJpaTest` with Testcontainers PostgreSQL/Timescale, or H2 with limitations |
-
----
-
-## 5. Option D: Gatekeeper + AI + Engine (Long E2E)
-
-1. Start stack including `gatekeeper`, `ai-layer`, `engine`, `persistence` (if you want `validated_signals` rows too).
-2. Use README **End-to-End Testing** synthetic `raw-events` to drive confluence and AI.
-3. Confirm `validated-signals` in Kafka UI, then confirm `trade-orders` and `trade_orders` as in §4.
-
-**Note:** AI layer needs `GEMINI_API_KEY` in `.env`.
 
 ---
 
@@ -243,6 +377,7 @@ Run the JAR against local Kafka/Postgres (set env vars to match `application.yml
 
 ## Document Map
 
+- [PIPELINE_EXPLAINED.md](PIPELINE_EXPLAINED.md) — What runs automatically vs what requires market or synthetic events; newbie tips
 - [ENGINE.md](ENGINE.md) — Strategy layer concepts and behavior
 - [schemas.md](schemas.md) — JSON contracts + DB supplements
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Full stack narrative
