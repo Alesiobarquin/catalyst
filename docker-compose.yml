@@ -33,7 +33,7 @@ services:
   hunter-insider:
     extends: hunter-base
     container_name: hunter_insider
-    command: ["python", "main.py", "insider"]
+    command: ["python", "-m", "hunters.insider_hunter"]
     restart: always
     volumes:
       - ./hunters:/app/hunters
