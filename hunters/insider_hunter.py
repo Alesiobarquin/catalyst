@@ -1,14 +1,16 @@
-from collections import deque
 import asyncio
-import httpx
 import xml.etree.ElementTree as ET
-from .common.logger import get_logger
-from .common.kafka_client import KafkaClient
+from collections import deque
+
+import httpx
+
 from .common.config import KAFKA_TOPIC_INSIDER, SEC_RSS_URL
+from .common.kafka_client import KafkaClient
+from .common.logger import get_logger
 
 logger = get_logger("insider_hunter")
 
-SEC_RSS_URL = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&output=atom"
+#SEC_RSS_URL = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&output=atom"
 
 HEADERS = {
     "User-Agent": "CatalystBot yourname@example.com",
