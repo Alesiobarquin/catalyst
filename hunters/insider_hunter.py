@@ -1,19 +1,15 @@
-from collections import deque
-import asyncio
 import httpx
-import xml.etree.ElementTree as ET
-from .common.logger import get_logger
+
 from .common.kafka_client import KafkaClient
-from .common.config import KAFKA_TOPIC_INSIDER, SEC_RSS_URL
+from .common.liquidity_lookup import fetch_liquidity_metrics
+from .common.logger import get_logger
+from .common.topics import KAFKA_TOPIC_INSIDER, RAW_EVENTS_TOPIC
 
 logger = get_logger("insider_hunter")
 
-SEC_RSS_URL = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&output=atom"
+# SEC requires a User-Agent with contact info
+HEADERS = {"User-Agent": "CatalystBot yourname@example.com", "Accept-Encoding": "gzip, deflate"}
 
-HEADERS = {
-    "User-Agent": "CatalystBot yourname@example.com",
-    "Accept-Encoding": "gzip, deflate"
-}
 
 NS = {'atom': 'http://www.w3.org/2005/Atom'}
 
@@ -231,96 +227,69 @@ def classify_signal(txn_code: str, total_value: float | None, roles: list[str]) 
 
 async def run():
     logger.info("Insider Hunter starting...")
-    processed_accessions_order = deque(maxlen=500)
-    processed_accessions = set()
+    # TODO: Implement insider trading scraping logic using SEC_RSS_URL
+
+    # Target CIKs - In production, you might load these from a config or DB
+    target_ciks = ["0000320193"]  # Example: Apple
 
     async with httpx.AsyncClient(headers=HEADERS, timeout=15.0) as client:
         while True:
             try:
-                response = await client.get(SEC_RSS_URL)
+                # 1. Access the Submissions API as per your provided docs
+                # URL: https://data.sec.gov/submissions/CIK##########.json
+                formatted_cik = cik.zfill(10)
+                url = f"https://data.sec.gov/submissions/CIK{formatted_cik}.json"
 
+                response = await client.get(url)
                 if response.status_code == 200:
-                    root = ET.fromstring(response.content)
-                    entries = root.findall('atom:entry', NS)
+                    data = response.json()
+                    recent = data.get("filings", {}).get("recent", {})
 
-                    for entry in entries:
-                        title_el = entry.find('atom:title', NS)
-                        link_el = entry.find('atom:link', NS)
+                    # 2. Logic: Extract transaction metadata safely
+                    # Fetch the lists once, defaulting to empty lists if they don't exist
+                    forms = recent.get("form", [])
+                    accessions = recent.get("accessionNumber", [])
+                    confirms = recent.get("isConfirmingCopy", [])
+                    dates = recent.get("reportDate", [])
 
-                        if title_el is None or link_el is None:
-                            logger.warning("Skipping malformed entry: missing title or link")
-                            continue
+                    for i, form in enumerate(forms):
+                        if form == "4":
+                            accession = accessions[i] if i < len(accessions) else "Unknown"
+                            is_confirmatory = confirms[i] if i < len(confirms) else False
+                            report_date = dates[i] if i < len(dates) else "Unknown"
+                            ticker = data.get("tickers", [None])[0]
 
-                        title = title_el.text or ""
-                        link = link_el.attrib.get('href', '')
-                        if not link:
-                            continue
+                            if not ticker:
+                                logger.debug("Skipping Form 4 for CIK %s: no ticker", cik)
+                                continue
 
-                        accession = link.split('/')[-1].replace('-index.htm', '')
+                            liquidity = fetch_liquidity_metrics(ticker)
+                            if not liquidity:
+                                logger.debug("Skipping %s: liquidity lookup failed", ticker)
+                                continue
 
-                        if accession in processed_accessions:
-                            continue
+                            payload = {
+                                "cik": cik,
+                                "ticker": ticker,
+                                "accession_number": accession,
+                                "report_date": report_date,
+                                "is_confirming_copy": is_confirmatory,
+                                "transaction_code": "P",  # Placeholder for Purchase
+                                "source": "edgar_api_json",
+                                "hunter": "insider",
+                                "source_hunter": "insider",
+                                "price": liquidity["price"],
+                                "volume": liquidity["volume"],
+                                "relative_volume": liquidity["relative_volume"],
+                                "timestamp_utc": None,
+                            }
 
-                        try:
-                            cik = title.split('(')[1].split(')')[0]
-                        except IndexError:
-                            cik = "Unknown"
-
-                        # Step 1: Find the actual XML document URL
-                        xml_url = await fetch_filing_xml(client, link, cik)
-                        if not xml_url:
-                            processed_accessions.add(accession)
-                            processed_accessions_order.append(accession)
-                            continue
-
-                        # Step 2: Fetch the XML document
-                        xml_resp = await client.get(xml_url)
-                        if xml_resp.status_code != 200:
-                            logger.warning(f"Failed to fetch XML: {xml_url}")
-                            processed_accessions.add(accession)
-                            processed_accessions_order.append(accession)
-                            continue
-
-                        # Step 3: Parse into structured signals
-                        signals = parse_form4_xml(xml_resp.content, cik, accession, xml_url)
-
-                        for signal in signals:
-                            KafkaClient.send_message(KAFKA_TOPIC_INSIDER, signal)
-                            
-                            shares_str = f"{signal['shares']:,.0f}" if signal['shares'] else "?"
-                            price_str  = f"${signal['pricePerShare']}" if signal['pricePerShare'] else "$?"
-                            value_str  = f"${signal['totalValue']:,.0f}" if signal['totalValue'] else "$?"
-                            roles_str  = ', '.join(signal['insiderRoles']) if signal['insiderRoles'] else "Unknown"
-
-                            logger.info(
-                                f"[{signal['signalStrength']}] {signal['ticker']} | "
-                                f"{signal['insiderName']} ({roles_str}) | "
-                                f"{signal['transactionType']} {shares_str} shares "
-                                f"@ {price_str} = {value_str}"
-                            )
-
-                        if not signals:
-                            logger.debug(f"No actionable signals in {accession}")
-
-                        processed_accessions.add(accession)
-                        processed_accessions_order.append(accession)
-
-                        if len(processed_accessions) > 500:
-                            oldest = processed_accessions_order[0]
-                            processed_accessions.discard(oldest)
-
-                        # Respect SEC rate limits: ~0.5s between filings
-                        await asyncio.sleep(0.5)
-
-                else:
-                    logger.error(f"SEC Feed Error: {response.status_code}")
-
+                            KafkaClient.send_message(KAFKA_TOPIC_INSIDER, payload)
+                            KafkaClient.send_message(RAW_EVENTS_TOPIC, payload)
+                            logger.info("Signal sent for CIK %s: Accession %s", cik, accession)
             except Exception as e:
                 logger.error(f"Error in RSS loop: {e}")
 
-            logger.debug("Sleeping for 60 seconds...")
-            await asyncio.sleep(60)
-
-
-if __name__ == "__main__":
-    asyncio.run(run())
+    # raw_data = await scrape_insider_data()
+    # KafkaClient.send_message(KAFKA_TOPIC_INSIDER, {"source": "insider", "data": ...})
+    logger.info("Insider Hunter finished.")

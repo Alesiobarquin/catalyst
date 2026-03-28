@@ -15,8 +15,10 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     depends_on:
-      - kafka
-      - redis
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     # This prevents this specific container from running on its own
     # It exists only to be extended by the others.
 
@@ -29,12 +31,12 @@ services:
     volumes:
       - ./hunters:/app/hunters
 
-     # 3. INSIDER HUNTER (The Instance)
+  # 3. INSIDER HUNTER (The Instance)
   hunter-insider:
     extends: hunter-base
     container_name: hunter_insider
-    command: ["python", "-m", "hunters.insider_hunter"]
-    restart: always
+    command: ["python", "-m", "hunters.main", "insider"]
+    restart: on-failure
     volumes:
       - ./hunters:/app/hunters
 
@@ -42,10 +44,10 @@ services:
   hunter-biotech:
     extends: hunter-base
     container_name: hunter_biotech
-    command: ["python", "hunters/main.py", "biotech"]
-    restart: always
+    command: ["python", "-m", "hunters.main", "biotech"]
+    restart: on-failure
     volumes:
-      - .:/app    
+      - ./hunters:/app/hunters
 
   # ==========================================
   # LAYER 2: KAFKA INFRASTRUCTURE
@@ -79,6 +81,12 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
 
   # ==========================================
   # LAYER 5: THE MEMORY (DB + CACHE)
@@ -87,6 +95,7 @@ services:
   timescaledb:
     image: timescale/timescaledb:latest-pg16
     container_name: catalyst_db
+    hostname: timescaledb
     ports:
       - "5432:5432"
     environment:
@@ -102,6 +111,131 @@ services:
     container_name: catalyst_redis
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ==========================================
+  # LAYER 2.5: GATEKEEPER
+  # ==========================================
+
+  gatekeeper:
+    build:
+      context: .
+      dockerfile: gatekeeper/Dockerfile
+    container_name: catalyst_gatekeeper
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./gatekeeper:/app/gatekeeper
+
+  # ==========================================
+  # LAYER 3: AI ANALYSIS
+  # ==========================================
+
+  ai-layer:
+    build:
+      context: .
+      dockerfile: ai_layer/Dockerfile
+    container_name: catalyst_ai_layer
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL}
+      - GEMINI_TEMPERATURE=${GEMINI_TEMPERATURE}
+      - GEMINI_MAX_RETRIES=${GEMINI_MAX_RETRIES}
+      - GEMINI_INITIAL_BACKOFF_SECONDS=${GEMINI_INITIAL_BACKOFF_SECONDS}
+      - AI_MIN_CONVICTION_SCORE=${AI_MIN_CONVICTION_SCORE}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      gatekeeper:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./ai_layer:/app/ai_layer
+
+  # ==========================================
+  # PERSISTENCE (TimescaleDB consumer)
+  # ==========================================
+
+  persistence:
+    build:
+      context: .
+      dockerfile: persistence/Dockerfile
+    container_name: catalyst_persistence
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - VALIDATED_SIGNALS_TOPIC=validated-signals
+      - TIMESCALE_HOST=timescaledb
+      - TIMESCALE_PORT=5432
+      - TIMESCALE_USER=catalyst_user
+      - TIMESCALE_PASSWORD=password123
+      - TIMESCALE_DB=catalyst_db
+    depends_on:
+      kafka:
+        condition: service_healthy
+      timescaledb:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ./persistence:/app/persistence
+
+  # ==========================================
+  # LAYER 4: JAVA STRATEGY ENGINE
+  # ==========================================
+
+  engine:
+    build:
+      context: ./engine
+      dockerfile: Dockerfile
+    container_name: catalyst_engine
+    ports:
+      - "8081:8081"
+    environment:
+      # Kafka
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - VALIDATED_SIGNALS_TOPIC=validated-signals
+      - TRADE_ORDERS_TOPIC=trade-orders
+      # TimescaleDB
+      - TIMESCALE_HOST=timescaledb
+      - TIMESCALE_PORT=5432
+      - TIMESCALE_USER=catalyst_user
+      - TIMESCALE_PASSWORD=password123
+      - TIMESCALE_DB=catalyst_db
+      # Kelly sizing
+      - PORTFOLIO_VALUE=100000
+      - MAX_KELLY_FRACTION=0.25
+      # Regime thresholds
+      - VIX_HALT_THRESHOLD=40.0
+      - VIX_SCALPER_ONLY_THRESHOLD=30.0
+      - REGIME_REFRESH_MS=300000
+    depends_on:
+      kafka:
+        condition: service_healthy
+      timescaledb:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
 
   # ==========================================
   # TOOLS (VISUALIZATION)
@@ -118,3 +252,12 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: catalyst_redisinsight
+    ports:
+      - "5540:5540"
+    depends_on:
+      redis:
+        condition: service_healthy

@@ -7,14 +7,31 @@ on:
     branches: [ main ]
 
 jobs:
-  basic-checks:
+  lint-and-test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # --- Placeholder for now: just prove CI runs ---
-      - name: Echo status
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
         run: |
-          echo "CI is running for Catalyst. Replace this with real checks as services are implemented."
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio ruff redis kafka-python-ng pandas yfinance
+          pip install -r gatekeeper/requirements.txt
+          pip install -r ai_layer/requirements.txt
+          pip install -r hunters/requirements.txt
+
+      - name: Ruff lint
+        run: ruff check gatekeeper ai_layer hunters persistence tests --output-format=github
+
+      - name: Ruff format check
+        run: ruff format --check gatekeeper ai_layer hunters persistence tests
+
+      - name: Unit tests
+        run: PYTHONPATH=. python -m pytest tests/ -v --tb=short

@@ -1,14 +1,9 @@
-
 import os
 
-# Kafka Configuration
+# Kafka and Redis Configuration
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
-KAFKA_TOPIC_SQUEEZE = os.getenv("KAFKA_TOPIC_SQUEEZE", "signal-squeeze")
-KAFKA_TOPIC_INSIDER = os.getenv("KAFKA_TOPIC_INSIDER", "signal-insider")
-KAFKA_TOPIC_WHALE = os.getenv("KAFKA_TOPIC_WHALE", "signal-whale")
-KAFKA_TOPIC_BIOTECH = os.getenv("KAFKA_TOPIC_BIOTECH", "signal-biotech")
-KAFKA_TOPIC_DRIFTER = os.getenv("KAFKA_TOPIC_DRIFTER", "signal-earnings")
-KAFKA_TOPIC_SHADOW = os.getenv("KAFKA_TOPIC_SHADOW", "signal-shadow")
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 
 # External APIs & URLs
 FMP_API_KEY = os.getenv("FMP_API_KEY", "")

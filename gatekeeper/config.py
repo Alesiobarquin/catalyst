@@ -1,0 +1,22 @@
+import os
+
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+RAW_EVENTS_TOPIC = os.getenv("RAW_EVENTS_TOPIC", "raw-events")
+TRIAGE_PRIORITY_TOPIC = os.getenv("TRIAGE_PRIORITY_TOPIC", "triage-priority")
+KAFKA_CONSUMER_GROUP = os.getenv("GATEKEEPER_CONSUMER_GROUP", "gatekeeper-service")
+KAFKA_AUTO_OFFSET_RESET = os.getenv("GATEKEEPER_AUTO_OFFSET_RESET", "earliest")
+
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+
+ROLLING_WINDOW_SECONDS = int(os.getenv("GATEKEEPER_ROLLING_WINDOW_SECONDS", "300"))
+MIN_VOLUME = float(os.getenv("GATEKEEPER_MIN_VOLUME", "50000"))
+MIN_RELATIVE_VOLUME = float(os.getenv("GATEKEEPER_MIN_RELATIVE_VOLUME", "1.5"))
+MIN_PRICE = float(os.getenv("GATEKEEPER_MIN_PRICE", "2.0"))
+MAX_PRICE = float(os.getenv("GATEKEEPER_MAX_PRICE", "500.0"))
+CONFLUENCE_THRESHOLD = int(os.getenv("GATEKEEPER_CONFLUENCE_THRESHOLD", "2"))
+TECHNICAL_SCORE_THRESHOLD = float(os.getenv("GATEKEEPER_TECHNICAL_SCORE_THRESHOLD", "70"))
+
+REDIS_SOURCES_KEY = "gk:sources:{ticker}"
+REDIS_SIGNALS_KEY = "gk:signals:{ticker}"
+REDIS_SENT_KEY = "gk:sent:{ticker}"

@@ -1,9 +1,10 @@
-
 from playwright.async_api import async_playwright
+
 from .config import HEADLESS_MODE
 from .logger import get_logger
 
 logger = get_logger("playwright_context")
+
 
 class BrowserContext:
     def __init__(self):
@@ -15,11 +16,7 @@ class BrowserContext:
         self.playwright = await async_playwright().start()
         self.browser = await self.playwright.chromium.launch(
             headless=HEADLESS_MODE,
-            args=[
-                '--disable-gpu',
-                '--disable-dev-shm-usage',
-                '--no-sandbox'
-            ]
+            args=["--disable-gpu", "--disable-dev-shm-usage", "--no-sandbox"],
         )
         self.context = await self.browser.new_context(
             user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
