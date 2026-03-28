@@ -119,10 +119,6 @@ def parse_form4_xml(xml_content: bytes, cik: str, accession: str, filing_url: st
 
     try:
         root = ET.fromstring(xml_content)
-
-        import sys
-        ET.indent(root)
-        print(ET.tostring(root, encoding='unicode')[:3000], file=sys.stderr)
         
         # --- Issuer (the company) ---
         issuer = root.find("issuer")
@@ -261,6 +257,7 @@ async def run():
                         # Step 1: Find the actual XML document URL
                         xml_url = await fetch_filing_xml(client, link, cik)
                         if not xml_url:
+                            processed_accessions.add(accession)
                             continue
 
                         # Step 2: Fetch the XML document
