@@ -10,26 +10,23 @@ from .common.logger import get_logger
 
 logger = get_logger("insider_hunter")
 
-#SEC_RSS_URL = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&output=atom"
+# SEC_RSS_URL = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&output=atom"
 
-HEADERS = {
-    "User-Agent": "CatalystBot yourname@example.com",
-    "Accept-Encoding": "gzip, deflate"
-}
+HEADERS = {"User-Agent": "CatalystBot yourname@example.com", "Accept-Encoding": "gzip, deflate"}
 
-NS = {'atom': 'http://www.w3.org/2005/Atom'}
+NS = {"atom": "http://www.w3.org/2005/Atom"}
 
 # Human-readable transaction code mapping
 TRANSACTION_CODES = {
     "P": "Buy",
     "S": "Sell",
-    "A": "Award",           # Grant (options, RSUs) — not a market signal
-    "D": "Disposition",     # Surrender/gift
-    "M": "Option Exercise", # Pre-cursor to a sale, watch for paired S
-    "F": "Tax Withholding", # Shares withheld for taxes — not a signal
+    "A": "Award",  # Grant (options, RSUs) — not a market signal
+    "D": "Disposition",  # Surrender/gift
+    "M": "Option Exercise",  # Pre-cursor to a sale, watch for paired S
+    "F": "Tax Withholding",  # Shares withheld for taxes — not a signal
     "G": "Gift",
     "V": "Voluntary",
-    "X": "Option Exercise (Expired)"
+    "X": "Option Exercise (Expired)",
 }
 
 # Only these codes are meaningful buy/sell signals
@@ -51,14 +48,11 @@ def get_text(element, tag):
 
 async def fetch_filing_xml(client: httpx.AsyncClient, index_url: str, cik: str) -> str | None:
     try:
-        accession_dashed = index_url.split('/')[-1].replace('-index.htm', '')
-        accession_nodash = accession_dashed.replace('-', '')
-        cik_stripped = cik.lstrip('0')
+        accession_dashed = index_url.split("/")[-1].replace("-index.htm", "")
+        accession_nodash = accession_dashed.replace("-", "")
+        cik_stripped = cik.lstrip("0")
 
-        folder_url = (
-            f"https://www.sec.gov/Archives/edgar/data/{cik_stripped}"
-            f"/{accession_nodash}/"
-        )
+        folder_url = f"https://www.sec.gov/Archives/edgar/data/{cik_stripped}/{accession_nodash}/"
 
         resp = await client.get(folder_url)
         if resp.status_code != 200:
@@ -71,6 +65,7 @@ async def fetch_filing_xml(client: httpx.AsyncClient, index_url: str, cik: str) 
             def __init__(self):
                 super().__init__()
                 self.xml_files = []
+
             def handle_starttag(self, tag, attrs):
                 if tag == "a":
                     for attr, val in attrs:
@@ -81,7 +76,8 @@ async def fetch_filing_xml(client: httpx.AsyncClient, index_url: str, cik: str) 
         parser.feed(resp.text)
 
         xml_files = [
-            f for f in parser.xml_files
+            f
+            for f in parser.xml_files
             if not f.endswith(".xsd")
             and "xsl" not in f.lower()
             and not any(x in f.lower() for x in ["r2.htm", "r3.htm"])
@@ -91,10 +87,14 @@ async def fetch_filing_xml(client: httpx.AsyncClient, index_url: str, cik: str) 
             logger.warning(f"No XML file found in folder: {folder_url}")
             return None
 
-        preferred = [f for f in xml_files if any(k in f.lower() for k in ["form4", "wf-form", "doc4"])]
+        preferred = [
+            f for f in xml_files if any(k in f.lower() for k in ["form4", "wf-form", "doc4"])
+        ]
         chosen = preferred[0] if preferred else xml_files[0]
 
-        full_url = f"https://www.sec.gov{chosen}" if chosen.startswith("/") else f"{folder_url}{chosen}"
+        full_url = (
+            f"https://www.sec.gov{chosen}" if chosen.startswith("/") else f"{folder_url}{chosen}"
+        )
 
         peek = await client.get(full_url, headers={"Range": "bytes=0-500"})
         if "ownershipDocument" not in peek.text and "documentType" not in peek.text:
@@ -151,14 +151,26 @@ def parse_form4_xml(xml_content: bytes, cik: str, accession: str, filing_url: st
                 continue
 
             amounts_el = txn.find("transactionAmounts")
-            shares_str = get_text(amounts_el, "transactionShares") if amounts_el is not None else None
-            price_str = get_text(amounts_el, "transactionPricePerShare") if amounts_el is not None else None
+            shares_str = (
+                get_text(amounts_el, "transactionShares") if amounts_el is not None else None
+            )
+            price_str = (
+                get_text(amounts_el, "transactionPricePerShare") if amounts_el is not None else None
+            )
 
             post_el = txn.find("postTransactionAmounts")
-            shares_owned_after = get_text(post_el, "sharesOwnedFollowingTransaction") if post_el is not None else None
+            shares_owned_after = (
+                get_text(post_el, "sharesOwnedFollowingTransaction")
+                if post_el is not None
+                else None
+            )
 
             ownership_el = txn.find("ownershipNature")
-            ownership_type = get_text(ownership_el, "directOrIndirectOwnership") if ownership_el is not None else None
+            ownership_type = (
+                get_text(ownership_el, "directOrIndirectOwnership")
+                if ownership_el is not None
+                else None
+            )
 
             shares = float(shares_str) if shares_str else None
             price = float(price_str) if price_str else None
@@ -166,26 +178,32 @@ def parse_form4_xml(xml_content: bytes, cik: str, accession: str, filing_url: st
 
             signal_strength = classify_signal(txn_code, total_value, insider_roles)
 
-            signals.append({
-                "cik": cik,
-                "accessionNumber": accession,
-                "filing_url": filing_url,
-                "ticker": ticker,
-                "companyName": company_name,
-                "insiderName": insider_name,
-                "insiderRoles": insider_roles,
-                "transactionCode": txn_code,
-                "transactionType": TRANSACTION_CODES.get(txn_code, txn_code),
-                "isBuy": txn_code == "P",
-                "isSell": txn_code == "S",
-                "shares": shares,
-                "pricePerShare": price,
-                "totalValue": total_value,
-                "sharesOwnedAfter": float(shares_owned_after) if shares_owned_after else None,
-                "ownershipType": "Direct" if ownership_type == "D" else "Indirect" if ownership_type == "I" else "Unknown",
-                "signalStrength": signal_strength,
-                "source": "edgar_form4",
-            })
+            signals.append(
+                {
+                    "cik": cik,
+                    "accessionNumber": accession,
+                    "filing_url": filing_url,
+                    "ticker": ticker,
+                    "companyName": company_name,
+                    "insiderName": insider_name,
+                    "insiderRoles": insider_roles,
+                    "transactionCode": txn_code,
+                    "transactionType": TRANSACTION_CODES.get(txn_code, txn_code),
+                    "isBuy": txn_code == "P",
+                    "isSell": txn_code == "S",
+                    "shares": shares,
+                    "pricePerShare": price,
+                    "totalValue": total_value,
+                    "sharesOwnedAfter": float(shares_owned_after) if shares_owned_after else None,
+                    "ownershipType": "Direct"
+                    if ownership_type == "D"
+                    else "Indirect"
+                    if ownership_type == "I"
+                    else "Unknown",
+                    "signalStrength": signal_strength,
+                    "source": "edgar_form4",
+                }
+            )
 
     except Exception as e:
         logger.error(f"Error parsing Form 4 XML for {accession}: {e}")
@@ -234,28 +252,28 @@ async def run():
 
                 if response.status_code == 200:
                     root = ET.fromstring(response.content)
-                    entries = root.findall('atom:entry', NS)
+                    entries = root.findall("atom:entry", NS)
 
                     for entry in entries:
-                        title_el = entry.find('atom:title', NS)
-                        link_el = entry.find('atom:link', NS)
+                        title_el = entry.find("atom:title", NS)
+                        link_el = entry.find("atom:link", NS)
 
                         if title_el is None or link_el is None:
                             logger.warning("Skipping malformed entry: missing title or link")
                             continue
 
                         title = title_el.text or ""
-                        link = link_el.attrib.get('href', '')
+                        link = link_el.attrib.get("href", "")
                         if not link:
                             continue
 
-                        accession = link.split('/')[-1].replace('-index.htm', '')
+                        accession = link.split("/")[-1].replace("-index.htm", "")
 
                         if accession in processed_accessions:
                             continue
 
                         try:
-                            cik = title.split('(')[1].split(')')[0]
+                            cik = title.split("(")[1].split(")")[0]
                         except IndexError:
                             cik = "Unknown"
 
@@ -277,10 +295,18 @@ async def run():
                         for signal in signals:
                             KafkaClient.send_message(KAFKA_TOPIC_INSIDER, signal)
 
-                            shares_str = f"{signal['shares']:,.0f}" if signal['shares'] else "?"
-                            price_str  = f"${signal['pricePerShare']}" if signal['pricePerShare'] else "$?"
-                            value_str  = f"${signal['totalValue']:,.0f}" if signal['totalValue'] else "$?"
-                            roles_str  = ', '.join(signal['insiderRoles']) if signal['insiderRoles'] else "Unknown"
+                            shares_str = f"{signal['shares']:,.0f}" if signal["shares"] else "?"
+                            price_str = (
+                                f"${signal['pricePerShare']}" if signal["pricePerShare"] else "$?"
+                            )
+                            value_str = (
+                                f"${signal['totalValue']:,.0f}" if signal["totalValue"] else "$?"
+                            )
+                            roles_str = (
+                                ", ".join(signal["insiderRoles"])
+                                if signal["insiderRoles"]
+                                else "Unknown"
+                            )
 
                             logger.info(
                                 f"[{signal['signalStrength']}] {signal['ticker']} | "
