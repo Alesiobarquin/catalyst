@@ -1,3 +1,4 @@
+from collections import deque
 import asyncio
 import httpx
 import xml.etree.ElementTree as ET
@@ -30,7 +31,7 @@ TRANSACTION_CODES = {
 }
 
 # Only these codes are meaningful buy/sell signals
-SIGNAL_CODES = {"P", "S", "M"}
+SIGNAL_CODES = {"P", "S"}
 
 
 def get_text(element, tag):
@@ -188,7 +189,7 @@ def parse_form4_xml(xml_content: bytes, cik: str, accession: str, filing_url: st
                 "pricePerShare": price,
                 "totalValue": total_value,
                 "sharesOwnedAfter": float(shares_owned_after) if shares_owned_after else None,
-                "ownershipType": "Direct" if ownership_type == "D" else "Indirect",
+                "ownershipType": "Direct" if ownership_type == "D" else "Indirect" if ownership_type == "I" else "Unknown",
                 "signalStrength": signal_strength,
                 "source": "edgar_form4",
             })
@@ -230,6 +231,7 @@ def classify_signal(txn_code: str, total_value: float | None, roles: list[str]) 
 
 async def run():
     logger.info("Insider Hunter starting...")
+    processed_accessions_order = deque(maxlen=500)
     processed_accessions = set()
 
     async with httpx.AsyncClient(headers=HEADERS, timeout=15.0) as client:
@@ -242,8 +244,18 @@ async def run():
                     entries = root.findall('atom:entry', NS)
 
                     for entry in entries:
-                        title = entry.find('atom:title', NS).text
-                        link = entry.find('atom:link', NS).attrib['href']
+                        title_el = entry.find('atom:title', NS)
+                        link_el = entry.find('atom:link', NS)
+
+                        if title_el is None or link_el is None:
+                            logger.warning("Skipping malformed entry: missing title or link")
+                            continue
+
+                        title = title_el.text or ""
+                        link = link_el.attrib.get('href', '')
+                        if not link:
+                            continue
+
                         accession = link.split('/')[-1].replace('-index.htm', '')
 
                         if accession in processed_accessions:
@@ -258,6 +270,7 @@ async def run():
                         xml_url = await fetch_filing_xml(client, link, cik)
                         if not xml_url:
                             processed_accessions.add(accession)
+                            processed_accessions_order.append(accession)
                             continue
 
                         # Step 2: Fetch the XML document
@@ -265,10 +278,11 @@ async def run():
                         if xml_resp.status_code != 200:
                             logger.warning(f"Failed to fetch XML: {xml_url}")
                             processed_accessions.add(accession)
+                            processed_accessions_order.append(accession)
                             continue
 
                         # Step 3: Parse into structured signals
-                        signals = parse_form4_xml(xml_resp.content, cik, accession, link)
+                        signals = parse_form4_xml(xml_resp.content, cik, accession, xml_url)
 
                         for signal in signals:
                             KafkaClient.send_message(KAFKA_TOPIC_INSIDER, signal)
@@ -289,6 +303,11 @@ async def run():
                             logger.debug(f"No actionable signals in {accession}")
 
                         processed_accessions.add(accession)
+                        processed_accessions_order.append(accession)
+
+                        if len(processed_accessions) > 500:
+                            oldest = processed_accessions_order[0]
+                            processed_accessions.discard(oldest)
 
                         # Respect SEC rate limits: ~0.5s between filings
                         await asyncio.sleep(0.5)
@@ -298,10 +317,6 @@ async def run():
 
             except Exception as e:
                 logger.error(f"Error in RSS loop: {e}")
-
-            # Keep the seen set bounded
-            if len(processed_accessions) > 500:
-                processed_accessions = set(list(processed_accessions)[-500:])
 
             logger.debug("Sleeping for 60 seconds...")
             await asyncio.sleep(60)
