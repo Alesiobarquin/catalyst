@@ -234,6 +234,31 @@ services:
     restart: unless-stopped
 
   # ==========================================
+  # LAYER 6: FASTAPI READ API
+  # ==========================================
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: catalyst_api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://catalyst_user:password123@timescaledb:5432/catalyst_db
+      - CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
+    depends_on:
+      timescaledb:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ==========================================
   # TOOLS (VISUALIZATION)
   # ==========================================
 
