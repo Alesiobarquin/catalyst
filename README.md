@@ -235,7 +235,7 @@ For AWS deployment, cost estimates, and scaling considerations, see [docs/DEPLOY
 | Persistence | PostgreSQL 16 + TimescaleDB extension |
 | Infrastructure | Docker, Docker Compose |
 
-**Docs:** [ENGINE.md](docs/ENGINE.md) (strategy layer + trading concepts), [TESTING.md](docs/TESTING.md), [schemas.md](docs/schemas.md).
+**Docs:** [PIPELINE_EXPLAINED.md](docs/PIPELINE_EXPLAINED.md) (how the live stack behaves end-to-end), [ENGINE.md](docs/ENGINE.md) (strategy layer + trading concepts), [TESTING.md](docs/TESTING.md), [schemas.md](docs/schemas.md).
 
 ---
 

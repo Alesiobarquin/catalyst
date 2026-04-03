@@ -1,5 +1,7 @@
 # Project Catalyst: The Plan
 
+**Practical note:** For what `docker compose up` actually guarantees (event-driven flow, gatekeeper confluence, Gemini, engine), see [PIPELINE_EXPLAINED.md](PIPELINE_EXPLAINED.md).
+
 ## 1. The Core Philosophy
 **We do not guess. We verify.**
 Catalyst is a High-Fidelity Signal Generator. It replaces manual chart monitoring with a three-stage automated pipeline: Data Ingestion, AI-Driven Contextual Analysis, and Algorithmic Strategy Formulation.

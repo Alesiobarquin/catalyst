@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Color tokens ─────────────────────────────── */
+  --color-bg-base:      #080a0f;
+  --color-bg-surface:   #0d1117;
+  --color-bg-elevated:  #13181f;
+  --color-bg-overlay:   #1a2030;
+
+  --color-border:       #1e2535;
+  --color-border-subtle: #161c28;
+
+  --color-text-primary:   #e2e8f0;
+  --color-text-secondary: #8892a4;
+  --color-text-muted:     #4a5568;
+
+  /* Gold accent — primary brand */
+  --color-gold:         #f59e0b;
+  --color-gold-dim:     #d97706;
+  --color-gold-glow:    rgba(245, 158, 11, 0.15);
+
+  /* Signal colors */
+  --color-green:        #22c55e;
+  --color-green-dim:    #16a34a;
+  --color-green-glow:   rgba(34, 197, 94, 0.12);
+
+  --color-red:          #ef4444;
+  --color-red-dim:      #dc2626;
+  --color-red-glow:     rgba(239, 68, 68, 0.12);
+
+  --color-amber:        #f59e0b;
+  --color-blue:         #3b82f6;
+  --color-purple:       #a855f7;
+  --color-cyan:         #06b6d4;
+
+  /* Strategy colors */
+  --color-supernova:    #f97316;
+  --color-scalper:      #eab308;
+  --color-follower:     #3b82f6;
+  --color-drifter:      #a855f7;
+  --color-fallback:     #6b7280;
+
+  /* ── Typography ───────────────────────────────── */
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+  /* ── Spacing / Radius ─────────────────────────── */
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+
+  /* ── Shadows ──────────────────────────────────── */
+  --shadow-card:  0 1px 3px rgba(0,0,0,0.5), 0 0 0 1px var(--color-border);
+  --shadow-glow-gold:  0 0 20px var(--color-gold-glow);
+  --shadow-glow-green: 0 0 20px var(--color-green-glow);
+  --shadow-glow-red:   0 0 20px var(--color-red-glow);
+
+  /* ── Transitions ──────────────────────────────── */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Base reset ───────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  font-family: var(--font-sans);
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body { min-height: 100vh; }
+
+/* ── Scrollbar ────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg-base); }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+
+/* ── Monospace helper ─────────────────────────────── */
+.font-mono { font-family: var(--font-mono); }
+
+/* ── Tick glow animations ─────────────────────────── */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--color-gold-glow); }
+  50%       { box-shadow: 0 0 12px 4px var(--color-gold-glow); }
+}
+
+@keyframes count-up {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+
+@keyframes slide-in {
+  from { transform: translateX(-8px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes fade-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes draw-bar {
+  from { width: 0%; }
+  to   { width: var(--bar-width, 100%); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* ── Utility animations ───────────────────────────── */
+.animate-fade-up   { animation: fade-up 0.4s ease forwards; }
+.animate-slide-in  { animation: slide-in 0.3s ease forwards; }
+.animate-blink     { animation: blink 2s ease-in-out infinite; }
+
+/* ── Glassmorphism card ───────────────────────────── */
+.glass-card {
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(12px);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.glass-card:hover {
+  border-color: rgba(245, 158, 11, 0.25);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(245, 158, 11, 0.1);
+}
+
+/* ── Skeleton loader ──────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--color-bg-elevated) 25%,
+    var(--color-bg-overlay) 50%,
+    var(--color-bg-elevated) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-md);
+}
+
+/* ── Chart container ──────────────────────────────── */
+.chart-wrapper {
+  position: relative;
+  width: 100%;
+  background: var(--color-bg-base);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
