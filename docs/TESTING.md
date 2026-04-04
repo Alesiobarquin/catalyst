@@ -19,33 +19,91 @@ This guide covers how to test **Python hunters** (data ingestion), the **Java st
 
 ---
 
-## 2. Recommended: Full Stack In One Command
+## 2. Starting The Stack (Backend + Frontend)
 
-This is the primary test flow for the whole chain from hunters to the Java engine.
+### Backend — Docker Compose
 
-### Step 1: Start Everything
+**Required:** `GEMINI_API_KEY` must be set in `.env` before startup.
 
-From the **project root**:
+#### First-time start (or after a clean wipe)
 
 ```bash
+# From the project root
 docker compose up -d --build
 ```
 
-This starts Kafka, Redis, TimescaleDB, all configured hunters, Gatekeeper, AI, persistence, Kafka UI, RedisInsight, and the Java `engine`.
+This builds and starts every service, including the **Next.js dashboard** (`catalyst_frontend` on port **3000**): Zookeeper, Kafka, Redis, TimescaleDB, hunters, Gatekeeper, AI layer, persistence, Java engine, FastAPI, frontend, Kafka UI, and RedisInsight.
 
-**Required:** `GEMINI_API_KEY` must be set in `.env` or exported in your shell before startup.
+#### Restarting after Docker was stopped cleanly
 
-### Step 2: Verify Containers And Engine Health
+If you stopped Docker or the containers exited days ago, Kafka's Zookeeper state can go stale and Kafka will refuse to start (`NodeExistsException`). The safe restart sequence is:
+
+```bash
+# 1. Remove the stale Zookeeper/Kafka containers
+docker compose stop zookeeper kafka
+docker compose rm -f zookeeper kafka
+
+# 2. Bring everything back up
+docker compose up -d
+```
+
+#### Frontend — included in Compose
+
+The dashboard is **`frontend`** in `docker-compose.yml`. After `docker compose up -d --build`, open **http://localhost:3000**.
+
+If port 3000 does not load, check that the container is up: `docker compose ps frontend` and `docker logs catalyst_frontend`.
+
+**Alternative — run Next.js on the host** (no Docker for the UI):
+
+```bash
+cd frontend
+npm install       # first time only
+npm run dev
+```
+
+Same URL: **http://localhost:3000**. Ensure the API is reachable at **http://localhost:8000** (Compose maps it from `catalyst_api`).
+
+---
+
+### Step 1 — Verify all services are running
 
 ```bash
 docker compose ps
-curl -s http://localhost:8081/actuator/health | jq .
 ```
 
-Pass criteria:
+Expected healthy/running services:
 
-- `kafka`, `redis`, `timescaledb`, `gatekeeper`, `ai-layer`, `persistence`, and `engine` are running.
-- Engine health returns `{"status":"UP"}`.
+| Container | Port | Status |
+|---|---|---|
+| `catalyst_zookeeper` | 2181 | Up |
+| `catalyst_kafka` | 9092 | Up (healthy) |
+| `catalyst_redis` | 6379 | Up (healthy) |
+| `catalyst_db` | 5432 | Up |
+| `catalyst_gatekeeper` | — | Up |
+| `catalyst_ai_layer` | — | Up |
+| `catalyst_persistence` | — | Up |
+| `catalyst_engine` | 8081 | Up (healthy) |
+| `catalyst_api` | 8000 | Up (healthy) |
+| `catalyst_frontend` | 3000 | Up |
+| `catalyst_kafka_ui` | 8080 | Up |
+| `catalyst_redisinsight` | 5540 | Up |
+| `hunter_squeeze` | — | Exited (0) ✓ |
+| `hunter_insider` | — | Up |
+| `hunter_biotech` | — | Up |
+
+> **Note:** `hunter_squeeze` exits with code 0 after each successful scan — that is expected. It runs once per invocation and is restarted by Docker only on failure.
+
+### Step 2 — Verify API and engine health
+
+```bash
+# FastAPI read layer
+curl -s http://localhost:8000/health
+# → {"status":"ok","service":"catalyst-api"}
+
+# Java strategy engine
+curl -s http://localhost:8081/actuator/health | jq .status
+# → "UP"
+```
 
 ### Step 3: Verify Hunters Are Emitting Raw Events
 

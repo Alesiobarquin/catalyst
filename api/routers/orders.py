@@ -32,7 +32,7 @@ async def list_orders(
         SELECT id, ticker, timestamp_utc, action, strategy_used,
                recommended_size_usd, limit_price, stop_loss, target_price,
                rationale, conviction_score, catalyst_type,
-               regime_vix, spy_above_200sma
+               regime_vix, spy_above_200sma, status
         FROM trade_orders
         {where}
         ORDER BY timestamp_utc DESC
@@ -52,8 +52,8 @@ async def list_orders(
 
 @router.get("/stats", response_model=OrderStatsResponse)
 async def order_stats(conn: asyncpg.Connection = Depends(get_conn)):
-    """Aggregate stats for the analytics page."""
-    total   = await conn.fetchval("SELECT COUNT(*) FROM trade_orders")
+    """Aggregate stats for the analytics / stats bar."""
+    total   = await conn.fetchval("SELECT COUNT(*) FROM trade_orders") or 0
     avg_con = await conn.fetchval("SELECT AVG(conviction_score) FROM trade_orders") or 0
 
     strat_rows = await conn.fetch(
@@ -62,15 +62,51 @@ async def order_stats(conn: asyncpg.Connection = Depends(get_conn)):
     cat_rows = await conn.fetch(
         "SELECT catalyst_type, COUNT(*) AS cnt FROM trade_orders GROUP BY catalyst_type"
     )
+    status_rows = await conn.fetch(
+        "SELECT status, COUNT(*) AS cnt FROM trade_orders GROUP BY status"
+    )
+    daily_rows = await conn.fetch(
+        """
+        SELECT TO_CHAR(timestamp_utc AT TIME ZONE 'UTC', 'Mon DD') AS date,
+               COUNT(*) AS cnt
+        FROM trade_orders
+        GROUP BY date
+        ORDER BY MIN(timestamp_utc)
+        """
+    )
+
+    # Conviction buckets: 0–49, 50–59, 60–69, 70–79, 80–89, 90–100
+    bucket_rows = await conn.fetch(
+        """
+        SELECT
+            CASE
+                WHEN conviction_score < 50 THEN '0–49'
+                WHEN conviction_score < 60 THEN '50–59'
+                WHEN conviction_score < 70 THEN '60–69'
+                WHEN conviction_score < 80 THEN '70–79'
+                WHEN conviction_score < 90 THEN '80–89'
+                ELSE '90–100'
+            END AS bucket,
+            COUNT(*) AS cnt
+        FROM trade_orders
+        WHERE conviction_score IS NOT NULL
+        GROUP BY bucket
+        ORDER BY MIN(conviction_score)
+        """
+    )
+
+    status_map = {r["status"]: r["cnt"] for r in status_rows}
 
     return {
-        "total_orders":       total or 0,
-        "avg_conviction":     float(avg_con),
-        "hit_target_count":   0,   # Requires current price — computed client-side or separate job
-        "hit_stop_count":     0,
-        "active_count":       total or 0,
-        "strategy_breakdown": {r["strategy_used"]: r["cnt"] for r in strat_rows},
-        "catalyst_breakdown": {r["catalyst_type"]: r["cnt"] for r in cat_rows},
+        "total_orders":           int(total),
+        "avg_conviction":         float(avg_con),
+        "hit_target_count":       int(status_map.get("HIT_TARGET", 0)),
+        "hit_stop_count":         int(status_map.get("HIT_STOP", 0)),
+        "active_count":           int(status_map.get("ACTIVE", 0)),
+        "strategy_breakdown":     {r["strategy_used"]: r["cnt"] for r in strat_rows},
+        "catalyst_breakdown":     {r["catalyst_type"]: r["cnt"] for r in cat_rows},
+        "daily_volume":           [{"date": r["date"], "count": r["cnt"]} for r in daily_rows],
+        "conviction_distribution":[{"bucket": r["bucket"], "count": r["cnt"]} for r in bucket_rows],
     }
 
 
@@ -85,7 +121,7 @@ async def orders_by_ticker(
         SELECT id, ticker, timestamp_utc, action, strategy_used,
                recommended_size_usd, limit_price, stop_loss, target_price,
                rationale, conviction_score, catalyst_type,
-               regime_vix, spy_above_200sma
+               regime_vix, spy_above_200sma, status
         FROM trade_orders
         WHERE ticker = $1
         ORDER BY timestamp_utc DESC

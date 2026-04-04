@@ -57,8 +57,8 @@
 |-----------|--------|
 | Automated tests | Few or no unit/integration tests across Python + Java |
 | CI | Placeholder only (echo in GitHub Actions) |
-| Read API for trade history | FastAPI / HTTP not built (Phase 2.2) |
-| Dashboard | Not built (Phase 2.3) |
+| Read API for trade history | ✅ Built — FastAPI, 4 routers: `/orders`, `/signals`, `/market`, `/performance` |
+| Dashboard | ✅ Built — Next.js 16, wired to real API; live P&L via `/performance/batch` |
 | Alpaca integration | Not built (Phase 3) |
 | Auth (Clerk) | Not built (Phase 3) |
 | OFI / micro-structure gate | Described in ARCHITECTURE.md; **not** in engine (see [ENGINE.md](ENGINE.md)) |

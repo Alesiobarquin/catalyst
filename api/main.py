@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import settings
 from api.db import lifespan
-from api.routers import orders, signals, market
+from api.routers import orders, signals, market, performance
 
 
 def create_app() -> FastAPI:
@@ -35,6 +35,7 @@ def create_app() -> FastAPI:
     app.include_router(orders.router)
     app.include_router(signals.router)
     app.include_router(market.router)
+    app.include_router(performance.router)
 
     @app.get("/health", tags=["health"])
     async def health():

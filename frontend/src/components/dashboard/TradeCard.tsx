@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Clock, Shield } from "lucide-react";
-import type { TradeOrder } from "@/types";
+import type { TradeOrder, PriceBar } from "@/types";
 import { PriceChart } from "@/components/charts/PriceChart";
+import { getPriceHistory } from "@/lib/api";
 import {
   formatCurrency,
   formatDateTime,
@@ -24,6 +25,21 @@ interface TradeCardProps {
 
 export function TradeCard({ order, index = 0 }: TradeCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [bars, setBars] = useState<PriceBar[]>([]);
+  const fetchedRef = useRef(false);
+
+  function handleToggleChart() {
+    setExpanded((v) => {
+      const next = !v;
+      if (next && !fetchedRef.current) {
+        fetchedRef.current = true;
+        getPriceHistory(order.ticker, order.timestamp_utc)
+          .then((data) => { if (data.length > 0) setBars(data); })
+          .catch(() => { /* falls back to mock bars silently */ });
+      }
+      return next;
+    });
+  }
 
   const stratColors = getStrategyColors(order.strategy_used);
   const convColor   = getConvictionColor(order.conviction_score);
@@ -228,7 +244,7 @@ export function TradeCard({ order, index = 0 }: TradeCardProps) {
 
           {/* ── Expand / collapse button ──────────────────── */}
           <button
-            onClick={() => setExpanded((v) => !v)}
+            onClick={handleToggleChart}
             style={{
               marginTop: 14,
               display: "flex",
@@ -284,7 +300,7 @@ export function TradeCard({ order, index = 0 }: TradeCardProps) {
                     Signal: {formatDateTime(order.timestamp_utc)}
                   </div>
                 </div>
-                <PriceChart order={order} height={220} />
+                <PriceChart order={order} bars={bars.length > 0 ? bars : undefined} height={220} />
               </div>
             </motion.div>
           )}

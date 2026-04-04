@@ -251,11 +251,36 @@ services:
       timescaledb:
         condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
       start_period: 10s
+    restart: unless-stopped
+
+  # ==========================================
+  # NEXT.JS DASHBOARD (not included in backend-only workflows)
+  # ==========================================
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: catalyst_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      # Browser (client): host machine reaches API on localhost:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      # Server components inside this container reach the API by service name
+      - API_INTERNAL_URL=http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
     restart: unless-stopped
 
   # ==========================================

@@ -8,13 +8,13 @@
 --   Inserts are also faster because each write goes to the current (small) chunk.
 --
 -- Primary key structure:
---   TimescaleDB 2.x does NOT require the partition column in the primary key
---   (that was a 1.x limitation). We use a simple BIGSERIAL id as the sole PK.
---   timestamp_utc is NOT NULL and is the hypertable partition key.
+--   TimescaleDB requires the partition column to be part of any unique constraint,
+--   including the primary key. We use a composite PK (id, timestamp_utc) so
+--   the BIGSERIAL id remains unique per row while satisfying the hypertable rule.
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS trade_orders (
-    id                   BIGSERIAL        PRIMARY KEY,
+    id                   BIGSERIAL        NOT NULL,
     ticker               VARCHAR(20)      NOT NULL,
     timestamp_utc        TIMESTAMPTZ      NOT NULL,
 
@@ -31,7 +31,10 @@ CREATE TABLE IF NOT EXISTS trade_orders (
     conviction_score     SMALLINT,
     catalyst_type        VARCHAR(50),
     regime_vix           NUMERIC(8, 2),
-    spy_above_200sma     BOOLEAN
+    spy_above_200sma     BOOLEAN,
+
+    -- TimescaleDB requires partition column in any unique constraint
+    PRIMARY KEY (id, timestamp_utc)
 );
 
 -- Promote to hypertable, partitioned by timestamp_utc.
