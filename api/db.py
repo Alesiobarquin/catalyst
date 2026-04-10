@@ -43,6 +43,18 @@ async def get_conn() -> AsyncGenerator[asyncpg.Connection, None]:
         yield conn
 
 
+async def ping_database() -> str:
+    """Return ok | error | unavailable for /health/pipeline."""
+    if _pool is None:
+        return "unavailable"
+    try:
+        async with _pool.acquire() as conn:
+            await conn.fetchval("SELECT 1")
+        return "ok"
+    except Exception:
+        return "error"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager wired into FastAPI app factory."""

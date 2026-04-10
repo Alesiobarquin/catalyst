@@ -87,11 +87,32 @@ Expected healthy/running services:
 | `catalyst_frontend` | 3000 | Up |
 | `catalyst_kafka_ui` | 8080 | Up |
 | `catalyst_redisinsight` | 5540 | Up |
-| `hunter_squeeze` | — | Exited (0) ✓ |
+| `hunter_squeeze` | — | Up (loops forever) |
 | `hunter_insider` | — | Up |
-| `hunter_biotech` | — | Up |
+| `hunter_biotech` | — | Up (loops forever) |
+| `hunter_drifter` | — | Up (loops; needs `FMP_API_KEY` or idle sleep) |
 
-> **Note:** `hunter_squeeze` exits with code 0 after each successful scan — that is expected. It runs once per invocation and is restarted by Docker only on failure.
+> **Note:** Squeeze and biotech hunters run **continuous loops**: scrape → Kafka → sleep (`SQUEEZE_INTERVAL_SECONDS` / `BIOTECH_INTERVAL_SECONDS`, defaults 900s / 1800s) → repeat. Compose uses `restart: always` so the process restarts if it crashes. Insider polls SEC RSS on its own `while True` loop.
+
+### Day-to-day: hunter schedules
+
+Tune intervals via `.env` (passed through Compose):
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `SQUEEZE_INTERVAL_SECONDS` | `900` | Seconds between Finviz squeeze scans (~15 min). |
+| `BIOTECH_INTERVAL_SECONDS` | `1800` | Seconds between BioPharm sweeps (~30 min; be kind to the site). |
+| `DRIFTER_INTERVAL_SECONDS` | `3600` | Seconds between FMP earnings-calendar polls (~1 hr). |
+| `DRIFTER_MIN_SURPRISE_PERCENT` | `5.0` | Minimum EPS beat vs consensus to emit (`eps` vs `epsEstimated`). |
+| `DRIFTER_LOOKBACK_DAYS` | `3` | FMP `from=today−N` … `to=today` window. |
+
+**Drifter** requires **`FMP_API_KEY`** in `.env`. Without it, the container stays up but only sleeps (no API calls).
+
+Free FMP tiers are often capped around **250 API calls per day**. If you hit limits, raise **`DRIFTER_INTERVAL_SECONDS`** (and avoid shortening the lookback window unnecessarily) so each loop makes fewer calendar requests per 24h. One poll per hour (`3600`) is usually safe for a single earnings-calendar call per tick.
+
+After changing values, recreate the hunter containers: `docker compose up -d hunter-squeeze hunter-biotech hunter-drifter`.
+
+See [PRODUCT_PRIORITIES.md](PRODUCT_PRIORITIES.md) Track 1 for rationale.
 
 ### Step 2 — Verify API and engine health
 

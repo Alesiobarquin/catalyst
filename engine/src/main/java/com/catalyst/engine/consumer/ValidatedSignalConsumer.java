@@ -16,6 +16,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * Entry point for the strategy engine pipeline.
  *
@@ -37,6 +41,9 @@ public class ValidatedSignalConsumer {
     private final TradeOrderProducer tradeOrderProducer;
     private final TradeOrderRepository tradeOrderRepository;
 
+    private final ConcurrentHashMap<String, Instant> recentlyProcessed = new ConcurrentHashMap<>();
+    private static final Duration COOLDOWN = Duration.ofMinutes(5);
+
     @KafkaListener(
             topics = "${engine.validated-signals-topic}",
             groupId = "catalyst-engine",
@@ -46,6 +53,17 @@ public class ValidatedSignalConsumer {
         log.info("[{}] Signal received — catalyst={}, conviction={}, trap={}",
                 signal.getTicker(), signal.getCatalystType(),
                 signal.getConvictionScore(), signal.isTrap());
+
+        // Gate 0: Per-ticker cooldown — prevents duplicate trade orders when
+        // the AI layer replays a Kafka message on restart or the gatekeeper
+        // forwards the same ticker twice within the rolling window.
+        Instant lastProcessed = recentlyProcessed.get(signal.getTicker());
+        if (lastProcessed != null && Instant.now().isBefore(lastProcessed.plus(COOLDOWN))) {
+            log.info("[{}] Skipping duplicate — already processed within {}-min cooldown window.",
+                    signal.getTicker(), COOLDOWN.toMinutes());
+            return;
+        }
+        recentlyProcessed.put(signal.getTicker(), Instant.now());
 
         // Gate 1: Trap filter — Gemini flagged a conflicting signal pattern.
         // Example: insider buy coinciding with large put volume. Never trade traps.

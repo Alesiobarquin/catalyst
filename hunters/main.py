@@ -1,8 +1,8 @@
 import argparse
 import asyncio
 
-# Import hunter modules (drifter/shadow stubs excluded - no run() until data sources viable)
-from hunters import biotech_hunter, insider_hunter, squeeze_hunter, whale_hunter
+# Shadow is still a stub — not imported
+from hunters import biotech_hunter, drifter_hunter, insider_hunter, squeeze_hunter, whale_hunter
 from hunters.common.logger import get_logger
 
 logger = get_logger("main_cli")
@@ -12,6 +12,7 @@ HUNTERS = {
     "insider": insider_hunter,
     "whale": whale_hunter,
     "biotech": biotech_hunter,
+    "drifter": drifter_hunter,
 }
 
 

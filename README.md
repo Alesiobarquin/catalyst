@@ -204,7 +204,7 @@ docker logs catalyst_gatekeeper 2>&1 | grep JUNK
 
 ## Implementation Roadmap
 
-For prioritized tasks, dependencies, and agent reference, see [docs/IMPLEMENTATION_ROADMAP.md](docs/IMPLEMENTATION_ROADMAP.md). Covers Phase 1 (bugs, tests, persistence), Phase 2 (Java engine ✅, API, dashboard), and Phase 3 (Clerk auth, Alpaca paper trading). **Strategy layer detail:** [docs/ENGINE.md](docs/ENGINE.md).
+For **what to build next** (ordered: daily pipeline → second hunter → UI), see [docs/PRODUCT_PRIORITIES.md](docs/PRODUCT_PRIORITIES.md). Older phased detail and estimates: [docs/IMPLEMENTATION_ROADMAP.md](docs/IMPLEMENTATION_ROADMAP.md). **Strategy layer detail:** [docs/ENGINE.md](docs/ENGINE.md).
 
 ## Deployment
 

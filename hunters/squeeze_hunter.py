@@ -5,7 +5,7 @@ from datetime import datetime
 import pandas as pd
 from redis import Redis
 
-from .common.config import REDIS_HOST, REDIS_PORT
+from .common.config import REDIS_HOST, REDIS_PORT, SQUEEZE_INTERVAL_SECONDS
 from .common.kafka_client import KafkaClient
 from .common.logger import get_logger
 from .common.playwright_context import BrowserContext
@@ -324,16 +324,26 @@ async def fetch_squeeze_targets():
 
 
 async def run():
-    # 1. Scrape
-    signals = await fetch_squeeze_targets()
+    while True:
+        try:
+            signals = await fetch_squeeze_targets()
 
-    # 2. Push
-    if signals:
-        for signal in signals:
-            KafkaClient.send_message(KAFKA_TOPIC_SQUEEZE, signal)
-            KafkaClient.send_message(RAW_EVENTS_TOPIC, signal)
-    else:
-        logger.info("No signals to push.")
+            if signals:
+                for signal in signals:
+                    KafkaClient.send_message(KAFKA_TOPIC_SQUEEZE, signal)
+                    KafkaClient.send_message(RAW_EVENTS_TOPIC, signal)
+            else:
+                logger.info("No signals to push.")
+
+        except Exception as e:
+            logger.error("Squeeze sweep failed: %s", e, exc_info=True)
+
+        logger.info(
+            "Next squeeze sweep in %s seconds (~%.0f min).",
+            SQUEEZE_INTERVAL_SECONDS,
+            SQUEEZE_INTERVAL_SECONDS / 60,
+        )
+        await asyncio.sleep(SQUEEZE_INTERVAL_SECONDS)
 
 
 if __name__ == "__main__":

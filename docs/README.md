@@ -6,7 +6,8 @@
 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | Full stack narrative: Hunters → Kafka → Gatekeeper → AI → Engine → persistence/UI. |
 | **[schemas.md](schemas.md)** | Kafka JSON contracts (`raw-events`, `validated-signals`, `trade-orders`) + TimescaleDB tables (`trade_orders`, `validated_signals`). |
 | **[TESTING.md](TESTING.md)** | Python hunters, Docker/Kafka UI, **Java engine** (synthetic signals, SQL checks, health), troubleshooting. |
-| **[IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)** | Phases, estimates, dependencies, file locations, recruiting angles. |
+| **[PRODUCT_PRIORITIES.md](PRODUCT_PRIORITIES.md)** | **Ordered backlog:** daily pipeline reliability → second hunter → UI polish; checklists; what to defer. **Start here for “what should we build next?”** |
+| **[IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md)** | Older phased estimates, dependencies, recruiting context (may lag code; cross-check priorities doc). |
 | **[DEPLOYMENT.md](DEPLOYMENT.md)** | EC2, cost, scheduling; includes engine + egress note. |
 | **[DOCS_DRAFT.md](DOCS_DRAFT.md)** | Draft positioning / interview prep notes (partially superseded by README + ENGINE). |
 

@@ -1,6 +1,8 @@
 # Catalyst Implementation Roadmap
 
-**Purpose:** Single source of truth for implementation priorities, dependencies, and agent reference. Use this document when planning work, estimating effort, or deciding what to build next.
+**Purpose:** Phased implementation plan, estimates, dependencies, and recruiting angles.
+
+**For the current ordered backlog (scheduler → second hunter → UI), use [PRODUCT_PRIORITIES.md](PRODUCT_PRIORITIES.md)** — it is maintained as the living “what next” checklist. This file may lag the codebase.
 
 **Last updated:** March 2026
 

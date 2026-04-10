@@ -2,16 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, BarChart3, Zap, Radio } from "lucide-react";
+import { UserButton, useAuth } from "@clerk/nextjs";
+import { Activity, BarChart3, Settings, Zap } from "lucide-react";
+import { PipelineStatus } from "./PipelineStatus";
 
 const NAV_LINKS = [
   { href: "/",          label: "Dashboard",  icon: Activity  },
   { href: "/analytics", label: "Analytics",  icon: BarChart3 },
   { href: "/signals",   label: "Signals",    icon: Zap       },
+  { href: "/settings",  label: "Settings",   icon: Settings  },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
+  const { isSignedIn, isLoaded } = useAuth();
 
   return (
     <header
@@ -115,27 +119,25 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* Pipeline status */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "5px 12px",
-            borderRadius: 20,
-            border: "1px solid rgba(34,197,94,0.25)",
-            background: "rgba(34,197,94,0.06)",
-          }}
-        >
-          <div className="animate-blink" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Radio size={12} color="var(--color-green)" />
-            <span style={{ fontSize: 11, fontWeight: 600, color: "var(--color-green)", letterSpacing: "0.08em" }}>
-              LIVE
-            </span>
-          </div>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>
-            Pipeline Active
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <PipelineStatus />
+          {!isLoaded ? (
+            <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>…</span>
+          ) : isSignedIn ? (
+            <UserButton />
+          ) : (
+            <Link
+              href="/sign-in"
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--color-gold)",
+                textDecoration: "none",
+              }}
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       </div>
     </header>

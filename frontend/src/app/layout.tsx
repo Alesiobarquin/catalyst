@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
+import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "Catalyst — Market Signal Dashboard",
@@ -20,16 +21,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <Navbar />
-        <main
-          style={{
-            maxWidth: 1400,
-            margin: "0 auto",
-            padding: "32px 24px 64px",
-          }}
-        >
-          {children}
-        </main>
+        <Providers>
+          <Navbar />
+          <main
+            style={{
+              maxWidth: 1400,
+              margin: "0 auto",
+              padding: "32px 24px 64px",
+            }}
+          >
+            {children}
+          </main>
+        </Providers>
       </body>
     </html>
   );

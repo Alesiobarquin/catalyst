@@ -1,5 +1,6 @@
 import type {
   TradeOrder,
+  TradeExecution,
   ValidatedSignal,
   OrderStats,
   PriceBar,
@@ -36,7 +37,10 @@ export async function getOrders(params?: {
     }
     return { items, total: items.length, page: 1, per_page: 20 };
   }
-  const qs = new URLSearchParams(params as Record<string, string>).toString();
+  const qs = new URLSearchParams();
+  if (params?.strategy) qs.set("strategy", params.strategy);
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.per_page) qs.set("per_page", String(params.per_page));
   const res = await fetch(`${apiBaseUrl()}/orders?${qs}`, { next: { revalidate: 30 } });
   if (!res.ok) throw new Error("Failed to fetch orders");
   return res.json();
@@ -63,7 +67,9 @@ export async function getSignals(params?: {
   per_page?: number;
 }): Promise<PaginatedResponse<ValidatedSignal>> {
   if (USE_MOCK) return { items: MOCK_SIGNALS, total: MOCK_SIGNALS.length, page: 1, per_page: 20 };
-  const qs = new URLSearchParams(params as Record<string, string>).toString();
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.per_page) qs.set("per_page", String(params.per_page));
   const res = await fetch(`${apiBaseUrl()}/signals?${qs}`, { next: { revalidate: 30 } });
   if (!res.ok) throw new Error("Failed to fetch signals");
   return res.json();
@@ -96,6 +102,16 @@ export async function getBatchPerformance(
     `${apiBaseUrl()}/performance/batch?ids=${ids.join(",")}`,
     { cache: "no-store" }
   );
+  if (!res.ok) return [];
+  return res.json();
+}
+
+/** GET /executions/me — requires Clerk session token */
+export async function getMyExecutions(token: string): Promise<TradeExecution[]> {
+  const res = await fetch(`${apiBaseUrl()}/executions/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
   if (!res.ok) return [];
   return res.json();
 }

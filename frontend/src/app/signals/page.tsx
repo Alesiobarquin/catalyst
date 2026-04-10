@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { getSignals } from "@/lib/api";
 import { getCatalystLabel } from "@/lib/utils";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Radio } from "lucide-react";
 import { SignalRow } from "@/components/signals/SignalRow";
+import { Pagination } from "@/components/ui/Pagination";
 
 export const metadata: Metadata = {
   title: "Signals — Catalyst",
@@ -10,8 +11,18 @@ export const metadata: Metadata = {
     "Raw Gemini AI output — validated signals before strategy routing and risk sizing.",
 };
 
-export default async function SignalsPage() {
-  const { items: signals } = await getSignals();
+const SIGNALS_PER_PAGE = 15;
+
+type PageProps = { searchParams: Promise<{ page?: string }> };
+
+export default async function SignalsPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
+
+  const { items: signals, total, page: curPage, per_page } = await getSignals({
+    page,
+    per_page: SIGNALS_PER_PAGE,
+  });
 
   return (
     <>
@@ -44,47 +55,86 @@ export default async function SignalsPage() {
           </code>{" "}
           Kafka topic
         </p>
+        <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 8 }}>
+          Showing {SIGNALS_PER_PAGE} signals per page.
+        </p>
       </div>
 
       {/* ── Signals table ─────────────────────────────────── */}
-      <div className="glass-card" style={{ overflow: "hidden", marginBottom: 24 }}>
-        {/* Table header */}
+      {signals.length === 0 ? (
         <div
+          className="glass-card"
           style={{
-            display: "grid",
-            gridTemplateColumns: "80px 110px 80px 120px 1fr 100px",
-            gap: 0,
-            borderBottom: "1px solid var(--color-border)",
-            padding: "10px 20px",
-            background: "var(--color-bg-elevated)",
+            padding: "48px 32px",
+            textAlign: "center",
+            marginBottom: 24,
           }}
         >
-          {["TICKER", "TIME", "CONV.", "CATALYST", "RATIONALE", "SOURCES"].map(
-            (h) => (
-              <span
-                key={h}
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: "var(--color-text-muted)",
-                  letterSpacing: "0.08em",
-                }}
-              >
-                {h}
-              </span>
-            )
-          )}
-        </div>
-
-        {/* Rows — each is a Client Component due to hover handlers */}
-        {signals.map((signal, i) => (
-          <SignalRow
-            key={signal.id}
-            signal={signal}
-            isLast={i === signals.length - 1}
+          <Radio
+            size={40}
+            strokeWidth={1.25}
+            style={{ color: "var(--color-text-muted)", marginBottom: 16 }}
+            aria-hidden
           />
-        ))}
-      </div>
+          <h2
+            style={{
+              fontSize: 18,
+              fontWeight: 600,
+              color: "var(--color-text-primary)",
+              marginBottom: 8,
+            }}
+          >
+            No validated signals yet
+          </h2>
+          <p style={{ fontSize: 14, color: "var(--color-text-secondary)", lineHeight: 1.6, maxWidth: 420, margin: "0 auto" }}>
+            When the gatekeeper accepts events and the pipeline writes to the database, rows appear here. Check that hunters,
+            Kafka, and the gatekeeper are running if you expect traffic.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="glass-card" style={{ overflow: "hidden", marginBottom: 24 }}>
+            {/* Table header */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "80px 110px 80px 120px 1fr 100px",
+                gap: 0,
+                borderBottom: "1px solid var(--color-border)",
+                padding: "10px 20px",
+                background: "var(--color-bg-elevated)",
+              }}
+            >
+              {["TICKER", "TIME", "CONV.", "CATALYST", "RATIONALE", "SOURCES"].map(
+                (h) => (
+                  <span
+                    key={h}
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: "var(--color-text-muted)",
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    {h}
+                  </span>
+                )
+              )}
+            </div>
+
+            {/* Rows — each is a Client Component due to hover handlers */}
+            {signals.map((signal, i) => (
+              <SignalRow
+                key={signal.id}
+                signal={signal}
+                isLast={i === signals.length - 1}
+              />
+            ))}
+          </div>
+
+          <Pagination page={curPage} total={total} perPage={per_page} basePath="/signals" />
+        </>
+      )}
 
       {/* ── Key risks section ─────────────────────────────── */}
       {signals.some((s) => s.key_risks.length > 0) && (

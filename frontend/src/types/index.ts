@@ -7,6 +7,26 @@ export type Regime = "PASS" | "PASS_BEARISH" | "SCALPER_ONLY" | "HALT";
 export type CatalystType = "SUPERNOVA" | "SCALPER" | "FOLLOWER" | "DRIFTER" | "UNKNOWN";
 export type TradeStatus = "HIT_TARGET" | "HIT_STOP" | "ACTIVE" | "EXPIRED";
 
+/** GET /executions/me — Alpaca paper status for current user */
+export interface TradeExecution {
+  id: number;
+  trade_order_id: number;
+  timestamp_utc: string;
+  ticker: string;
+  alpaca_order_id?: string | null;
+  execution_status: string;
+  filled_avg_price?: number | null;
+  error_message?: string | null;
+}
+
+/** GET /health/pipeline — FastAPI aggregate check for navbar */
+export interface PipelineHealth {
+  api: string;
+  database: string;
+  engine: string;
+  ready?: boolean;
+}
+
 // Matches trade_orders table + Kafka payload from engine/
 export interface TradeOrder {
   id: number;
@@ -27,6 +47,8 @@ export interface TradeOrder {
   current_price?: number;
   status?: TradeStatus;
   pnl_pct?: number;
+  /** Alpaca paper execution for the signed-in user (GET /executions/me) */
+  execution?: TradeExecution | null;
 }
 
 // Matches validated_signals table — raw Gemini output before strategy routing

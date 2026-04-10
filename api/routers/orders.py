@@ -27,6 +27,8 @@ async def list_orders(
     )
 
     p = [strategy, per_page, offset] if strategy else [per_page, offset]
+    limit_param  = "$2" if strategy else "$1"
+    offset_param = "$3" if strategy else "$2"
     rows = await conn.fetch(
         f"""
         SELECT id, ticker, timestamp_utc, action, strategy_used,
@@ -36,8 +38,8 @@ async def list_orders(
         FROM trade_orders
         {where}
         ORDER BY timestamp_utc DESC
-        LIMIT ${'$2' if strategy else '$1'}
-        OFFSET ${'$3' if strategy else '$2'}
+        LIMIT {limit_param}
+        OFFSET {offset_param}
         """,
         *p,
     )
