@@ -13,7 +13,7 @@ logger = get_logger("insider_hunter")
 
 # SEC_RSS_URL = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&output=atom"
 
-HEADERS = {"User-Agent": "CatalystBot yourname@example.com", "Accept-Encoding": "gzip, deflate"}
+HEADERS = {"User-Agent": "CatalystBot olivierszorc1305@gmail.com", "Accept-Encoding": "gzip, deflate"}
 
 NS = {"atom": "http://www.w3.org/2005/Atom"}
 
@@ -250,6 +250,8 @@ async def run():
         while True:
             try:
                 response = await client.get(SEC_RSS_URL)
+                logger.debug(f"SEC response status: {response.status_code}")
+                logger.debug(f"SEC response preview: {response.text[:300]}")
 
                 if response.status_code == 200:
                     root = ET.fromstring(response.content)
