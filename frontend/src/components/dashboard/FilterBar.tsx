@@ -5,11 +5,11 @@ import type { Strategy } from "@/types";
 import { Calendar, Filter } from "lucide-react";
 
 const STRATEGIES: Array<{ value: Strategy | "all"; label: string }> = [
-  { value: "all",       label: "All Strategies" },
-  { value: "Supernova", label: "⚡ Supernova" },
-  { value: "Scalper",   label: "⚡ Scalper" },
-  { value: "Follower",  label: "📈 Follower" },
-  { value: "Drifter",   label: "🌊 Drifter" },
+  { value: "all",       label: "All" },
+  { value: "Supernova", label: "Supernova" },
+  { value: "Scalper",   label: "Scalper" },
+  { value: "Follower",  label: "Follower" },
+  { value: "Drifter",   label: "Drifter" },
 ];
 
 const DATE_RANGES: Array<{ value: "7d" | "30d" | "90d" | "all"; label: string }> = [

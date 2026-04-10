@@ -20,6 +20,17 @@ class TradeOrderResponse(BaseModel):
     catalyst_type: str
     regime_vix: Optional[float] = None
     spy_above_200sma: Optional[bool] = None
+    status: str = "ACTIVE"
+
+
+class DailyVolume(BaseModel):
+    date: str
+    count: int
+
+
+class ConvictionBucket(BaseModel):
+    bucket: str
+    count: int
 
 
 class OrderStatsResponse(BaseModel):
@@ -30,6 +41,8 @@ class OrderStatsResponse(BaseModel):
     active_count: int
     strategy_breakdown: dict[str, int]
     catalyst_breakdown: dict[str, int]
+    daily_volume: list[DailyVolume] = []
+    conviction_distribution: list[ConvictionBucket] = []
 
 
 # ── Validated Signals ─────────────────────────────────────────────

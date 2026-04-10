@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Activity, BarChart3, Zap, Radio } from "lucide-react";
 
 const NAV_LINKS = [
@@ -10,6 +11,8 @@ const NAV_LINKS = [
 ];
 
 export function Navbar() {
+  const pathname = usePathname();
+
   return (
     <header
       style={{
@@ -72,35 +75,44 @@ export function Navbar() {
 
         {/* Nav links */}
         <nav style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          {NAV_LINKS.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 7,
-                padding: "6px 14px",
-                borderRadius: 8,
-                fontSize: 13,
-                fontWeight: 500,
-                color: "var(--color-text-secondary)",
-                textDecoration: "none",
-                transition: "color 150ms, background 150ms",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLAnchorElement).style.color = "var(--color-text-primary)";
-                (e.currentTarget as HTMLAnchorElement).style.background = "var(--color-bg-elevated)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLAnchorElement).style.color = "var(--color-text-secondary)";
-                (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
-              }}
-            >
-              <Icon size={14} />
-              {label}
-            </Link>
-          ))}
+          {NAV_LINKS.map(({ href, label, icon: Icon }) => {
+            const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 7,
+                  padding: "6px 14px",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: isActive ? 600 : 500,
+                  color: isActive ? "var(--color-gold)" : "var(--color-text-secondary)",
+                  textDecoration: "none",
+                  background: isActive ? "rgba(245,158,11,0.1)" : "transparent",
+                  border: isActive ? "1px solid rgba(245,158,11,0.2)" : "1px solid transparent",
+                  transition: "color 150ms, background 150ms, border-color 150ms",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    (e.currentTarget as HTMLAnchorElement).style.color = "var(--color-text-primary)";
+                    (e.currentTarget as HTMLAnchorElement).style.background = "var(--color-bg-elevated)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    (e.currentTarget as HTMLAnchorElement).style.color = "var(--color-text-secondary)";
+                    (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
+                  }
+                }}
+              >
+                <Icon size={14} />
+                {label}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Pipeline status */}

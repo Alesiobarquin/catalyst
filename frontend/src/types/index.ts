@@ -80,3 +80,13 @@ export interface SignalStats {
   trap_count: number;
   catalyst_breakdown: Record<CatalystType, number>;
 }
+
+// Response shape from GET /performance/batch
+export interface BatchPerformance {
+  order_id: number;
+  ticker: string;
+  current_price: number | null;
+  pnl_pct: number | null;
+  status: TradeStatus;
+  days_held: number;
+}
