@@ -5,9 +5,9 @@ from collections import deque
 import httpx
 
 from .common.config import SEC_RSS_URL
-from .common.topics import KAFKA_TOPIC_INSIDER
 from .common.kafka_client import KafkaClient
 from .common.logger import get_logger
+from .common.topics import KAFKA_TOPIC_INSIDER
 
 logger = get_logger("insider_hunter")
 
