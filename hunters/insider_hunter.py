@@ -167,13 +167,6 @@ def parse_form4_xml(xml_content: bytes, cik: str, accession: str, filing_url: st
                 else None
             )
 
-            ownership_el = txn.find("ownershipNature")
-            ownership_type = (
-                get_text(ownership_el, "directOrIndirectOwnership")
-                if ownership_el is not None
-                else None
-            )
-
             shares = float(shares_str) if shares_str else None
             price = float(price_str) if price_str else None
             total_value = round(shares * price, 2) if shares and price else None

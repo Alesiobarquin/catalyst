@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import settings
 from api.db import lifespan, ping_database
-from api.routers import orders, signals, market, performance, settings, execution
+from api.routers import execution, market, orders, performance, settings as settings_router, signals
 
 
 def create_app() -> FastAPI:
@@ -37,7 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(signals.router)
     app.include_router(market.router)
     app.include_router(performance.router)
-    app.include_router(settings.router)
+    app.include_router(settings_router.router)
     app.include_router(execution.router)
 
     @app.get("/health", tags=["health"])

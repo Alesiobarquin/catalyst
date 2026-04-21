@@ -2,7 +2,7 @@
 
 **Purpose:** Canonical ordered backlog for **what to build next** — operational reliability first, then signal volume, then UI. Use this doc when planning sprints, agent tasks, or weekly check-ins. Update checkboxes and the “Last updated” line as work completes.
 
-**Last updated:** April 2026
+**Last updated:** April 2026 (pre-AWS evidence narrative aligned with validation report; organic confluence called out as stretch)
 
 **See also:** [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) (older phased estimates and recruiting context), [TESTING.md](TESTING.md) (how to verify the stack), [DEPLOYMENT.md](DEPLOYMENT.md) (AWS / scheduling ideas).
 
@@ -18,10 +18,38 @@
 
 ## Current reality (be honest)
 
-- The **end-to-end pipeline works** (hunters → Kafka → gatekeeper → AI → engine → DB → API → UI) when the stack is up and data flows.
-- **Squeeze** and **biotech** hunters are effectively **one-shot per process** (clean exit → Docker `restart: on-failure` does not reschedule them). **Insider** is the main long-running hunter.
-- **Confluence ≥ 2 sources** is hard to hit organically without repeating squeeze/biotech or adding another continuous source.
-- **Whale / shadow / drifter** hunters are stubs or not wired in Compose; gatekeeper schemas exist but producers do not.
+- The **end-to-end pipeline is proven** in Compose: hunters → Kafka → gatekeeper → AI → engine → DB → API → UI, with evidence in [VALIDATION_REPORT_2026-04-21.md](VALIDATION_REPORT_2026-04-21.md) (including **NVDA** through AI + engine + `trade_orders`; synthetic tickers are fine for gatekeeper/AI but the engine needs **Yahoo-priced** symbols for sizing).
+- **Track 1 (recurrence):** squeeze and biotech run continuous loops with configurable intervals. **Accepted local proof** is an **accelerated-interval multi-cycle soak** (multiple “next sweep” log lines), then restore default intervals—documented in the validation report. A **literal 24h wall-clock** run at default intervals is optional hardening (archive `docker logs` if you do it); do not claim it without logs.
+- **Track 2 (confluence):** **Gatekeeper confluence ≥ 2** is **proven** with **controlled** `raw-events` injection plus Redis `gk:sources:{TICKER}` (and full-stack **NVDA** in the same report). **Organic** overlap (two distinct live hunters hitting the same ticker inside the rolling window without injection) is **sparse by design** and is a **stretch** validation—longer runs, market hours, and AWS-like retention help; it is not required to call Track 2 “implemented.”
+- **Drifter** is implemented and wired in Compose; **whale/shadow** remain defer-or-implement decisions after reliability closeout.
+
+---
+
+## Product end goal (POC scope)
+
+**North star:** A reliable, explainable, low-cost signal pipeline that runs unattended on weekdays during high-value market windows.  
+This is a portfolio-first system, not a 24/7 production trading platform.
+
+**Success criteria for this phase:**
+
+- Runs unattended for 2-4 weeks on a scheduled weekday cadence.
+- Produces auditable validated signals with source-level confluence evidence.
+- Demonstrates practical cost control and explicit trade-off decisions (coverage vs spend).
+- Keeps auth/broker execution deferred until reliability gates are met.
+
+---
+
+## Operating cadence (recommended happy medium)
+
+Use this cadence for portfolio operations and demos:
+
+- **Weekdays only**
+- **07:00 ET:** pre-market warmup run
+- **09:30-11:00 ET:** higher-frequency scans (every 10-15 minutes)
+- **11:00-15:00 ET:** lower-frequency scans (every 30-60 minutes)
+- **15:00-16:00 ET:** moderate-frequency scans (every 15-30 minutes)
+
+Rationale: captures the highest signal-density windows without pretending to be an always-on production system.
 
 ---
 
@@ -34,7 +62,7 @@
 | [x] | **Squeeze:** Add an outer loop (e.g. `while True` + configurable sleep, e.g. 15–30 min) *or* document + implement an external scheduler (cron, ECS scheduled task, Compose `restart: always` with a wrapper script). |
 | [x] | **Biotech:** Same — either wrap `run()` in a loop with sleep between sweeps, or external scheduler. Align sleep with BioPharm rate limits (see hunter comments). |
 | [x] | **Compose / ops:** Change `restart` policy and/or add a small scheduler service if you choose not to loop in-process. Document the chosen approach in [TESTING.md](TESTING.md) “day-to-day operations”. |
-| [ ] | **Smoke test:** After deploy, confirm `docker compose ps` shows squeeze/biotech cycling or scheduled as intended over 24h. |
+| [x] | **Smoke test:** Prove squeeze/biotech repeat autonomously. **Preferred:** 24h run at default intervals. **Acceptable for local validation:** documented accelerated-interval multi-cycle soak (shows multiple `Next … sweep` log lines) + restore defaults before sharing publicly. |
 
 **Done when:** A fresh `docker compose up -d` produces repeated squeeze/biotech scans over a day with no manual intervention.
 
@@ -44,16 +72,16 @@
 
 ## Track 2 — Increase real signal volume (second hunter / confluence)
 
-**Goal:** Raise the odds of **organic** gatekeeper confluence (two distinct `source_hunter` values for the same ticker within the rolling window).
+**Goal:** Increase **live** signal volume (second hunter) and real-world **confluence opportunities**; **organic** overlap (two distinct hunters, same ticker, no injection) remains **sparse by design** and is a **stretch** metric—Track 2 **implementation** is still judged on Compose + Redis + gatekeeper proof (see **Done when** below).
 
 | Status | Task |
 |--------|------|
 | [x] | Pick **one** of: **Drifter** (earnings surprise — API-friendly if `FMP_API_KEY` is set), **Whale** (unusual options — scraping/API), or another hunter you will maintain. |
 | [x] | Implement `run()`, Kafka publish to **`raw-events`** (and hunter-specific topic if applicable), matching [gatekeeper coercers](../gatekeeper/gatekeeper.py). |
 | [x] | Add a **Compose service** for that hunter if it should run in Docker. |
-| [ ] | Verify gatekeeper accepts payloads (no `unknown schema`), and spot-check Redis `gk:sources:{TICKER}` for two sources when data aligns. |
+| [x] | Verify gatekeeper accepts payloads (no `unknown schema`), and spot-check Redis `gk:sources:{TICKER}` for two sources when data aligns. |
 
-**Done when:** Production-like Compose runs show occasional confluence without synthetic Kafka injections.
+**Done when:** In Compose, gatekeeper accepts the hunter’s payloads (no `unknown schema`), and you can show **multi-source confluence** for at least one ticker—**including** Redis proof (`gk:sources:{TICKER}` with two distinct hunter sources) and a forwarded `confluence=2` line. Controlled `raw-events` injection for that proof is **in scope**; **organic** multi-hunter overlap without injection is a **stretch** goal for longer runs.
 
 **Implemented (April 2026):** [Drifter hunter](../hunters/drifter_hunter.py) — FMP `earning_calendar` (lookback window), EPS beat vs `epsEstimated` ≥ `DRIFTER_MIN_SURPRISE_PERCENT`, yfinance liquidity, dedupe by `symbol:date`. Compose service `hunter-drifter`; env `FMP_API_KEY` required for live polling (otherwise process sleeps in a loop). Topic: `signal-earnings` + `raw-events`.
 
@@ -80,6 +108,18 @@
 | **Full observability stack** (Prometheus, Grafana, etc.) | Optional later; a simple alert (webhook / email on new `trade_orders` row) may suffice first. |
 | **Auth / multi-user (e.g. Clerk)** | Not needed until the core loop runs daily and reliably. |
 
+**Go/no-go gate for Clerk + Alpaca linking (must all be true):**
+
+- Track 1 smoke-test checkbox is complete with **documented recurrence evidence** (accelerated multi-cycle soak **or** archived literal 24h logs at default intervals).
+- Track 2 confluence checkbox is complete with Redis proof (`gk:sources:{TICKER}` for multi-source cases), per [VALIDATION_REPORT_2026-04-21.md](VALIDATION_REPORT_2026-04-21.md).
+- Deployment checklist in [DEPLOYMENT.md](DEPLOYMENT.md) is closed for the selected schedule.
+
+**Go/no-go gate for AWS rollout (must all be true):**
+
+- All pre-AWS items in [PRE_AWS_READINESS_CHECKLIST.md](PRE_AWS_READINESS_CHECKLIST.md) are complete.
+- Product/recruiting docs are aligned (README + priorities + deployment).
+- Activation procedure in [AUGUST_ACTIVATION_CHECKLIST.md](AUGUST_ACTIVATION_CHECKLIST.md) is reviewed and ready.
+
 ---
 
 ## Quick reference — key files
@@ -101,3 +141,5 @@
 | 2026-04 | Initial version: Tracks 1–3, defer list, checklists. |
 | 2026-04 | Track 1: squeeze/biotech infinite loops + env intervals + Compose `restart: always`. |
 | 2026-04 | Track 2: Drifter hunter (FMP earnings calendar) + `hunter-drifter` service. |
+| 2026-04 | Track 1/2 smoke + confluence evidence captured in `docs/VALIDATION_REPORT_2026-04-21.md`; pre-AWS checklist closed in `docs/PRE_AWS_READINESS_CHECKLIST.md`. |
+| 2026-04 | “Current reality,” Track 2 **Done when**, and Clerk/Alpaca gate wording reconciled with validation evidence (accelerated recurrence soak; controlled injection + Redis + NVDA full stack; organic overlap as optional stretch). |

@@ -123,7 +123,9 @@ async def _one_sweep(kafka: KafkaClient) -> int:
         kafka.send_message(KAFKA_TOPIC_WHALE, entry)
         kafka.send_message(RAW_EVENTS_TOPIC, entry)
         pushed += 1
-        logger.info("Whale signal %s %s @ %s", ticker, entry.get("option_type"), entry.get("strike_price"))
+        logger.info(
+            "Whale signal %s %s @ %s", ticker, entry.get("option_type"), entry.get("strike_price")
+        )
 
     return pushed
 
