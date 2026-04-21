@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { useFilterStore } from "@/store/filters";
-import type { TradeOrder, BatchPerformance, TradeExecution } from "@/types";
+import type { TradeOrder, BatchPerformance } from "@/types";
 import { TradeCard } from "./TradeCard";
-import { getBatchPerformance, getMyExecutions } from "@/lib/api";
+import { getBatchPerformance } from "@/lib/api";
 import { subDays } from "date-fns";
 
 interface TradeListProps {
@@ -14,7 +13,6 @@ interface TradeListProps {
 
 export function TradeList({ orders }: TradeListProps) {
   const { strategy, dateRange } = useFilterStore();
-  const { getToken, isSignedIn, isLoaded } = useAuth();
 
   const cutoff = dateRange === "all"
     ? null
@@ -26,28 +24,7 @@ export function TradeList({ orders }: TradeListProps) {
     return true;
   });
 
-  // Keyed by order_id for O(1) merge
   const [perf, setPerf] = useState<Record<number, BatchPerformance>>({});
-  const [execMap, setExecMap] = useState<Record<number, TradeExecution>>({});
-
-  useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
-    let cancelled = false;
-    (async () => {
-      const token = await getToken();
-      if (!token || cancelled) return;
-      const list = await getMyExecutions(token);
-      if (cancelled) return;
-      const m: Record<number, TradeExecution> = {};
-      for (const e of list) {
-        m[e.trade_order_id] = e;
-      }
-      setExecMap(m);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoaded, isSignedIn, getToken]);
 
   useEffect(() => {
     if (filtered.length === 0) return;
@@ -92,7 +69,6 @@ export function TradeList({ orders }: TradeListProps) {
     <div>
       {filtered.map((order, i) => {
         const livePerf = perf[order.id];
-        const ex = execMap[order.id];
         const enriched: TradeOrder = {
           ...(livePerf
             ? {
@@ -102,7 +78,7 @@ export function TradeList({ orders }: TradeListProps) {
                 status: livePerf.status ?? order.status,
               }
             : order),
-          execution: ex ?? null,
+          execution: null,
         };
         return <TradeCard key={order.id} order={enriched} index={i} />;
       })}

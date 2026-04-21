@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton, useAuth } from "@clerk/nextjs";
 import { Activity, BarChart3, Settings, Zap } from "lucide-react";
 import { PipelineStatus } from "./PipelineStatus";
 
@@ -15,7 +14,6 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const { isSignedIn, isLoaded } = useAuth();
 
   return (
     <header
@@ -121,23 +119,7 @@ export function Navbar() {
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <PipelineStatus />
-          {!isLoaded ? (
-            <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>…</span>
-          ) : isSignedIn ? (
-            <UserButton />
-          ) : (
-            <Link
-              href="/sign-in"
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--color-gold)",
-                textDecoration: "none",
-              }}
-            >
-              Sign in
-            </Link>
-          )}
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>Preview</span>
         </div>
       </div>
     </header>
