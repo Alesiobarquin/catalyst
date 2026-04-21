@@ -1,15 +1,20 @@
 # Catalyst: Student-Focused Deployment Guide
 
-This document covers how to deploy Catalyst beyond local Docker Compose—optimized for student portfolios, not 24/7 production. The goal: deploy for **~$15/month** with ~90% signal effectiveness by running during market hours only.
+This document covers how to deploy Catalyst beyond local Docker Compose—optimized for student portfolios, not 24/7 production. The goal: deploy with a **portfolio operating cadence** (weekday high-value windows) at very low cost while still demonstrating strong system design.
 
 ---
 
 ## TL;DR: 30-Second Version
 
 - **What:** Student portfolio project—market signal detection pipeline
-- **When:** Runs at 7:00 AM and 9:30 AM ET (pre-market + market open)
-- **Cost:** ~$10–15/month (EC2 + Docker Compose + scheduling)
-- **Why:** Market hours capture most catalysts; 24/7 infrastructure adds cost without proportional value for learning/recruiting
+- **When:** Weekdays, with heavier scans around open and lighter scans midday
+- **Cost:** typically **~$3–8/month** on AWS credits for the recommended cadence
+- **Why:** Maximize learning/recruiting value per dollar, not 24/7 uptime
+
+Before starting AWS setup, complete the preflight gate in [PRE_AWS_READINESS_CHECKLIST.md](PRE_AWS_READINESS_CHECKLIST.md).  
+When recruiting season starts, use [AUGUST_ACTIVATION_CHECKLIST.md](AUGUST_ACTIVATION_CHECKLIST.md) for fast enablement.
+
+For an ordered “do this next” checklist while provisioning, see [AWS_DEPLOY_RUNBOOK.md](AWS_DEPLOY_RUNBOOK.md).
 
 ---
 
@@ -17,7 +22,7 @@ This document covers how to deploy Catalyst beyond local Docker Compose—optimi
 
 | Approach | Monthly Cost | Setup Time | Complexity | Why Pick It |
 |----------|--------------|------------|------------|-------------|
-| **EC2 + Docker Compose** | $10–15 | 2 hours | Low | Sweet spot for students |
+| **EC2 + Docker Compose** | $3–8 (recommended cadence), $10–15 (long market-hours runtime) | 2 hours | Low | Sweet spot for students |
 | **Lambda + EventBridge** | $1–2 | 3 hours | Medium | Cheapest, zero infra |
 | **ECS + MSK (Original)** | $200–250 | 4 hours | High | Real production setup |
 
@@ -25,11 +30,12 @@ This document covers how to deploy Catalyst beyond local Docker Compose—optimi
 
 | Item | Cost |
 |------|------|
-| t3.micro EC2 | $5–10/month (or $0 if free tier eligible) |
+| t3.micro EC2 | ~$1.1–$1.5/month for ~110 hrs/mo (or $0 if free tier eligible) |
 | Data transfer | &lt;$1/month |
 | Lambda (start/stop) | &lt;$0.20/month |
 | EventBridge | Free |
-| **Total** | **$10–15/month** |
+| EBS (8 GB) | ~$0.80–$1.00/month |
+| **Total** | **~$3–8/month** (typical); **$10–15/month** only if runtime window is extended significantly |
 
 **When to use:** You want something that runs reliably, debugs like your laptop, and costs almost nothing.  
 **Pros:** Same stack as local, SSH access, easy to scale later.  
@@ -79,7 +85,7 @@ A single t3.micro EC2 instance running `docker compose up`—the same stack you 
 
 ### Why It's Best for Students
 
-1. **Cost:** $10–15/month vs $200+ for full production
+1. **Cost:** ~$3–8/month on the recommended cadence vs $200+ for full production
 2. **Debuggable:** SSH in, run `docker compose logs`, same as laptop
 3. **Simple:** One machine, one compose file, no orchestration
 4. **Scalable later:** When you need production, migrate to ECS; the images and logic stay the same
@@ -113,12 +119,12 @@ EventBridge (4:00 PM ET)  →  Lambda (catalyst-shutdown)
 
 ### Cost Breakdown
 
-- **t3.micro:** ~$0.0104/hr × ~9 hrs/day × 22 trading days ≈ **$2–3/month** (instance running ~6.5 hrs/day)
+- **t3.micro:** ~$0.0104/hr × ~110 hrs/month ≈ **$1.10–$1.50/month** (recommended cadence)
 - **Stopped instance:** $0 (EBS storage ~$1/month for 8 GB)
 - **If you run 24/7 by mistake:** ~$7.50/month
-- **Data transfer:** &lt;$1 for typical signal volume
+- **Data transfer + logs:** ~$0.50–$2.00/month for typical signal volume
 - **Lambda + EventBridge:** Negligible
-- **Total:** **$10–15/month** (or less with free tier)
+- **Total:** **~$3–8/month** on normal use (or less with free tier)
 
 ### Step-by-Step Setup
 
@@ -126,7 +132,7 @@ EventBridge (4:00 PM ET)  →  Lambda (catalyst-shutdown)
 
 - [ ] Catalyst runs locally with `docker compose up --build -d`
 - [ ] You have an AWS account (free tier or budget)
-- [ ] AWS CLI configured (`aws configure`)
+- [ ] **AWS CLI** installed and **credentials working** — `aws sts get-caller-identity` must succeed (see “AWS access (hard gate)” in [AWS_DEPLOY_RUNBOOK.md](AWS_DEPLOY_RUNBOOK.md))
 - [ ] You understand what `docker compose` does
 
 ---
@@ -419,9 +425,11 @@ docker exec catalyst_kafka kafka-console-consumer \
 | Time (ET) | Rationale | Action |
 |-----------|-----------|--------|
 | **6:50 AM** | Instance needs ~2 min to boot | Lambda starts EC2 |
-| **7:00 AM** | Pre-market: Finviz short squeeze data, SEC EDGAR overnight filings, BioPharmCatalyst FDA (often 8 AM) | Run full pipeline, capture pre-market movers |
-| **9:30 AM** | Market open: fresh volume, squeeze intensity, more filings | Re-run pipeline, confirm signals, catch opening volatility |
-| **4:00 PM** | Market closes, little new signal value | Lambda stops EC2 |
+| **7:00 AM** | Pre-market warmup | Run one full pipeline pass |
+| **9:30-11:00 AM** | Highest volatility and signal density | Run scans every 10-15 minutes |
+| **11:00 AM-3:00 PM** | Lower-value window | Run scans every 30-60 minutes |
+| **3:00-4:00 PM** | Power-hour movement | Run scans every 15-30 minutes |
+| **4:00 PM** | End of target window | Lambda stops EC2 |
 
 ---
 
@@ -553,13 +561,13 @@ For now, EC2 + scheduling is the right choice.
 
 **Avoid:** "Deployed catalyst to AWS ECS with Kafka and Redis."
 
-**Prefer:** "Deployed catalyst to AWS with cost-optimized scheduling: runs pre-market and market open only, reducing infrastructure to ~$15/month while maintaining ~90% signal effectiveness. Demonstrates trade-off analysis between overnight catalysts and student budget."
+**Prefer:** "Deployed catalyst to AWS with cost-optimized weekday scheduling, concentrating scans around market open and power hour. Kept infrastructure in the ~$3–8/month range while preserving most high-value signal windows and documenting trade-offs."
 
 ### Interview Angle
 
 When asked *"How did you deploy this?"*:
 
-> "I use a t3.micro EC2 instance that starts at 6:50 AM and stops at 4 PM ET via Lambda and EventBridge. It runs docker compose, same as on my laptop. Cost is ~$15/month because most of the catalysts I care about happen during market hours. I optimized for ‘does it work’ and ‘is it affordable’ rather than over-engineering for 24/7 when most of the value comes from 6–7 hours per day."
+> "I use a t3.micro EC2 instance that starts before market activity and stops after the close using Lambda and EventBridge. Within that window I run variable scan cadence: faster around open and power hour, slower midday. It keeps cost around a few dollars per month while still exercising the full architecture end-to-end."
 
 That answer signals pragmatism, cost awareness, and systems thinking.
 
@@ -569,12 +577,12 @@ That answer signals pragmatism, cost awareness, and systems thinking.
 
 Before going live, verify:
 
-- [ ] Cost section clearly shows $10–15/month (not $200)
+- [ ] Cost section clearly shows the recommended cadence range (~$3–8/month) and when it grows toward $10–15/month
 - [ ] Trade-off analysis is honest (what you catch vs. miss)
 - [ ] EC2 + scheduling is clearly recommended (not ECS)
 - [ ] Step-by-step setup is detailed enough for a beginner
 - [ ] Code examples are copy-paste ready
-- [ ] Schedule timing is specific (6:50 AM, 4:00 PM ET)
+- [ ] Schedule timing and cadence are specific (pre-market, open window, midday, power hour, stop time)
 - [ ] Monitoring section is practical
 - [ ] Recruiting angle is clear
 
@@ -583,7 +591,9 @@ Before going live, verify:
 ## Quick Reference: Expected Outcome
 
 - **6:50 AM ET:** EC2 starts via Lambda
-- **7:00 AM ET:** Pipeline runs (cron or user-data), publishes signals
-- **9:30 AM ET:** Pipeline runs again
+- **7:00 AM ET:** Pipeline warmup run
+- **9:30-11:00 ET:** Higher-frequency scans (10-15 min)
+- **11:00-15:00 ET:** Lower-frequency scans (30-60 min)
+- **15:00-16:00 ET:** Moderate-frequency scans (15-30 min)
 - **4:00 PM ET:** EC2 stops via Lambda
-- **Cost:** ~$10–15/month
+- **Cost:** typically ~$3–8/month (cadence-dependent)

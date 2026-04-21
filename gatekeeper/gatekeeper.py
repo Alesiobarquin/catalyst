@@ -389,13 +389,18 @@ class GatekeeperService:
 
     def get_drop_reason(self, normalized):
         liquidity = normalized["liquidity_metrics"]
-        volume = liquidity.get("volume", 0.0)
-        relative_volume = liquidity.get("relative_volume", 0.0)
+        source_hunter = normalized.get("source_hunter", "")
 
-        if volume < MIN_VOLUME:
-            return f"volume {volume} below minimum {MIN_VOLUME}"
-        if relative_volume < MIN_RELATIVE_VOLUME:
-            return f"relative_volume {relative_volume} below minimum {MIN_RELATIVE_VOLUME}"
+        # Insider (Form 4) signals carry no real-time volume data — skip
+        # volume/rel_volume filters and only check price range.
+        if source_hunter != "insider":
+            volume = liquidity.get("volume", 0.0)
+            relative_volume = liquidity.get("relative_volume", 0.0)
+            if volume < MIN_VOLUME:
+                return f"volume {volume} below minimum {MIN_VOLUME}"
+            if relative_volume < MIN_RELATIVE_VOLUME:
+                return f"relative_volume {relative_volume} below minimum {MIN_RELATIVE_VOLUME}"
+
         price = liquidity.get("price") or 0.0
         if price > 0 and price < MIN_PRICE:
             return f"price {price} below minimum {MIN_PRICE}"

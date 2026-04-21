@@ -13,13 +13,14 @@ Catalyst discovers market catalysts by aggregating signals from multiple sources
 | **Squeeze Hunter** | ✅ Fully working | Finviz scrape → Kafka. Pre-emission filters (price, volume, short float). |
 | **Gatekeeper** | ✅ Fully working | Redis 5-min window, confluence ≥ 2, hard filters (volume, price). |
 | **AI Layer** | ✅ Fully working | Gemini + Search grounding, structured JSON output, conviction threshold. |
-| **End-to-end pipeline** | ✅ Verified | Squeeze → Gatekeeper → AI → validated-signals. Tested with synthetic events. |
-| **Insider Hunter** | ⚠️ Partial | Emits to Kafka; rarely passes Gatekeeper (lacks liquidity fields). |
-| **Biotech Hunter** | ⚠️ Partial | Emits to Kafka; rarely passes Gatekeeper (lacks liquidity fields). |
-| **Whale / Drifter / Shadow** | 📋 Stubs | Not implemented. Need data source research. |
+| **End-to-end pipeline** | ✅ Verified (Compose) | Hunters → Gatekeeper → AI → `validated-signals` → Java engine → `trade_orders` / `trade-orders`. Use **real tickers** for engine price fetch (synthetic tickers like `TEST*` will validate AI but may skip sizing). |
+| **Insider Hunter** | ⚠️ Partial | Long-running and emits to Kafka; **organic** overlap with other hunters in the gatekeeper window is **sparse** (optional stretch to observe in longer / AWS runs—see [docs/PRODUCT_PRIORITIES.md](docs/PRODUCT_PRIORITIES.md)). |
+| **Biotech Hunter** | ⚠️ Partial | Recurring loop in Compose; local recurrence proof uses the same **accelerated soak** model as squeeze ([docs/VALIDATION_REPORT_2026-04-21.md](docs/VALIDATION_REPORT_2026-04-21.md)). **Confluence** for the stack is proven via controlled injection + real ticker for the engine. |
+| **Whale / Shadow** | 📋 Stubs | Deferred for now; decide implement vs remove after reliability closeout. |
+| **Drifter Hunter** | ✅ Implemented | FMP earnings-calendar based hunter, Compose wired, emits to `raw-events` + `signal-earnings`. |
 | **Persistence** | ⚠️ Partial | TimescaleDB: Python service writes `validated_signals`; Java engine writes `trade_orders`. |
 | **Strategy Engine** | ✅ Implemented | Java Spring Boot in `engine/`: regime, Half-Kelly, strategies, `trade-orders` + DB. See [docs/ENGINE.md](docs/ENGINE.md). |
-| **Frontend / API** | ❌ Not built | Dashboard and FastAPI planned (Phase 2). |
+| **Frontend / API** | ✅ Built | FastAPI + Next.js dashboard integrated, with ongoing polish/testing hardening. |
 
 *See [Components](#components) for details on each hunter and the pipeline.*
 
@@ -99,7 +100,7 @@ Independent Python agents that scrape data and publish to Kafka. Each publishes 
 | **Biotech** | BioPharmCatalyst | ⚠️ Active | Phase 3 / PDUFA / NDA / BLA |
 | **Insider** | SEC EDGAR | ⚠️ Limited | Form 4 purchase filings |
 | **Whale** | Barchart | Stub | Unusual options flow |
-| **Drifter** | FMP API | Stub | Post-earnings beat |
+| **Drifter** | FMP API | ✅ Active (needs `FMP_API_KEY`) | Post-earnings beat |
 | **Shadow** | Dark pool | Stub | Dark pool prints |
 
 #### Squeeze Hunter Pre-Emission Filters
@@ -204,13 +205,13 @@ docker logs catalyst_gatekeeper 2>&1 | grep JUNK
 
 ## Implementation Roadmap
 
-For prioritized tasks, dependencies, and agent reference, see [docs/IMPLEMENTATION_ROADMAP.md](docs/IMPLEMENTATION_ROADMAP.md). Covers Phase 1 (bugs, tests, persistence), Phase 2 (Java engine ✅, API, dashboard), and Phase 3 (Clerk auth, Alpaca paper trading). **Strategy layer detail:** [docs/ENGINE.md](docs/ENGINE.md).
+For **what to build next** (ordered: daily pipeline → second hunter → UI), see [docs/PRODUCT_PRIORITIES.md](docs/PRODUCT_PRIORITIES.md). Older phased detail and estimates: [docs/IMPLEMENTATION_ROADMAP.md](docs/IMPLEMENTATION_ROADMAP.md). **Strategy layer detail:** [docs/ENGINE.md](docs/ENGINE.md).
 
 ## Deployment
 
 For AWS deployment, cost estimates, and scaling considerations, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-**TL;DR:** EC2 + Docker Compose + Lambda scheduling. Runs at 7 AM and 9:30 AM ET. ~$10–15/mo. ECS/MSK (~$200+/mo) is documented for when you need production.
+**TL;DR:** EC2 + Docker Compose + Lambda scheduling with weekday variable cadence. Typical student/portfolio spend is ~`$3–8/mo` on credits for the recommended schedule. ECS/MSK (~$200+/mo) remains a later production path.
 
 ---
 
@@ -241,8 +242,15 @@ For AWS deployment, cost estimates, and scaling considerations, see [docs/DEPLOY
 
 ## Future Work
 
-- **Whale / Drifter / Shadow hunters:** Implement or remove stubs
-- **Insider / Biotech:** Add liquidity lookup or relax Gatekeeper for binary-event sources
-- **Persistence:** Expand tests/CI; optional consolidation of `validated_signals` vs `trade_orders` APIs
-- **Strategy engine:** OFI / micro-structure gate (see [docs/ENGINE.md](docs/ENGINE.md)); optional broker execution
-- **Frontend:** Dashboard for live signals (Next.js planned)
+**Pre-AWS gates (April 2026):** Closed per [docs/PRE_AWS_READINESS_CHECKLIST.md](docs/PRE_AWS_READINESS_CHECKLIST.md) with evidence in [docs/VALIDATION_REPORT_2026-04-21.md](docs/VALIDATION_REPORT_2026-04-21.md) (accelerated-interval recurrence soak; confluence + Redis + **NVDA** full stack). **Optional hardening:** literal 24h wall-clock logs at default hunter intervals if you want that artifact.
+
+**Next: AWS execution (cost-controlled):** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/AWS_DEPLOY_RUNBOOK.md](docs/AWS_DEPLOY_RUNBOOK.md); go-live discipline in [docs/AUGUST_ACTIVATION_CHECKLIST.md](docs/AUGUST_ACTIVATION_CHECKLIST.md) (keep EventBridge schedules **disabled** until intentional activation).
+
+**Ongoing narrative:** Keep README, [docs/PRODUCT_PRIORITIES.md](docs/PRODUCT_PRIORITIES.md), and deployment docs aligned as the source of truth.
+
+**Deferred until after reliability + initial AWS launch:**
+
+- **Auth + multi-user (Clerk)** and **Alpaca account linking/execution**
+- **Whale/Shadow implementation** (or explicit removal)
+- **Full observability stack** (Prometheus/Grafana)
+- **Production infra migration** (ECS/MSK/Terraform)

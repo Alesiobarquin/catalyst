@@ -24,7 +24,6 @@ export function TradeList({ orders }: TradeListProps) {
     return true;
   });
 
-  // Keyed by order_id for O(1) merge
   const [perf, setPerf] = useState<Record<number, BatchPerformance>>({});
 
   useEffect(() => {
@@ -70,14 +69,17 @@ export function TradeList({ orders }: TradeListProps) {
     <div>
       {filtered.map((order, i) => {
         const livePerf = perf[order.id];
-        const enriched: TradeOrder = livePerf
-          ? {
-              ...order,
-              current_price: livePerf.current_price ?? order.current_price,
-              pnl_pct:       livePerf.pnl_pct       ?? order.pnl_pct,
-              status:        livePerf.status         ?? order.status,
-            }
-          : order;
+        const enriched: TradeOrder = {
+          ...(livePerf
+            ? {
+                ...order,
+                current_price: livePerf.current_price ?? order.current_price,
+                pnl_pct: livePerf.pnl_pct ?? order.pnl_pct,
+                status: livePerf.status ?? order.status,
+              }
+            : order),
+          execution: null,
+        };
         return <TradeCard key={order.id} order={enriched} index={i} />;
       })}
     </div>

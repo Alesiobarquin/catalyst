@@ -7,6 +7,14 @@ x-hunter-common: &hunter-common
     - KAFKA_BOOTSTRAP_SERVERS=kafka:29092 # Connects internally to Kafka
     - REDIS_HOST=redis
     - REDIS_PORT=6379
+    # Hunters read only their own interval; defaults match hunters/common/config.py
+    - SQUEEZE_INTERVAL_SECONDS=${SQUEEZE_INTERVAL_SECONDS:-900}
+    - BIOTECH_INTERVAL_SECONDS=${BIOTECH_INTERVAL_SECONDS:-1800}
+    - FMP_API_KEY=${FMP_API_KEY:-}
+    - DRIFTER_INTERVAL_SECONDS=${DRIFTER_INTERVAL_SECONDS:-3600}
+    - DRIFTER_MIN_SURPRISE_PERCENT=${DRIFTER_MIN_SURPRISE_PERCENT:-5.0}
+    - DRIFTER_LOOKBACK_DAYS=${DRIFTER_LOOKBACK_DAYS:-3}
+    - WHALE_INTERVAL_SECONDS=${WHALE_INTERVAL_SECONDS:-3600}
   depends_on:
     kafka:
       condition: service_healthy
@@ -23,7 +31,7 @@ services:
     <<: *hunter-common
     container_name: hunter_squeeze
     command: [ "python", "-m", "hunters.main", "squeeze" ]
-    restart: on-failure
+    restart: always
     volumes:
       - ./hunters:/app/hunters
 
@@ -41,7 +49,25 @@ services:
     <<: *hunter-common
     container_name: hunter_biotech
     command: ["python", "-m", "hunters.main", "biotech"]
-    restart: on-failure
+    restart: always
+    volumes:
+      - ./hunters:/app/hunters
+
+  # 4. DRIFTER (earnings beats — FMP calendar; needs FMP_API_KEY)
+  hunter-drifter:
+    <<: *hunter-common
+    container_name: hunter_drifter
+    command: ["python", "-m", "hunters.main", "drifter"]
+    restart: always
+    volumes:
+      - ./hunters:/app/hunters
+
+  # 5. WHALE (Barchart unusual options — Playwright)
+  hunter-whale:
+    <<: *hunter-common
+    container_name: hunter_whale
+    command: ["python", "-m", "hunters.main", "whale"]
+    restart: always
     volumes:
       - ./hunters:/app/hunters
 
@@ -247,6 +273,9 @@ services:
     environment:
       - DATABASE_URL=postgresql://catalyst_user:password123@timescaledb:5432/catalyst_db
       - CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
+      - ENGINE_HEALTH_URL=http://engine:8081/actuator/health
+      - CLERK_ISSUER=${CLERK_ISSUER:-}
+      - CLERK_JWKS_URL=${CLERK_JWKS_URL:-}
     depends_on:
       timescaledb:
         condition: service_started
@@ -256,6 +285,32 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    restart: unless-stopped
+
+  # Alpaca paper executor — consumes trade-orders, places orders per user_alpaca_keys
+  executor:
+    build:
+      context: .
+      dockerfile: executor/Dockerfile
+    container_name: catalyst_executor
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - TRADE_ORDERS_TOPIC=trade-orders
+      - EXECUTOR_CONSUMER_GROUP=catalyst-alpaca-executor
+      - KAFKA_AUTO_OFFSET_RESET=latest
+      - TIMESCALE_HOST=timescaledb
+      - TIMESCALE_PORT=5432
+      - TIMESCALE_USER=catalyst_user
+      - TIMESCALE_PASSWORD=password123
+      - TIMESCALE_DB=catalyst_db
+      - ALPACA_PAPER_BASE=https://paper-api.alpaca.markets
+    depends_on:
+      kafka:
+        condition: service_healthy
+      timescaledb:
+        condition: service_started
+      engine:
+        condition: service_started
     restart: unless-stopped
 
   # ==========================================
@@ -274,6 +329,8 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       # Server components inside this container reach the API by service name
       - API_INTERNAL_URL=http://api:8000
+      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY:-}
     depends_on:
       api:
         condition: service_healthy

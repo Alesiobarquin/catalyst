@@ -77,6 +77,10 @@ public class TradeOrderEntity {
     @Column(name = "spy_above_200sma")
     private Boolean spyAbove200Sma;
 
+    /** Optional Clerk user id for multi-tenant / execution scoping; engine leaves null. */
+    @Column(name = "user_id", length = 128)
+    private String userId;
+
     /**
      * Factory method: assembles an entity from the three objects that exist
      * at the moment of persistence. Keeps consumer code free of field-mapping details.

@@ -16,9 +16,11 @@ interface PriceChartProps {
   order: TradeOrder;
   bars?: PriceBar[];
   height?: number;
+  /** Live = OHLC from API; synthetic = generated placeholder candles */
+  dataSource?: "live" | "synthetic";
 }
 
-export function PriceChart({ order, bars, height = 220 }: PriceChartProps) {
+export function PriceChart({ order, bars, height = 220, dataSource = "synthetic" }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef     = useRef<IChartApi | null>(null);
   const [ready, setReady] = useState(false);
@@ -93,7 +95,9 @@ export function PriceChart({ order, bars, height = 220 }: PriceChartProps) {
     });
     const lineBars = priceBars.filter((b) => b.time >= signalTime);
     if (lineBars.length > 0) {
-      entryLine.setData(lineBars.map((b) => ({ time: b.time, value: order.limit_price })));
+      entryLine.setData(
+        lineBars.map((b) => ({ time: b.time, value: order.limit_price })) as Parameters<typeof entryLine.setData>[0]
+      );
     }
 
     // Stop loss line
@@ -106,7 +110,9 @@ export function PriceChart({ order, bars, height = 220 }: PriceChartProps) {
       title:     `Stop $${order.stop_loss}`,
     });
     if (lineBars.length > 0) {
-      stopLine.setData(lineBars.map((b) => ({ time: b.time, value: order.stop_loss })));
+      stopLine.setData(
+        lineBars.map((b) => ({ time: b.time, value: order.stop_loss })) as Parameters<typeof stopLine.setData>[0]
+      );
     }
 
     // Target price line
@@ -119,7 +125,9 @@ export function PriceChart({ order, bars, height = 220 }: PriceChartProps) {
       title:     `Target $${order.target_price}`,
     });
     if (lineBars.length > 0) {
-      targetLine.setData(lineBars.map((b) => ({ time: b.time, value: order.target_price })));
+      targetLine.setData(
+        lineBars.map((b) => ({ time: b.time, value: order.target_price })) as Parameters<typeof targetLine.setData>[0]
+      );
     }
 
     chart.timeScale().fitContent();
@@ -136,19 +144,35 @@ export function PriceChart({ order, bars, height = 220 }: PriceChartProps) {
       ro.disconnect();
       chart.remove();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order.id]);
+  }, [order.id, order.timestamp_utc, order.limit_price, order.stop_loss, order.target_price, bars, dataSource, height]);
 
   return (
-    <div
-      className="chart-wrapper"
-      style={{
-        height,
-        opacity: ready ? 1 : 0,
-        transition: "opacity 400ms ease",
-      }}
-    >
-      <div ref={containerRef} style={{ width: "100%", height }} />
+    <div>
+      {dataSource === "synthetic" && (
+        <p
+          style={{
+            fontSize: 11,
+            color: "var(--color-gold)",
+            marginBottom: 8,
+            padding: "6px 10px",
+            borderRadius: 6,
+            background: "rgba(245,158,11,0.08)",
+            border: "1px solid rgba(245,158,11,0.25)",
+          }}
+        >
+          Illustrative candles — no historical OHLC from the API for this window. Use for layout only.
+        </p>
+      )}
+      <div
+        className="chart-wrapper"
+        style={{
+          height,
+          opacity: ready ? 1 : 0,
+          transition: "opacity 400ms ease",
+        }}
+      >
+        <div ref={containerRef} style={{ width: "100%", height }} />
+      </div>
     </div>
   );
 }

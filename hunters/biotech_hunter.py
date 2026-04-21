@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime
 
-from .common.config import BIOPHARM_URL
+from .common.config import BIOPHARM_URL, BIOTECH_INTERVAL_SECONDS
 from .common.kafka_client import KafkaClient
 from .common.liquidity_lookup import fetch_liquidity_metrics
 from .common.logger import get_logger
@@ -62,52 +62,53 @@ async def scrape_biopharm(page):
     return catalysts
 
 
+async def _one_sweep(kafka: KafkaClient) -> None:
+    """Single Playwright scrape + Kafka publish."""
+    browser_context = BrowserContext()
+    async with browser_context as browser:
+        page = await browser.new_page()
+        found_catalysts = await scrape_biopharm(page)
+
+        if not found_catalysts:
+            logger.warning("No high-impact biotech catalysts found in this sweep.")
+            return
+
+        pushed = 0
+        for entry in found_catalysts:
+            ticker = entry.get("ticker")
+            if not ticker:
+                continue
+            liquidity = fetch_liquidity_metrics(ticker)
+            if not liquidity:
+                logger.debug("Skipping %s: liquidity lookup failed", ticker)
+                continue
+            entry["price"] = liquidity["price"]
+            entry["volume"] = liquidity["volume"]
+            entry["relative_volume"] = liquidity["relative_volume"]
+            entry["source_hunter"] = "biotech"
+            logger.info("Found Catalyst: %s - %s", entry["ticker"], entry["catalyst_type"])
+            kafka.send_message(KAFKA_TOPIC_BIOTECH, entry)
+            kafka.send_message(RAW_EVENTS_TOPIC, entry)
+            pushed += 1
+        logger.info("Successfully pushed %d signals to Kafka.", pushed)
+
+
 async def run():
-    logger.info("Biotech Hunter starting...")
-    # Initialize Kafka Client
+    logger.info("Biotech Hunter starting (interval=%ss)...", BIOTECH_INTERVAL_SECONDS)
     kafka = KafkaClient()
 
-    # Use the shared Playwright context
-    browser_context = BrowserContext()
+    while True:
+        try:
+            await _one_sweep(kafka)
+        except Exception as e:
+            logger.error("Biotech sweep failed: %s", e, exc_info=True)
+            logger.info("Backing off 60s before retry...")
+            await asyncio.sleep(60)
+            continue
 
-    try:
-        async with browser_context as browser:
-            page = await browser.new_page()
-
-            # 1. Fetch data from BioPharmCatalyst
-            found_catalysts = await scrape_biopharm(page)
-
-            if not found_catalysts:
-                logger.warning("No high-impact biotech catalysts found in this sweep.")
-            else:
-                # 2. Enrich with liquidity metrics and push to Kafka
-                pushed = 0
-                for entry in found_catalysts:
-                    ticker = entry.get("ticker")
-                    if not ticker:
-                        continue
-                    liquidity = fetch_liquidity_metrics(ticker)
-                    if not liquidity:
-                        logger.debug("Skipping %s: liquidity lookup failed", ticker)
-                        continue
-                    entry["price"] = liquidity["price"]
-                    entry["volume"] = liquidity["volume"]
-                    entry["relative_volume"] = liquidity["relative_volume"]
-                    entry["source_hunter"] = "biotech"
-                    logger.info("Found Catalyst: %s - %s", entry["ticker"], entry["catalyst_type"])
-                    kafka.send_message(topic=KAFKA_TOPIC_BIOTECH, value=entry)
-                    kafka.send_message(topic=RAW_EVENTS_TOPIC, value=entry)
-                    pushed += 1
-                logger.info("Successfully pushed %d signals to Kafka.", pushed)
-
-        # 3. CRITICAL: Prevent rate-limiting/IP ban
-        # This keeps the container alive but idle for 15 minutes.
-        logger.info("Sweep complete. Sleeping for 15 minutes...")
-        await asyncio.sleep(900)
-
-    except Exception as e:
-        logger.error(f"Critical failure in Biotech Hunter: {e}")
-        # Sleep even on failure to prevent rapid-fire crash loops
-        await asyncio.sleep(60)
-    finally:
-        logger.info("Biotech Hunter loop cycle finished.")
+        logger.info(
+            "Next biotech sweep in %s seconds (~%.0f min).",
+            BIOTECH_INTERVAL_SECONDS,
+            BIOTECH_INTERVAL_SECONDS / 60,
+        )
+        await asyncio.sleep(BIOTECH_INTERVAL_SECONDS)

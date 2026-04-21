@@ -5,6 +5,7 @@ ruff>=0.6.0
 redis>=5.0
 kafka-python-ng>=2.0
 # AI layer tests (mock Gemini)
+google-genai
 # Squeeze hunter tests
 pandas>=2.0
 # Hunters liquidity lookup

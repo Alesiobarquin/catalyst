@@ -6,8 +6,9 @@ import httpx
 
 from .common.config import SEC_RSS_URL
 from .common.kafka_client import KafkaClient
+from .common.liquidity_lookup import fetch_liquidity_metrics
 from .common.logger import get_logger
-from .common.topics import KAFKA_TOPIC_INSIDER
+from .common.topics import KAFKA_TOPIC_INSIDER, RAW_EVENTS_TOPIC
 
 logger = get_logger("insider_hunter")
 
@@ -169,13 +170,6 @@ def parse_form4_xml(xml_content: bytes, cik: str, accession: str, filing_url: st
                 else None
             )
 
-            ownership_el = txn.find("ownershipNature")
-            ownership_type = (
-                get_text(ownership_el, "directOrIndirectOwnership")
-                if ownership_el is not None
-                else None
-            )
-
             shares = float(shares_str) if shares_str else None
             price = float(price_str) if price_str else None
             total_value = round(shares * price, 2) if shares and price else None
@@ -184,28 +178,23 @@ def parse_form4_xml(xml_content: bytes, cik: str, accession: str, filing_url: st
 
             signals.append(
                 {
-                    "cik": cik,
-                    "accessionNumber": accession,
-                    "filing_url": filing_url,
+                    "hunter": "insider",
                     "ticker": ticker,
-                    "companyName": company_name,
-                    "insiderName": insider_name,
-                    "insiderRoles": insider_roles,
-                    "transactionCode": txn_code,
-                    "transactionType": TRANSACTION_CODES.get(txn_code, txn_code),
-                    "isBuy": txn_code == "P",
-                    "isSell": txn_code == "S",
+                    "transaction_price_per_share": price,
+                    "transaction_code": txn_code,
+                    "transaction_amount_usd": total_value,
+                    "insider_name": insider_name,
+                    "insider_title": ", ".join(insider_roles) if insider_roles else None,
                     "shares": shares,
-                    "pricePerShare": price,
-                    "totalValue": total_value,
-                    "sharesOwnedAfter": float(shares_owned_after) if shares_owned_after else None,
-                    "ownershipType": "Direct"
-                    if ownership_type == "D"
-                    else "Indirect"
-                    if ownership_type == "I"
-                    else "Unknown",
-                    "signalStrength": signal_strength,
+                    "signal_strength": signal_strength,
                     "source": "edgar_form4",
+                    "cik": cik,
+                    "accession_number": accession,
+                    "filing_url": filing_url,
+                    "company_name": company_name,
+                    "is_buy": txn_code == "P",
+                    "is_sell": txn_code == "S",
+                    "shares_owned_after": float(shares_owned_after) if shares_owned_after else None,
                 }
             )
 
@@ -299,25 +288,33 @@ async def run():
                         signals = parse_form4_xml(xml_resp.content, cik, accession, xml_url)
 
                         for signal in signals:
+                            t = signal.get("ticker")
+                            liq = fetch_liquidity_metrics(t) if t else None
+                            if not liq:
+                                logger.debug(
+                                    "Skipping insider signal for %s: liquidity lookup failed", t
+                                )
+                                continue
+                            signal["price"] = liq["price"]
+                            signal["volume"] = liq["volume"]
+                            signal["relative_volume"] = liq["relative_volume"]
+                            signal["source_hunter"] = "insider"
                             KafkaClient.send_message(KAFKA_TOPIC_INSIDER, signal)
+                            KafkaClient.send_message(RAW_EVENTS_TOPIC, signal)
 
                             shares_str = f"{signal['shares']:,.0f}" if signal["shares"] else "?"
-                            price_str = (
-                                f"${signal['pricePerShare']}" if signal["pricePerShare"] else "$?"
-                            )
+                            txn_px = signal.get("transaction_price_per_share")
+                            price_str = f"${txn_px}" if txn_px else "$?"
                             value_str = (
-                                f"${signal['totalValue']:,.0f}" if signal["totalValue"] else "$?"
-                            )
-                            roles_str = (
-                                ", ".join(signal["insiderRoles"])
-                                if signal["insiderRoles"]
-                                else "Unknown"
+                                f"${signal['transaction_amount_usd']:,.0f}"
+                                if signal["transaction_amount_usd"]
+                                else "$?"
                             )
 
                             logger.info(
-                                f"[{signal['signalStrength']}] {signal['ticker']} | "
-                                f"{signal['insiderName']} ({roles_str}) | "
-                                f"{signal['transactionType']} {shares_str} shares "
+                                f"[{signal['signal_strength']}] {signal['ticker']} | "
+                                f"{signal['insider_name']} ({signal['insider_title'] or 'Unknown'}) | "
+                                f"{signal['transaction_code']} {shares_str} shares "
                                 f"@ {price_str} = {value_str}"
                             )
 

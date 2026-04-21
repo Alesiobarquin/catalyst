@@ -87,11 +87,32 @@ Expected healthy/running services:
 | `catalyst_frontend` | 3000 | Up |
 | `catalyst_kafka_ui` | 8080 | Up |
 | `catalyst_redisinsight` | 5540 | Up |
-| `hunter_squeeze` | — | Exited (0) ✓ |
+| `hunter_squeeze` | — | Up (loops forever) |
 | `hunter_insider` | — | Up |
-| `hunter_biotech` | — | Up |
+| `hunter_biotech` | — | Up (loops forever) |
+| `hunter_drifter` | — | Up (loops; needs `FMP_API_KEY` or idle sleep) |
 
-> **Note:** `hunter_squeeze` exits with code 0 after each successful scan — that is expected. It runs once per invocation and is restarted by Docker only on failure.
+> **Note:** Squeeze and biotech hunters run **continuous loops**: scrape → Kafka → sleep (`SQUEEZE_INTERVAL_SECONDS` / `BIOTECH_INTERVAL_SECONDS`, defaults 900s / 1800s) → repeat. Compose uses `restart: always` so the process restarts if it crashes. Insider polls SEC RSS on its own `while True` loop.
+
+### Day-to-day: hunter schedules
+
+Tune intervals via `.env` (passed through Compose):
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `SQUEEZE_INTERVAL_SECONDS` | `900` | Seconds between Finviz squeeze scans (~15 min). |
+| `BIOTECH_INTERVAL_SECONDS` | `1800` | Seconds between BioPharm sweeps (~30 min; be kind to the site). |
+| `DRIFTER_INTERVAL_SECONDS` | `3600` | Seconds between FMP earnings-calendar polls (~1 hr). |
+| `DRIFTER_MIN_SURPRISE_PERCENT` | `5.0` | Minimum EPS beat vs consensus to emit (`eps` vs `epsEstimated`). |
+| `DRIFTER_LOOKBACK_DAYS` | `3` | FMP `from=today−N` … `to=today` window. |
+
+**Drifter** requires **`FMP_API_KEY`** in `.env`. Without it, the container stays up but only sleeps (no API calls).
+
+Free FMP tiers are often capped around **250 API calls per day**. If you hit limits, raise **`DRIFTER_INTERVAL_SECONDS`** (and avoid shortening the lookback window unnecessarily) so each loop makes fewer calendar requests per 24h. One poll per hour (`3600`) is usually safe for a single earnings-calendar call per tick.
+
+After changing values, recreate the hunter containers: `docker compose up -d hunter-squeeze hunter-biotech hunter-drifter`.
+
+See [PRODUCT_PRIORITIES.md](PRODUCT_PRIORITIES.md) Track 1 for rationale.
 
 ### Step 2 — Verify API and engine health
 
@@ -161,6 +182,8 @@ docker exec -it catalyst_redis redis-cli SMEMBERS gk:sources:TEST1
 
 After the first (squeeze) message you should see `squeeze` in the set; after the second, both `squeeze` and `insider`. If the set is empty or only shows one source, the window expired or the first message never landed (check gatekeeper logs for `Dropped` / `unknown schema`).
 
+**Real ticker for engine + `trade_orders`:** `TEST*` and other synthetic symbols are fine for Gatekeeper and the AI layer. The Java engine pulls prices from Yahoo Finance; **fake tickers usually fail price fetch**, so you may see **no** `trade-orders` message and **no** `trade_orders` row. For an end-to-end proof through persistence, repeat the two-event pattern with a **liquid real symbol** (e.g. `NVDA`) within the rolling window, or use the captured recipe in [VALIDATION_REPORT_2026-04-21.md](VALIDATION_REPORT_2026-04-21.md). This matches [README.md](../README.md) “What Actually Works.”
+
 ### Step 5: Verify AI Output Reaches `validated-signals`
 
 ```bash
@@ -191,7 +214,7 @@ docker exec -it catalyst_kafka kafka-console-consumer \
 Pass criteria:
 
 - Engine stays healthy and does not crash loop.
-- A `trade-orders` message appears with fields like `limit_price`, `stop_loss`, `target_price`, `recommended_size_usd`, `strategy_used`.
+- For a **real ticker** path: a `trade-orders` message appears with fields like `limit_price`, `stop_loss`, `target_price`, `recommended_size_usd`, `strategy_used`. If you only injected `TEST*`, the engine may log a price/skip path instead—see the note above Step 5.
 
 ### Step 7: Verify Database Persistence
 
@@ -203,7 +226,7 @@ docker exec -it catalyst_db psql -U catalyst_user -d catalyst_db -c \
 
 Pass criteria:
 
-- A row for `TEST1` appears in `trade_orders`.
+- A row for the ticker you exercised appears in `trade_orders` (expect a **real** symbol such as `NVDA` for the full stack; `TEST1` alone may not persist).
 
 ### Step 8: Verify A Negative Path
 
@@ -297,7 +320,7 @@ The engine **consumes** `validated-signals` and **produces** `trade-orders`, **p
 |-------|----------------|
 | Consumer | Container starts, connects to Kafka, no crash loop |
 | Regime | Logs show periodic SPY / VIX / SMA refresh (or warnings if Yahoo fails) |
-| Pipeline | A synthetic `validated-signals` message yields a `trade-orders` message |
+| Pipeline | A `validated-signals` message for a **Yahoo-priced** ticker yields a `trade-orders` message |
 | Persistence | Row appears in `trade_orders` with expected ticker and prices |
 | Health | `GET /actuator/health` returns `UP` |
 

@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Clock, Shield } from "lucide-react";
-import type { TradeOrder, PriceBar } from "@/types";
+import type { TradeOrder, PriceBar, TradeExecution } from "@/types";
 import { PriceChart } from "@/components/charts/PriceChart";
 import { getPriceHistory } from "@/lib/api";
 import {
@@ -26,16 +26,32 @@ interface TradeCardProps {
 export function TradeCard({ order, index = 0 }: TradeCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [bars, setBars] = useState<PriceBar[]>([]);
-  const fetchedRef = useRef(false);
+  const [historyStatus, setHistoryStatus] = useState<"idle" | "loading" | "live" | "synthetic">("idle");
+  const historyCompletedRef = useRef(false);
+  const historyInFlightRef = useRef(false);
 
   function handleToggleChart() {
     setExpanded((v) => {
       const next = !v;
-      if (next && !fetchedRef.current) {
-        fetchedRef.current = true;
+      if (next && !historyCompletedRef.current && !historyInFlightRef.current) {
+        historyInFlightRef.current = true;
+        setHistoryStatus("loading");
         getPriceHistory(order.ticker, order.timestamp_utc)
-          .then((data) => { if (data.length > 0) setBars(data); })
-          .catch(() => { /* falls back to mock bars silently */ });
+          .then((data) => {
+            if (data.length > 0) {
+              setBars(data);
+              setHistoryStatus("live");
+            } else {
+              setHistoryStatus("synthetic");
+            }
+          })
+          .catch(() => {
+            setHistoryStatus("synthetic");
+          })
+          .finally(() => {
+            historyInFlightRef.current = false;
+            historyCompletedRef.current = true;
+          });
       }
       return next;
     });
@@ -226,6 +242,20 @@ export function TradeCard({ order, index = 0 }: TradeCardProps) {
               color={order.spy_above_200sma ? "var(--color-green)" : "var(--color-red)"}
             />
             <Pill label="Size" value={`$${(order.recommended_size_usd / 1000).toFixed(0)}k`} mono />
+            {order.execution && (
+              <Pill
+                label="Paper"
+                value={formatExecutionLabel(order.execution)}
+                color={
+                  order.execution.execution_status === "filled"
+                    ? "var(--color-green)"
+                    : order.execution.execution_status === "rejected"
+                      ? "var(--color-red)"
+                      : "var(--color-gold)"
+                }
+                mono
+              />
+            )}
           </div>
 
           {/* ── Rationale ─────────────────────────────────── */}
@@ -300,7 +330,17 @@ export function TradeCard({ order, index = 0 }: TradeCardProps) {
                     Signal: {formatDateTime(order.timestamp_utc)}
                   </div>
                 </div>
-                <PriceChart order={order} bars={bars.length > 0 ? bars : undefined} height={220} />
+                {historyStatus === "loading" && (
+                  <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 8 }}>Loading price history…</p>
+                )}
+                {(historyStatus === "live" || historyStatus === "synthetic") && (
+                  <PriceChart
+                    order={order}
+                    bars={bars.length > 0 ? bars : undefined}
+                    height={220}
+                    dataSource={historyStatus === "live" ? "live" : "synthetic"}
+                  />
+                )}
               </div>
             </motion.div>
           )}
@@ -308,6 +348,22 @@ export function TradeCard({ order, index = 0 }: TradeCardProps) {
       </div>
     </motion.div>
   );
+}
+
+function formatExecutionLabel(ex: TradeExecution): string {
+  const st = ex.execution_status;
+  if (st === "filled" && ex.filled_avg_price != null) {
+    return `Filled @ ${formatCurrency(ex.filled_avg_price)}`;
+  }
+  if (st === "rejected") {
+    const em = ex.error_message;
+    if (em && em.length > 48) {
+      return `Rejected (${em.slice(0, 48)}…)`;
+    }
+    return em ? `Rejected (${em})` : "Rejected";
+  }
+  if (st === "pending") return "Pending";
+  return st;
 }
 
 // ── Small pill helper ──────────────────────────────────────────────

@@ -1,5 +1,6 @@
 """Validated signals router — reads from the validated_signals hypertable (Python persistence)."""
 
+import json
 from fastapi import APIRouter, Depends, Query
 import asyncpg
 
@@ -20,7 +21,8 @@ async def list_signals(
     total  = await conn.fetchval("SELECT COUNT(*) FROM validated_signals")
     rows   = await conn.fetch(
         """
-        SELECT id, ticker, time AS timestamp_utc, conviction_score,
+        SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
+               ticker, time AS timestamp_utc, conviction_score,
                catalyst_type, rationale, is_trap,
                confluence_sources, key_risks
         FROM validated_signals
@@ -34,9 +36,12 @@ async def list_signals(
     items = []
     for r in rows:
         d = dict(r)
-        # JSONB arrays come back as strings from asyncpg — normalise
-        d["confluence_sources"] = d.get("confluence_sources") or []
-        d["key_risks"]          = d.get("key_risks") or []
+        for field in ("confluence_sources", "key_risks"):
+            v = d.get(field)
+            if isinstance(v, str):
+                d[field] = json.loads(v)
+            elif v is None:
+                d[field] = []
         items.append(d)
 
     return {"items": items, "total": total or 0, "page": page, "per_page": per_page}
@@ -49,7 +54,8 @@ async def signals_by_ticker(
 ):
     rows = await conn.fetch(
         """
-        SELECT id, ticker, time AS timestamp_utc, conviction_score,
+        SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
+               ticker, time AS timestamp_utc, conviction_score,
                catalyst_type, rationale, is_trap,
                confluence_sources, key_risks
         FROM validated_signals
