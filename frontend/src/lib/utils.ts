@@ -62,39 +62,43 @@ export function formatDateShort(iso: string): string {
 }
 
 // ── Strategy color palette ─────────────────────────────────────────
+// Original strategy names preserved exactly.
 const STRATEGY_COLORS: Record<Strategy, { bg: string; text: string; border: string; dot: string }> = {
-  Supernova: { bg: "rgba(249,115,22,0.12)", text: "#fb923c", border: "rgba(249,115,22,0.3)", dot: "#f97316" },
-  Scalper:   { bg: "rgba(234,179,8,0.12)",  text: "#facc15", border: "rgba(234,179,8,0.3)",  dot: "#eab308" },
-  Follower:  { bg: "rgba(59,130,246,0.12)", text: "#60a5fa", border: "rgba(59,130,246,0.3)", dot: "#3b82f6" },
-  Drifter:   { bg: "rgba(168,85,247,0.12)", text: "#c084fc", border: "rgba(168,85,247,0.3)", dot: "#a855f7" },
-  Fallback:  { bg: "rgba(107,114,128,0.12)",text: "#9ca3af", border: "rgba(107,114,128,0.3)",dot: "#6b7280" },
+  Supernova: { bg: "rgba(249,115,22,0.10)",  text: "#fb923c", border: "rgba(249,115,22,0.25)", dot: "#f97316" },
+  Scalper:   { bg: "rgba(14,165,233,0.10)",  text: "#38bdf8", border: "rgba(14,165,233,0.25)", dot: "#0ea5e9" },
+  Follower:  { bg: "rgba(16,185,129,0.10)",  text: "#34d399", border: "rgba(16,185,129,0.25)", dot: "#10b981" },
+  Drifter:   { bg: "rgba(168,85,247,0.10)",  text: "#c084fc", border: "rgba(168,85,247,0.25)", dot: "#a855f7" },
+  Fallback:  { bg: "rgba(100,116,139,0.10)", text: "#94a3b8", border: "rgba(100,116,139,0.25)", dot: "#64748b" },
 };
 
 export function getStrategyColors(strategy: Strategy) {
   return STRATEGY_COLORS[strategy] ?? STRATEGY_COLORS.Fallback;
 }
 
-// ── Conviction color ───────────────────────────────────────────────
+// ── Conviction color (kept for Charts.tsx compatibility) ───────────
 export function getConvictionColor(score: number): string {
-  if (score >= 80) return "#22c55e";
-  if (score >= 60) return "#f59e0b";
-  return "#ef4444";
+  if (score >= 80) return "#10B981";
+  if (score >= 60) return "#CBD5E1";
+  if (score >= 40) return "#F59E0B";
+  return "#EF4444";
 }
 
 export function getConvictionLabel(score: number): string {
-  if (score >= 85) return "VERY HIGH";
-  if (score >= 70) return "HIGH";
-  if (score >= 55) return "MODERATE";
-  return "LOW";
+  if (score >= 85) return "Very high";
+  if (score >= 70) return "High";
+  if (score >= 55) return "Moderate";
+  if (score >= 40) return "Low";
+  return "Minimal";
 }
 
-// ── Status helpers ─────────────────────────────────────────────────
+// ── Status config ──────────────────────────────────────────────────
+// Colors: only profit green for target hit, only loss red for stop hit.
 export function getStatusConfig(status: TradeStatus) {
-  const map = {
-    HIT_TARGET: { label: "Target Hit",  color: "#22c55e", bg: "rgba(34,197,94,0.12)" },
-    HIT_STOP:   { label: "Stop Hit",    color: "#ef4444", bg: "rgba(239,68,68,0.12)"  },
-    ACTIVE:     { label: "Active",      color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
-    EXPIRED:    { label: "Expired",     color: "#6b7280", bg: "rgba(107,114,128,0.12)" },
+  const map: Record<TradeStatus, { label: string; color: string; bg: string }> = {
+    HIT_TARGET: { label: "Target hit",   color: "#10B981", bg: "rgba(16,185,129,0.10)"  },
+    HIT_STOP:   { label: "Stopped",      color: "#EF4444", bg: "rgba(239,68,68,0.10)"   },
+    ACTIVE:     { label: "Active",       color: "#10B981", bg: "rgba(16,185,129,0.10)"  },
+    EXPIRED:    { label: "Expired",      color: "#64748B", bg: "rgba(100,116,139,0.10)" },
   };
   return map[status];
 }
@@ -102,11 +106,11 @@ export function getStatusConfig(status: TradeStatus) {
 // ── Catalyst type label ────────────────────────────────────────────
 export function getCatalystLabel(type: CatalystType): string {
   const map: Record<CatalystType, string> = {
-    SUPERNOVA: "Short Squeeze",
-    SCALPER:   "Binary Event",
-    FOLLOWER:  "Momentum",
-    DRIFTER:   "Earnings Drift",
-    UNKNOWN:   "Unknown",
+    SUPERNOVA: "Short-covering event detected",
+    SCALPER:   "Binary catalyst identified",
+    FOLLOWER:  "Insider accumulation detected",
+    DRIFTER:   "Post-earnings drift signal",
+    UNKNOWN:   "Unclassified signal",
   };
   return map[type] ?? type;
 }

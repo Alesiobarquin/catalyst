@@ -1,7 +1,6 @@
 import argparse
 import asyncio
 
-# Shadow is still a stub — not imported
 from hunters import biotech_hunter, drifter_hunter, insider_hunter, squeeze_hunter, whale_hunter
 from hunters.common.logger import get_logger
 

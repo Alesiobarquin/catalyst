@@ -5,6 +5,8 @@ import { AlertTriangle, Radio } from "lucide-react";
 import { SignalRow } from "@/components/signals/SignalRow";
 import { Pagination } from "@/components/ui/Pagination";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Signals — Catalyst",
   description:
@@ -93,12 +95,13 @@ export default async function SignalsPage({ searchParams }: PageProps) {
         </div>
       ) : (
         <>
-          <div className="glass-card" style={{ overflow: "hidden", marginBottom: 24 }}>
+          <div className="glass-card" style={{ overflowX: "auto", overflowY: "hidden", marginBottom: 24 }}>
             {/* Table header */}
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "80px 110px 80px 120px 1fr 100px",
+                gridTemplateColumns: "80px 110px 80px 120px minmax(220px, 1fr) 130px",
+                minWidth: 760,
                 gap: 0,
                 borderBottom: "1px solid var(--color-border)",
                 padding: "10px 20px",

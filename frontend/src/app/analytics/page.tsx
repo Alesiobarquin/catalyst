@@ -7,6 +7,8 @@ import {
   PerformanceSummary,
 } from "@/components/analytics/Charts";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Analytics — Catalyst",
   description: "Aggregate analytics: conviction distribution, strategy breakdown, signal volume, and performance metrics.",
@@ -66,6 +68,11 @@ export default async function AnalyticsPage() {
         >
           CATALYST TYPE BREAKDOWN
         </h3>
+        {Object.values(stats.catalyst_breakdown).every((count) => count === 0) && (
+          <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginTop: 0, marginBottom: 4 }}>
+            No catalyst data yet.
+          </p>
+        )}
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           {Object.entries(stats.catalyst_breakdown)
             .filter(([, v]) => v > 0)

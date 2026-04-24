@@ -4,9 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   createChart,
   type IChartApi,
-  type ISeriesApi,
-  type CandlestickSeriesOptions,
-  CandlestickSeries,
   LineSeries,
 } from "lightweight-charts";
 import type { TradeOrder, PriceBar } from "@/types";
@@ -16,7 +13,7 @@ interface PriceChartProps {
   order: TradeOrder;
   bars?: PriceBar[];
   height?: number;
-  /** Live = OHLC from API; synthetic = generated placeholder candles */
+  /** Live = OHLC from API; synthetic = generated placeholder data */
   dataSource?: "live" | "synthetic";
 }
 
@@ -30,84 +27,83 @@ export function PriceChart({ order, bars, height = 220, dataSource = "synthetic"
 
     const el = containerRef.current;
 
-    // Create chart
     const chart = createChart(el, {
       width:  el.clientWidth,
       height,
       layout: {
-        background:      { color: "transparent" },
-        textColor:       "#8892a4",
-        fontFamily:      "JetBrains Mono, monospace",
-        fontSize:        10,
+        background:  { color: "transparent" },
+        textColor:   "#64748B",
+        fontFamily:  "JetBrains Mono, monospace",
+        fontSize:    10,
       },
       grid: {
-        vertLines: { color: "rgba(255,255,255,0.03)" },
-        horzLines: { color: "rgba(255,255,255,0.03)" },
+        vertLines: { color: "rgba(255,255,255,0.04)" },
+        horzLines: { color: "rgba(255,255,255,0.04)" },
       },
       rightPriceScale: {
-        borderColor: "rgba(255,255,255,0.06)",
-        scaleMargins: { top: 0.08, bottom: 0.12 },
+        borderColor:  "rgba(255,255,255,0.08)",
+        scaleMargins: { top: 0.10, bottom: 0.14 },
       },
       timeScale: {
-        borderColor:     "rgba(255,255,255,0.06)",
-        timeVisible:     true,
-        secondsVisible:  false,
+        borderColor:    "rgba(255,255,255,0.08)",
+        timeVisible:    true,
+        secondsVisible: false,
         tickMarkFormatter: (time: number) => {
           const d = new Date(time * 1000);
           return `${d.toLocaleString("en", { month: "short" })} ${d.getDate()}`;
         },
       },
       crosshair: {
-        vertLine: { color: "rgba(245,158,11,0.4)", labelBackgroundColor: "#1a2030" },
-        horzLine: { color: "rgba(245,158,11,0.4)", labelBackgroundColor: "#1a2030" },
+        vertLine: { color: "rgba(255,255,255,0.2)", labelBackgroundColor: "#1E293B" },
+        horzLine: { color: "rgba(255,255,255,0.2)", labelBackgroundColor: "#1E293B" },
       },
-      handleScroll:  true,
-      handleScale:   true,
+      handleScroll: true,
+      handleScale:  true,
     });
 
     chartRef.current = chart;
 
-    // Price data
     const priceBars: PriceBar[] = bars?.length ? bars : generateMockPriceBars(order);
 
-    // Candlestick series
-    const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor:          "#22c55e",
-      downColor:        "#ef4444",
-      borderUpColor:    "#22c55e",
-      borderDownColor:  "#ef4444",
-      wickUpColor:      "#22c55e",
-      wickDownColor:    "#ef4444",
-    } as Partial<CandlestickSeriesOptions>);
-    candleSeries.setData(priceBars as Parameters<typeof candleSeries.setData>[0]);
-
-    // Signal timestamp
-    const signalTime = Math.floor(new Date(order.timestamp_utc).getTime() / 1000);
-
-    // Entry price line
-    const entryLine = chart.addSeries(LineSeries, {
-      color:     "#f59e0b",
-      lineWidth:  2,
-      lineStyle:  1, // dashed
+    // ── Main price line (close values) ──────────────────────────
+    const priceLine = chart.addSeries(LineSeries, {
+      color:            "#CBD5E1",
+      lineWidth:        2,
       priceLineVisible: false,
       lastValueVisible: true,
-      title:     `Entry $${order.limit_price}`,
+      crosshairMarkerVisible: true,
+      crosshairMarkerRadius:  3,
     });
-    const lineBars = priceBars.filter((b) => b.time >= signalTime);
+    priceLine.setData(
+      priceBars.map((b) => ({ time: b.time, value: b.close })) as Parameters<typeof priceLine.setData>[0]
+    );
+
+    const signalTime = Math.floor(new Date(order.timestamp_utc).getTime() / 1000);
+    const lineBars   = priceBars.filter((b) => b.time >= signalTime);
+
+    // ── Entry line ────────────────────────────────────────────
+    const entryLine = chart.addSeries(LineSeries, {
+      color:            "rgba(255,255,255,0.45)",
+      lineWidth:        1,
+      lineStyle:        1,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      title:            `Entry ${order.limit_price.toFixed(2)}`,
+    });
     if (lineBars.length > 0) {
       entryLine.setData(
         lineBars.map((b) => ({ time: b.time, value: order.limit_price })) as Parameters<typeof entryLine.setData>[0]
       );
     }
 
-    // Stop loss line
+    // ── Stop loss line ────────────────────────────────────────
     const stopLine = chart.addSeries(LineSeries, {
-      color:     "#ef4444",
-      lineWidth:  1,
-      lineStyle:  2,
+      color:            "#F59E0B",
+      lineWidth:        1,
+      lineStyle:        2,
       priceLineVisible: false,
       lastValueVisible: true,
-      title:     `Stop $${order.stop_loss}`,
+      title:            `Stop ${order.stop_loss.toFixed(2)}`,
     });
     if (lineBars.length > 0) {
       stopLine.setData(
@@ -115,14 +111,14 @@ export function PriceChart({ order, bars, height = 220, dataSource = "synthetic"
       );
     }
 
-    // Target price line
+    // ── Target line ───────────────────────────────────────────
     const targetLine = chart.addSeries(LineSeries, {
-      color:     "#22c55e",
-      lineWidth:  1,
-      lineStyle:  2,
+      color:            "#10B981",
+      lineWidth:        1,
+      lineStyle:        2,
       priceLineVisible: false,
       lastValueVisible: true,
-      title:     `Target $${order.target_price}`,
+      title:            `Target ${order.target_price.toFixed(2)}`,
     });
     if (lineBars.length > 0) {
       targetLine.setData(
@@ -132,7 +128,6 @@ export function PriceChart({ order, bars, height = 220, dataSource = "synthetic"
 
     chart.timeScale().fitContent();
 
-    // Responsive resize
     const ro = new ResizeObserver(() => {
       if (el.clientWidth > 0) chart.resize(el.clientWidth, height);
     });
@@ -152,24 +147,20 @@ export function PriceChart({ order, bars, height = 220, dataSource = "synthetic"
         <p
           style={{
             fontSize: 11,
-            color: "var(--color-gold)",
+            color: "var(--color-text-muted)",
             marginBottom: 8,
-            padding: "6px 10px",
-            borderRadius: 6,
-            background: "rgba(245,158,11,0.08)",
-            border: "1px solid rgba(245,158,11,0.25)",
+            padding: "5px 10px",
+            borderRadius: 4,
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.08)",
           }}
         >
-          Illustrative candles — no historical OHLC from the API for this window. Use for layout only.
+          Illustrative price data — no historical OHLC available for this window.
         </p>
       )}
       <div
         className="chart-wrapper"
-        style={{
-          height,
-          opacity: ready ? 1 : 0,
-          transition: "opacity 400ms ease",
-        }}
+        style={{ height, opacity: ready ? 1 : 0 }}
       >
         <div ref={containerRef} style={{ width: "100%", height }} />
       </div>

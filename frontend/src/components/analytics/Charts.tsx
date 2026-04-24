@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import type { OrderStats } from "@/types";
 import { getStrategyColors } from "@/lib/utils";
 import type { Strategy } from "@/types";
@@ -22,6 +21,11 @@ export function StrategyBreakdown({ stats }: StrategyBreakdownProps) {
         STRATEGY BREAKDOWN
       </h3>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {entries.length === 0 && (
+          <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: 0 }}>
+            No strategy data yet.
+          </p>
+        )}
         {entries.map(([strategy, count]) => {
           const pct = total > 0 ? (count / total) * 100 : 0;
           const colors = getStrategyColors(strategy);
@@ -66,7 +70,7 @@ export function ConvictionHistogram({ stats }: { stats: OrderStats }) {
         {stats.conviction_distribution.map((d) => {
           const heightPct = max > 0 ? (d.count / max) * 100 : 0;
           const bucket = parseInt(d.bucket.split("–")[0], 10);
-          const color = bucket >= 80 ? "var(--color-green)" : bucket >= 70 ? "var(--color-gold)" : "var(--color-red)";
+          const color = bucket >= 80 ? "var(--color-green)" : bucket >= 70 ? "var(--color-teal)" : "var(--color-red)";
           return (
             <div key={d.bucket} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
               <span style={{ fontSize: 10, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>
@@ -117,7 +121,7 @@ export function SignalTimeline({ stats }: { stats: OrderStats }) {
                   width: "100%",
                   height: `${heightPct}%`,
                   minHeight: 4,
-                  background: "var(--color-gold)",
+                  background: "var(--color-teal)",
                   borderRadius: "2px 2px 0 0",
                   opacity: 0.7,
                   transition: "height 0.6s ease",
@@ -146,11 +150,11 @@ export function PerformanceSummary({ stats }: { stats: OrderStats }) {
       </h3>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         {[
-          { label: "Win Rate",      value: `${winRate}%`,                       color: "var(--color-green)" },
-          { label: "Avg Conv.",     value: `${stats.avg_conviction.toFixed(0)}`, color: "var(--color-gold)" },
+          { label: "Closed Win Rate", value: `${winRate}%`,                     color: "var(--color-green)" },
+          { label: "Avg Conv.",     value: `${stats.avg_conviction.toFixed(0)}`, color: "var(--color-teal)" },
           { label: "Hit Target",   value: `${stats.hit_target_count}`,          color: "var(--color-green)" },
           { label: "Hit Stop",     value: `${stats.hit_stop_count}`,            color: "var(--color-red)"   },
-          { label: "Active",       value: `${stats.active_count}`,              color: "var(--color-gold)"  },
+          { label: "Active",       value: `${stats.active_count}`,              color: "var(--color-teal)"  },
           { label: "Total",        value: `${stats.total_orders}`,              color: "var(--color-text-primary)" },
         ].map((item) => (
           <div key={item.label}>

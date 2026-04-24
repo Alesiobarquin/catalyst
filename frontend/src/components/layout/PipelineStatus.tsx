@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Radio, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import type { PipelineHealth } from "@/types";
 
 const POLL_MS = 30_000;
@@ -39,24 +39,15 @@ export function PipelineStatus() {
     };
   }, []);
 
-  const ready = data?.ready === true;
+  const ready    = data?.ready === true;
   const degraded = data && !ready && data.database === "ok";
-  const dead = !loading && (data === null || data.database === "error");
+  const dead     = !loading && (data === null || data.database === "error");
 
-  const border = dead
-    ? "rgba(239,68,68,0.35)"
-    : degraded
-      ? "rgba(245,158,11,0.35)"
-      : "rgba(34,197,94,0.25)";
-  const bg = dead
-    ? "rgba(239,68,68,0.08)"
-    : degraded
-      ? "rgba(245,158,11,0.08)"
-      : "rgba(34,197,94,0.06)";
-  const labelColor = dead ? "var(--color-red)" : degraded ? "var(--color-gold)" : "var(--color-green)";
-  const label = loading ? "…" : dead ? "OFFLINE" : ready ? "LIVE" : "DEGRADED";
-  const sub = loading
-    ? "Checking…"
+  const dotColor   = dead ? "#EF4444" : degraded ? "#F59E0B" : "#10B981";
+  const labelColor = dead ? "#EF4444" : degraded ? "#F59E0B" : "var(--color-text-muted)";
+  const label      = loading ? "…" : dead ? "OFFLINE" : ready ? "LIVE" : "DEGRADED";
+  const sub        = loading
+    ? "Checking"
     : dead
       ? "API unreachable"
       : ready
@@ -70,30 +61,44 @@ export function PipelineStatus() {
         display: "flex",
         alignItems: "center",
         gap: 8,
-        padding: "5px 12px",
-        borderRadius: 20,
-        border: `1px solid ${border}`,
-        background: bg,
+        padding: "4px 10px",
+        borderRadius: 4,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: "transparent",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        {dead ? (
-          <AlertCircle size={12} color="var(--color-red)" />
-        ) : (
-          <Radio size={12} color={labelColor} className={ready && !loading ? "animate-blink" : undefined} />
-        )}
+      {dead ? (
+        <AlertCircle size={11} color="#EF4444" />
+      ) : (
+        /* Static dot — NO animation property */
         <span
           style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: labelColor,
-            letterSpacing: "0.08em",
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: dotColor,
+            display: "inline-block",
+            flexShrink: 0,
           }}
-        >
-          {label}
-        </span>
-      </div>
-      <span style={{ fontSize: 11, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>
+        />
+      )}
+      <span
+        style={{
+          fontSize: 10,
+          fontWeight: 600,
+          color: labelColor,
+          letterSpacing: "0.08em",
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: 11,
+          color: "var(--color-text-muted)",
+          fontFamily: "var(--font-mono)",
+        }}
+      >
         {sub}
       </span>
     </div>

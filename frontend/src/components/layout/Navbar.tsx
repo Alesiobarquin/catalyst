@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, BarChart3, Settings, Zap } from "lucide-react";
-import { PipelineStatus } from "./PipelineStatus";
+import { LayoutDashboard, BarChart3, Zap, Settings, User } from "lucide-react";
+import { NavClock } from "./NavClock";
 
 const NAV_LINKS = [
-  { href: "/",          label: "Dashboard",  icon: Activity  },
-  { href: "/analytics", label: "Analytics",  icon: BarChart3 },
-  { href: "/signals",   label: "Signals",    icon: Zap       },
-  { href: "/settings",  label: "Settings",   icon: Settings  },
+  { href: "/",          label: "Dashboard",  icon: LayoutDashboard },
+  { href: "/analytics", label: "Analytics",  icon: BarChart3       },
+  { href: "/signals",   label: "Signals",    icon: Zap             },
+  { href: "/settings",  label: "Settings",   icon: Settings        },
 ];
 
 export function Navbar() {
@@ -21,9 +21,8 @@ export function Navbar() {
         position: "sticky",
         top: 0,
         zIndex: 50,
-        background: "rgba(8,10,15,0.85)",
-        backdropFilter: "blur(16px)",
-        borderBottom: "1px solid var(--color-border)",
+        background: "#0B1121",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
       }}
     >
       <div
@@ -31,14 +30,13 @@ export function Navbar() {
           maxWidth: 1400,
           margin: "0 auto",
           padding: "0 24px",
-          height: 60,
+          height: 64,
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          gap: 24,
+          gap: 32,
         }}
       >
-        {/* Logo */}
+        {/* ── Logo ─────────────────────────────────────────── */}
         <Link
           href="/"
           style={{
@@ -46,37 +44,55 @@ export function Navbar() {
             alignItems: "center",
             gap: 10,
             textDecoration: "none",
+            flexShrink: 0,
           }}
         >
+          {/* Icon */}
           <div
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: "linear-gradient(135deg, #f59e0b, #d97706)",
+              width: 28,
+              height: 28,
+              borderRadius: 4,
+              background: "#D97706",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 0 12px rgba(245,158,11,0.4)",
+              flexShrink: 0,
             }}
           >
-            <Zap size={16} color="#000" fill="#000" />
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M8 1L2 8h5l-1 5 6-7H7L8 1z" fill="#fff" />
+            </svg>
           </div>
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontWeight: 700,
-              fontSize: 16,
-              color: "var(--color-text-primary)",
-              letterSpacing: "0.05em",
-            }}
-          >
-            CATALYST
-          </span>
+          {/* Text */}
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontWeight: 700,
+                fontSize: 15,
+                color: "#D97706",
+                letterSpacing: "0.08em",
+                lineHeight: 1.15,
+              }}
+            >
+              CATALYST
+            </div>
+            <div
+              style={{
+                fontSize: 10,
+                color: "var(--color-text-muted)",
+                letterSpacing: "0.04em",
+                lineHeight: 1.15,
+              }}
+            >
+              Signal intelligence platform
+            </div>
+          </div>
         </Link>
 
-        {/* Nav links */}
-        <nav style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        {/* ── Nav links ─────────────────────────────────────── */}
+        <nav style={{ display: "flex", alignItems: "stretch", gap: 0, height: "100%", flex: 1 }}>
           {NAV_LINKS.map(({ href, label, icon: Icon }) => {
             const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (
@@ -86,40 +102,81 @@ export function Navbar() {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 7,
-                  padding: "6px 14px",
-                  borderRadius: 8,
+                  gap: 6,
+                  padding: "0 16px",
                   fontSize: 13,
-                  fontWeight: isActive ? 600 : 500,
-                  color: isActive ? "var(--color-gold)" : "var(--color-text-secondary)",
+                  fontWeight: 500,
+                  color: isActive ? "var(--color-text-primary)" : "var(--color-text-secondary)",
                   textDecoration: "none",
-                  background: isActive ? "rgba(245,158,11,0.1)" : "transparent",
-                  border: isActive ? "1px solid rgba(245,158,11,0.2)" : "1px solid transparent",
-                  transition: "color 150ms, background 150ms, border-color 150ms",
+                  borderBottom: isActive
+                    ? "2px solid #0EA5E9"
+                    : "2px solid transparent",
+                  transition: "color 100ms ease",
+                  whiteSpace: "nowrap",
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive) {
                     (e.currentTarget as HTMLAnchorElement).style.color = "var(--color-text-primary)";
-                    (e.currentTarget as HTMLAnchorElement).style.background = "var(--color-bg-elevated)";
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!isActive) {
                     (e.currentTarget as HTMLAnchorElement).style.color = "var(--color-text-secondary)";
-                    (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
                   }
                 }}
               >
-                <Icon size={14} />
+                <Icon size={14} strokeWidth={1.5} />
                 {label}
               </Link>
             );
           })}
         </nav>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <PipelineStatus />
-          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>Preview</span>
+        {/* ── Right side ────────────────────────────────────── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 20, flexShrink: 0 }}>
+          {/* Clock */}
+          <NavClock />
+
+          {/* Static live indicator — NO animation */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: "#10B981",
+                display: "inline-block",
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontSize: 10,
+                color: "var(--color-text-muted)",
+                fontWeight: 600,
+                letterSpacing: "0.06em",
+              }}
+            >
+              LIVE
+            </span>
+          </div>
+
+          {/* User avatar placeholder */}
+          <div
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
+              background: "var(--color-bg-row)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <User size={13} color="var(--color-text-muted)" strokeWidth={1.5} />
+          </div>
         </div>
       </div>
     </header>

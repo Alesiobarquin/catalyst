@@ -50,12 +50,8 @@ We monitor 6 distinct data streams (The "Hunters").
     *   *The Hack:* The URL parameter `f=sh_short_o20` tells Finviz to filter for >20% short interest.
     *   *Kafka Topic:* `signal-squeeze`
 
-6.  **Shadow Hunter: Dark Pool Tracker**
-    *   *Role:* The "Hidden" liquidity.
-    *   *Source:* `https://tradytics.com/darkpool-market`
-    *   *The Hack:* Use Playwright to render the "Darkpool Market Summary" table.
-    *   *Logic:* Filter for Net Value > $100M.
-    *   *Kafka Topic:* `signal-shadow`
+6.  **Shadow Hunter**
+    *   Removed from active scope. Tradytics dark-pool data is paywalled and not suitable for a free scraper workflow.
 
 ### Layer 2: The Nervous System (Apache Kafka)
 **Role:** Decoupling. Handles the speed mismatch between fast data and deep thought.

@@ -183,7 +183,6 @@ class GatekeeperService:
             "whale": self.coerce_whale,
             "biotech": self.coerce_biotech,
             "drifter": self.coerce_drifter,
-            "shadow": self.coerce_shadow,
         }
 
         coercer = coercers.get(source_hunter)
@@ -217,8 +216,6 @@ class GatekeeperService:
             return "biotech"
         if "surprise_percent" in raw_event or "surprise_percent" in signal_data:
             return "drifter"
-        if "net_value_usd" in raw_event or "block_trade_count" in signal_data:
-            return "shadow"
         return None
 
     def coerce_squeeze(self, raw_event):
@@ -283,14 +280,6 @@ class GatekeeperService:
             "revenue_actual": self.first(raw_event, "revenue_actual"),
         }
         return self.build_event("drifter", raw_event, signal_fields)
-
-    def coerce_shadow(self, raw_event):
-        signal_fields = {
-            "net_value_usd": self.first(raw_event, "net_value_usd", "net_value"),
-            "block_trade_count": self.first(raw_event, "block_trade_count", "blocks"),
-            "sentiment": self.first(raw_event, "sentiment"),
-        }
-        return self.build_event("shadow", raw_event, signal_fields)
 
     def build_event(self, source_hunter, raw_event, signal_fields, liquidity_overrides=None):
         liquidity_metrics = self.extract_liquidity_metrics(raw_event, liquidity_overrides or {})

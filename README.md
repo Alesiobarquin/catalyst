@@ -16,7 +16,7 @@ Catalyst discovers market catalysts by aggregating signals from multiple sources
 | **End-to-end pipeline** | ✅ Verified (Compose) | Hunters → Gatekeeper → AI → `validated-signals` → Java engine → `trade_orders` / `trade-orders`. Use **real tickers** for engine price fetch (synthetic tickers like `TEST*` will validate AI but may skip sizing). |
 | **Insider Hunter** | ⚠️ Partial | Long-running and emits to Kafka; **organic** overlap with other hunters in the gatekeeper window is **sparse** (optional stretch to observe in longer / AWS runs—see [docs/PRODUCT_PRIORITIES.md](docs/PRODUCT_PRIORITIES.md)). |
 | **Biotech Hunter** | ⚠️ Partial | Recurring loop in Compose; local recurrence proof uses the same **accelerated soak** model as squeeze ([docs/VALIDATION_REPORT_2026-04-21.md](docs/VALIDATION_REPORT_2026-04-21.md)). **Confluence** for the stack is proven via controlled injection + real ticker for the engine. |
-| **Whale / Shadow** | 📋 Stubs | Deferred for now; decide implement vs remove after reliability closeout. |
+| **Whale Hunter** | ✅ Implemented | Barchart unusual-options scraper, emits to `raw-events` + `signal-whale`. |
 | **Drifter Hunter** | ✅ Implemented | FMP earnings-calendar based hunter, Compose wired, emits to `raw-events` + `signal-earnings`. |
 | **Persistence** | ⚠️ Partial | TimescaleDB: Python service writes `validated_signals`; Java engine writes `trade_orders`. |
 | **Strategy Engine** | ✅ Implemented | Java Spring Boot in `engine/`: regime, Half-Kelly, strategies, `trade-orders` + DB. See [docs/ENGINE.md](docs/ENGINE.md). |
@@ -99,9 +99,8 @@ Independent Python agents that scrape data and publish to Kafka. Each publishes 
 | **Squeeze** | Finviz | ✅ Active | High short interest + unusual volume |
 | **Biotech** | BioPharmCatalyst | ⚠️ Active | Phase 3 / PDUFA / NDA / BLA |
 | **Insider** | SEC EDGAR | ⚠️ Limited | Form 4 purchase filings |
-| **Whale** | Barchart | Stub | Unusual options flow |
+| **Whale** | Barchart | ✅ Active | Unusual options flow |
 | **Drifter** | FMP API | ✅ Active (needs `FMP_API_KEY`) | Post-earnings beat |
-| **Shadow** | Dark pool | Stub | Dark pool prints |
 
 #### Squeeze Hunter Pre-Emission Filters
 
@@ -251,6 +250,6 @@ For AWS deployment, cost estimates, and scaling considerations, see [docs/DEPLOY
 **Deferred until after reliability + initial AWS launch:**
 
 - **Auth + multi-user (Clerk)** and **Alpaca account linking/execution**
-- **Whale/Shadow implementation** (or explicit removal)
+- **Improve Whale signal quality** (ranking/scoring refinements)
 - **Full observability stack** (Prometheus/Grafana)
 - **Production infra migration** (ECS/MSK/Terraform)

@@ -27,6 +27,7 @@ function apiBaseUrl(): string {
 
 export async function getOrders(params?: {
   strategy?: string;
+  date_range?: "7d" | "30d" | "90d" | "all";
   page?: number;
   per_page?: number;
 }): Promise<PaginatedResponse<TradeOrder>> {
@@ -38,7 +39,8 @@ export async function getOrders(params?: {
     return { items, total: items.length, page: 1, per_page: 20 };
   }
   const qs = new URLSearchParams();
-  if (params?.strategy) qs.set("strategy", params.strategy);
+  if (params?.strategy && params.strategy !== "all") qs.set("strategy", params.strategy);
+  if (params?.date_range && params.date_range !== "all") qs.set("date_range", params.date_range);
   if (params?.page) qs.set("page", String(params.page));
   if (params?.per_page) qs.set("per_page", String(params.per_page));
   const res = await fetch(`${apiBaseUrl()}/orders?${qs}`, { next: { revalidate: 30 } });

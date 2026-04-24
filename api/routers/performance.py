@@ -16,6 +16,7 @@ FastAPI does not try to coerce the literal string "batch" as an integer.
 
 from datetime import datetime, timezone
 from typing import Optional
+import logging
 
 import yfinance as yf
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -24,6 +25,7 @@ import asyncpg
 from api.db import get_conn
 
 router = APIRouter(prefix="/performance", tags=["performance"])
+logger = logging.getLogger("api.performance")
 
 
 # ── Batch endpoint (must come first) ──────────────────────────────────────────
@@ -94,8 +96,8 @@ async def get_batch_performance(
                             break
                     if computed_status == "ACTIVE" and days_held > 90:
                         computed_status = "EXPIRED"
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Batch performance lookup failed for %s: %s", row["ticker"], exc)
 
         pnl_pct = None
         if current_price is not None and entry_price > 0:
@@ -178,8 +180,8 @@ async def get_order_performance(
                         break
                 if computed_status == "ACTIVE" and days_held > 90:
                     computed_status = "EXPIRED"
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Single performance lookup failed for %s: %s", ticker, exc)
 
     pnl_pct: Optional[float] = None
     if current_price is not None and entry_price > 0:

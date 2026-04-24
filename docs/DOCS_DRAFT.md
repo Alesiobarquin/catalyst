@@ -63,9 +63,9 @@
 **Not Implemented (Planned)**
 | Component | Reason |
 |-----------|--------|
-| Whale Hunter | Stub. Barchart requires Cloudflare bypass; needs more Playwright work. |
-| Drifter Hunter | Stub. FMP API needs key; earnings logic not built. |
-| Shadow Hunter | Stub. Dark pool data source research incomplete. |
+| Whale Hunter | Implemented. Barchart scraper emits to `signal-whale` + `raw-events`. |
+| Drifter Hunter | Implemented. FMP earnings logic emits to `signal-earnings` + `raw-events`. |
+| Shadow Hunter | Dropped. Tradytics dark-pool feed is paywalled and not suitable for free scraping. |
 | Persistence (TimescaleDB) | No consumer writes to DB. Signals live only in Kafka topics. |
 | Frontend | Designed, not built. |
 | Strategy Engine | Designed (Kelly, regime filter), not built. |

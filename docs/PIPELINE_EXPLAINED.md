@@ -78,9 +78,8 @@ Each hunter also publishes to its **own** topic for debugging or future consumer
 | **`signal-squeeze`** | Squeeze hunter |
 | **`signal-insider`** | Insider hunter |
 | **`signal-biotech`** | Biotech hunter |
-| **`signal-whale`** | Whale hunter (stub) |
+| **`signal-whale`** | Whale hunter |
 | **`signal-earnings`** | Drifter hunter |
-| **`signal-shadow`** | Shadow hunter (stub) |
 
 The **gatekeeper does not subscribe to these individually**—it only consumes **`raw-events`**. So seeing identical message counts on e.g. `raw-events` and `signal-insider` often means **each event was written twice** (hunter topic + `raw-events`), not that data “flowed through” an extra stage.
 

@@ -47,18 +47,17 @@
 
 | Component | Issue | Impact |
 |-----------|-------|--------|
-| Gatekeeper | `time.sleep()` called but `time` not imported (line 98) | Crashes on Kafka retry path |
-| main.py | Imports `drifter_hunter` and `shadow_hunter`; both modules have no `run()` (fully commented) | `python -m hunters.main all` → AttributeError |
-| Insider Hunter | Emits without `volume`, `relative_volume`, `price` | Gatekeeper drops 100% of insider events |
-| Biotech Hunter | Same liquidity gap | Gatekeeper drops 100% of biotech events |
-| Whale / Drifter / Shadow | Stubs only | Not implemented; drifter/shadow break `run all` |
+| Data quality visibility | Live P&L fetch failures were silently swallowed in API | Dashboard can hide degraded state |
+| Frontend filtering | Filters were page-local client filters | Misleading UX vs full dataset |
+| Signals table UX | Fixed-width rationale and no expand affordance | Readability issues on small viewports |
+| Legacy docs drift | README/roadmap claims lagged code reality | Onboarding confusion |
 
 ### What Doesn't Exist Yet
 
 | Component | Status |
 |-----------|--------|
 | Automated tests | Few or no unit/integration tests across Python + Java |
-| CI | Placeholder only (echo in GitHub Actions) |
+| CI | Python ruff + pytest live; frontend/engine coverage pending |
 | Read API for trade history | ✅ Built — FastAPI, 4 routers: `/orders`, `/signals`, `/market`, `/performance` |
 | Dashboard | ✅ Built — Next.js 16, wired to real API; live P&L via `/performance/batch` |
 | Alpaca integration | Not built (Phase 3) |
@@ -73,11 +72,11 @@
 
 | Task | Why | Est. Time | Blocker For | Recruiting Value |
 |------|-----|-----------|-------------|------------------|
-| Add `import time` to `gatekeeper.py` | Crashes on Kafka retry | 0.5h | Deployment | Low |
-| Remove drifter/shadow from `main.py` HUNTERS (or add no-op `run()`) | `run all` crashes | 1h | Deployment | Low |
-| Fix Insider/Biotech liquidity gap | Only squeeze works E2E; confluence never fires | 6–8h | Confluence story | **High** |
+| Frontend server-side filtering + pagination alignment | Correctness and trust in dashboard views | 3–5h | UX polish | **High** |
+| Frontend empty states + rationale UX | Improve clarity when dataset is sparse | 3–5h | UX polish | **Medium** |
+| Drop shadow hunter + docs cleanup | Remove dead/unviable data source path | 1–2h | Repo clarity | **Medium** |
 | Unit tests (Gatekeeper coercers, filters; AI normalize; Squeeze filters) | Zero tests = no credibility | 8–10h | CI | **High** |
-| CI: pytest + ruff in GitHub Actions | Placeholder CI = bad signal | 4–5h | — | **High** |
+| CI: frontend + engine jobs in GitHub Actions | Catch regressions outside Python | 4–6h | — | **High** |
 | TimescaleDB persistence consumer | Queryable AI signals (`validated_signals`) | 6–8h | API, Dashboard, Engine | **High** |
 
 **Persistence note:** Python `persistence/` writes **`validated_signals`**. The Java **`engine`** writes **`trade_orders`** — both are queryable history; scope differs (see [schemas.md](schemas.md)).
@@ -176,7 +175,7 @@
 |------|------|-------|
 | Whale hunter (Barchart + Playwright) | After Phase 2 | Cloudflare bypass; fragile |
 | Drifter hunter (FMP earnings) | After Phase 2 | Needs FMP key; 250 calls/day limit |
-| Shadow hunter (Tradytics dark pool) | After Phase 2 | Data source research |
+| Shadow hunter (Tradytics dark pool) | Dropped | Paywalled/no viable free source |
 | ECS + MSK production deployment | When budget allows | ~$200+/mo |
 | WebSocket live feed for trade-orders | After dashboard stable | Real-time updates |
 
@@ -228,7 +227,7 @@ Phase 3 (Auth, Alpaca)
 
 | Item | Reason |
 |------|--------|
-| Whale / Drifter / Shadow hunters in main.py | Remove or gate; implement only when data sources are viable |
+| Shadow hunter | Removed from scope; no viable free source and weak standalone signal |
 | Terraform / IaC | EC2 + Docker Compose + Lambda is sufficient for student scope |
 | 24/7 deployment | Market-hours-only is correct trade-off per DEPLOYMENT.md |
 | Live (non-paper) Alpaca trading | Start paper only; add live as explicit Phase 3+ feature |

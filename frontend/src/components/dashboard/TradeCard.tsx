@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, Clock, Shield } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronDown, ChevronUp, TrendingUp, TrendingDown } from "lucide-react";
 import type { TradeOrder, PriceBar, TradeExecution } from "@/types";
 import { PriceChart } from "@/components/charts/PriceChart";
 import { getPriceHistory } from "@/lib/api";
@@ -11,9 +11,6 @@ import {
   formatDateTime,
   formatRelative,
   calcRiskReward,
-  getStrategyColors,
-  getConvictionColor,
-  getConvictionLabel,
   getStatusConfig,
   getCatalystLabel,
 } from "@/lib/utils";
@@ -23,12 +20,63 @@ interface TradeCardProps {
   index?: number;
 }
 
+function truncateThesis(text: string, maxWords = 20): string {
+  const firstSentence = text.split(/(?<=[.!?])\s+/)[0]?.trim() ?? text.trim();
+  const words = firstSentence.split(/\s+/);
+  if (words.length <= maxWords) return firstSentence;
+  return words.slice(0, maxWords).join(" ") + "…";
+}
+
+function signedPct(numerator: number, denominator: number): string {
+  const pct = (numerator / denominator) * 100;
+  const sign = pct >= 0 ? "+" : "";
+  return `${sign}${pct.toFixed(1)}%`;
+}
+
+function formatExecutionLabel(ex: TradeExecution): string {
+  if (ex.execution_status === "filled" && ex.filled_avg_price != null) {
+    return `Filled @ ${formatCurrency(ex.filled_avg_price)}`;
+  }
+  if (ex.execution_status === "rejected") {
+    const em = ex.error_message;
+    if (em && em.length > 40) return `Rejected (${em.slice(0, 40)}…)`;
+    return em ? `Rejected (${em})` : "Rejected";
+  }
+  if (ex.execution_status === "pending") return "Pending";
+  return ex.execution_status;
+}
+
+/* ── Shared micro-styles ──────────────────────────────────────── */
+const TAG: React.CSSProperties = {
+  padding: "1px 6px",
+  borderRadius: 2,
+  background: "#1E293B",
+  border: "1px solid rgba(255,255,255,0.08)",
+  fontSize: 11,
+  fontWeight: 500,
+  color: "#CBD5E1",
+  whiteSpace: "nowrap" as const,
+};
+
+const ACTION_LINK: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 4,
+  fontSize: 13,
+  fontWeight: 500,
+  color: "#0284C7",           /* slightly darker sky blue — less "web app" */
+  background: "none",
+  border: "none",
+  cursor: "pointer",
+  padding: 0,
+};
+
 export function TradeCard({ order, index = 0 }: TradeCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [bars, setBars] = useState<PriceBar[]>([]);
   const [historyStatus, setHistoryStatus] = useState<"idle" | "loading" | "live" | "synthetic">("idle");
   const historyCompletedRef = useRef(false);
-  const historyInFlightRef = useRef(false);
+  const historyInFlightRef  = useRef(false);
 
   function handleToggleChart() {
     setExpanded((v) => {
@@ -38,18 +86,12 @@ export function TradeCard({ order, index = 0 }: TradeCardProps) {
         setHistoryStatus("loading");
         getPriceHistory(order.ticker, order.timestamp_utc)
           .then((data) => {
-            if (data.length > 0) {
-              setBars(data);
-              setHistoryStatus("live");
-            } else {
-              setHistoryStatus("synthetic");
-            }
+            setBars(data.length > 0 ? data : []);
+            setHistoryStatus(data.length > 0 ? "live" : "synthetic");
           })
-          .catch(() => {
-            setHistoryStatus("synthetic");
-          })
+          .catch(() => setHistoryStatus("synthetic"))
           .finally(() => {
-            historyInFlightRef.current = false;
+            historyInFlightRef.current  = false;
             historyCompletedRef.current = true;
           });
       }
@@ -57,347 +99,334 @@ export function TradeCard({ order, index = 0 }: TradeCardProps) {
     });
   }
 
-  const stratColors = getStrategyColors(order.strategy_used);
-  const convColor   = getConvictionColor(order.conviction_score);
-  const rr          = calcRiskReward(order);
-  const status      = order.status ?? "ACTIVE";
-  const statusCfg   = getStatusConfig(status);
+  const rr        = calcRiskReward(order);
+  const status    = order.status ?? "ACTIVE";
+  const statusCfg = getStatusConfig(status);
+  const pnlPct    = order.pnl_pct;
+  const pnlColor  = pnlPct !== undefined && pnlPct < 0 ? "#EF4444" : "#10B981";
 
-  const pnlColor = (order.pnl_pct ?? 0) >= 0 ? "var(--color-green)" : "var(--color-red)";
+  const stopPct   = signedPct(order.stop_loss   - order.limit_price, order.limit_price);
+  const targetPct = signedPct(order.target_price - order.limit_price, order.limit_price);
+  const riskLine  = `Stop ${stopPct} prior swing, target ${targetPct} 1.618 fib  ·  VIX ${order.regime_vix} · SPY ${order.spy_above_200sma ? "↑" : "↓"} 200SMA`;
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: index * 0.05 }}
-    >
-      <div
-        className="glass-card"
-        style={{ overflow: "hidden", marginBottom: 12 }}
-      >
-        {/* ── Header row ────────────────────────────────────── */}
-        <div style={{ padding: "18px 20px 16px" }}>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
-            {/* Ticker + action */}
-            <div style={{ minWidth: 72 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <span
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 20,
-                    fontWeight: 700,
-                    color: "var(--color-text-primary)",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  {order.ticker}
-                </span>
-                <span
-                  style={{
-                    padding: "2px 7px",
-                    borderRadius: 5,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    letterSpacing: "0.08em",
-                    background: "rgba(34,197,94,0.15)",
-                    color: "var(--color-green)",
-                    border: "1px solid rgba(34,197,94,0.3)",
-                  }}
-                >
-                  {order.action}
-                </span>
-              </div>
+  const tags = [
+    getCatalystLabel(order.catalyst_type),
+    `VIX ${order.regime_vix}`,
+    order.spy_above_200sma ? "SPY ↑ 200SMA" : "SPY ↓ 200SMA",
+    `$${(order.recommended_size_usd / 1000).toFixed(0)}K position`,
+  ];
 
-              {/* Strategy badge */}
-              <span
-                style={{
-                  display: "inline-block",
-                  padding: "3px 9px",
-                  borderRadius: 5,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  background: stratColors.bg,
-                  color: stratColors.text,
-                  border: `1px solid ${stratColors.border}`,
-                }}
-              >
-                {order.strategy_used}
-              </span>
-            </div>
-
-            {/* Prices */}
-            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 4 }}>
-              {[
-                { label: "ENTRY",  value: order.limit_price,  color: "var(--color-gold)" },
-                { label: "STOP",   value: order.stop_loss,    color: "var(--color-red)"  },
-                { label: "TARGET", value: order.target_price, color: "var(--color-green)" },
-              ].map((p) => (
-                <div
-                  key={p.label}
-                  style={{
-                    background: "var(--color-bg-elevated)",
-                    border: "1px solid var(--color-border-subtle)",
-                    borderRadius: 8,
-                    padding: "8px 10px",
-                  }}
-                >
-                  <p style={{ fontSize: 10, color: "var(--color-text-muted)", fontWeight: 600, letterSpacing: "0.06em", marginBottom: 3 }}>
-                    {p.label}
-                  </p>
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 600, color: p.color }}>
-                    {formatCurrency(p.value)}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            {/* Right column: conviction + status + metrics */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 140, alignItems: "flex-end" }}>
-              {/* Status badge */}
-              <span
-                style={{
-                  padding: "3px 9px",
-                  borderRadius: 5,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  background: statusCfg.bg,
-                  color: statusCfg.color,
-                  border: `1px solid ${statusCfg.color}33`,
-                }}
-              >
-                {statusCfg.label}
-              </span>
-
-              {/* P&L */}
-              {order.pnl_pct !== undefined && (
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  {order.pnl_pct >= 0
-                    ? <TrendingUp size={13} color="var(--color-green)" />
-                    : <TrendingDown size={13} color="var(--color-red)" />
-                  }
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 600, color: pnlColor }}>
-                    {order.pnl_pct >= 0 ? "+" : ""}{order.pnl_pct.toFixed(1)}%
-                  </span>
-                </div>
-              )}
-
-              {/* R:R */}
-              <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-                R:R&nbsp;
-                <span style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-secondary)", fontWeight: 600 }}>
-                  1:{rr}
-                </span>
-              </span>
-            </div>
-          </div>
-
-          {/* ── Conviction bar ────────────────────────────── */}
-          <div style={{ marginTop: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-              <span style={{ fontSize: 11, color: "var(--color-text-muted)", fontWeight: 500 }}>
-                CONVICTION  {" "}
-                <span style={{ color: convColor, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
-                  {order.conviction_score}
-                </span>
-                <span style={{ color: "var(--color-text-muted)" }}>
-                  {" "}· {getConvictionLabel(order.conviction_score)}
-                </span>
-              </span>
-              <div style={{ display: "flex", gap: 6, fontSize: 11, color: "var(--color-text-muted)" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                  <Clock size={11} />
-                  {formatRelative(order.timestamp_utc)}
-                </span>
-              </div>
-            </div>
-            <div
-              style={{
-                height: 5,
-                borderRadius: 3,
-                background: "var(--color-bg-overlay)",
-                overflow: "hidden",
-              }}
-            >
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${order.conviction_score}%` }}
-                transition={{ duration: 0.8, delay: index * 0.05 + 0.2, ease: "easeOut" }}
-                style={{
-                  height: "100%",
-                  borderRadius: 3,
-                  background: `linear-gradient(90deg, ${convColor}99, ${convColor})`,
-                  boxShadow: `0 0 8px ${convColor}44`,
-                }}
-              />
-            </div>
-          </div>
-
-          {/* ── Metadata pill row ─────────────────────────── */}
-          <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-            <Pill label="Catalyst" value={getCatalystLabel(order.catalyst_type)} />
-            <Pill label="VIX" value={`${order.regime_vix}`} mono />
-            <Pill
-              label="Regime"
-              value={order.spy_above_200sma ? "SPY ↑ 200SMA" : "SPY ↓ 200SMA"}
-              color={order.spy_above_200sma ? "var(--color-green)" : "var(--color-red)"}
-            />
-            <Pill label="Size" value={`$${(order.recommended_size_usd / 1000).toFixed(0)}k`} mono />
-            {order.execution && (
-              <Pill
-                label="Paper"
-                value={formatExecutionLabel(order.execution)}
-                color={
-                  order.execution.execution_status === "filled"
-                    ? "var(--color-green)"
-                    : order.execution.execution_status === "rejected"
-                      ? "var(--color-red)"
-                      : "var(--color-gold)"
-                }
-                mono
-              />
-            )}
-          </div>
-
-          {/* ── Rationale ─────────────────────────────────── */}
-          <p
-            style={{
-              marginTop: 12,
-              fontSize: 13,
-              color: "var(--color-text-secondary)",
-              lineHeight: 1.6,
-              borderLeft: "2px solid var(--color-border)",
-              paddingLeft: 12,
-            }}
-          >
-            {order.rationale}
-          </p>
-
-          {/* ── Expand / collapse button ──────────────────── */}
-          <button
-            onClick={handleToggleChart}
-            style={{
-              marginTop: 14,
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              fontSize: 12,
-              color: "var(--color-text-muted)",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 0,
-              fontWeight: 500,
-              transition: "color 150ms",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-gold)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-muted)"; }}
-          >
-            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            {expanded ? "Hide chart" : "Show price chart"}
-          </button>
-        </div>
-
-        {/* ── Expandable chart section ──────────────────────── */}
-        <AnimatePresence>
-          {expanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.35, ease: "easeInOut" }}
-              style={{ overflow: "hidden" }}
-            >
-              <div
-                style={{
-                  borderTop: "1px solid var(--color-border-subtle)",
-                  padding: "16px 20px",
-                  background: "var(--color-bg-base)",
-                }}
-              >
-                {/* Chart legend */}
-                <div style={{ display: "flex", gap: 16, marginBottom: 10 }}>
-                  {[
-                    { color: "#f59e0b", label: "Entry",  style: "2px solid" },
-                    { color: "#ef4444", label: "Stop",   style: "1px dashed" },
-                    { color: "#22c55e", label: "Target", style: "1px dashed" },
-                  ].map((l) => (
-                    <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ width: 20, height: 0, border: l.style, borderColor: l.color }} />
-                      <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{l.label}</span>
-                    </div>
-                  ))}
-                  <div style={{ marginLeft: "auto", fontSize: 11, color: "var(--color-text-muted)" }}>
-                    Signal: {formatDateTime(order.timestamp_utc)}
-                  </div>
-                </div>
-                {historyStatus === "loading" && (
-                  <p style={{ fontSize: 12, color: "var(--color-text-muted)", marginBottom: 8 }}>Loading price history…</p>
-                )}
-                {(historyStatus === "live" || historyStatus === "synthetic") && (
-                  <PriceChart
-                    order={order}
-                    bars={bars.length > 0 ? bars : undefined}
-                    height={220}
-                    dataSource={historyStatus === "live" ? "live" : "synthetic"}
-                  />
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
-  );
-}
-
-function formatExecutionLabel(ex: TradeExecution): string {
-  const st = ex.execution_status;
-  if (st === "filled" && ex.filled_avg_price != null) {
-    return `Filled @ ${formatCurrency(ex.filled_avg_price)}`;
-  }
-  if (st === "rejected") {
-    const em = ex.error_message;
-    if (em && em.length > 48) {
-      return `Rejected (${em.slice(0, 48)}…)`;
-    }
-    return em ? `Rejected (${em})` : "Rejected";
-  }
-  if (st === "pending") return "Pending";
-  return st;
-}
-
-// ── Small pill helper ──────────────────────────────────────────────
-function Pill({ label, value, color, mono }: {
-  label: string;
-  value: string;
-  color?: string;
-  mono?: boolean;
-}) {
   return (
     <div
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 5,
-        padding: "3px 8px",
-        borderRadius: 5,
-        border: "1px solid var(--color-border-subtle)",
-        background: "var(--color-bg-elevated)",
+        background: "#111827",
+        border: "1px solid rgba(255,255,255,0.12)",
+        borderRadius: 4,
+        marginBottom: 16,
+        overflow: "hidden",
+        transition: "border-color 100ms ease",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.20)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.12)";
       }}
     >
-      <span style={{ fontSize: 10, color: "var(--color-text-muted)", fontWeight: 600, letterSpacing: "0.06em" }}>
-        {label.toUpperCase()}
-      </span>
-      <span
+      <div style={{ padding: "20px 24px" }}>
+
+        {/* ════════════════════════════════════════════════
+            HEADER — 2-row implicit grid
+            Row 1: NVDA  [BUY]  Active          +4.10%
+            Row 2: Supernova         R:R 1:2.86 · 3d ago
+        ════════════════════════════════════════════════ */}
+        <div style={{ marginBottom: 14 }}>
+
+          {/* Row 1 */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
+
+            {/* Left: ticker + action badge + status */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                style={{
+                  fontSize: 20,
+                  fontWeight: 600,
+                  color: "#F8FAFC",
+                  letterSpacing: "0.01em",
+                  lineHeight: 1,
+                }}
+              >
+                {order.ticker}
+              </span>
+
+              <span
+                style={{
+                  padding: "2px 7px",
+                  borderRadius: 3,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  background: "#1E293B",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "#CBD5E1",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                {order.action}
+              </span>
+
+              <span style={{ fontSize: 12, fontWeight: 500, color: statusCfg.color }}>
+                {statusCfg.label}
+              </span>
+            </div>
+
+            {/* Right: P&L */}
+            {pnlPct !== undefined ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                {pnlPct >= 0
+                  ? <TrendingUp size={12} color="#10B981" strokeWidth={2} />
+                  : <TrendingDown size={12} color="#EF4444" strokeWidth={2} />}
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: pnlColor,
+                  }}
+                >
+                  {pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%
+                </span>
+              </div>
+            ) : (
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 600, color: "#64748B" }}>
+                —
+              </span>
+            )}
+          </div>
+
+          {/* Row 2: strategy on left, R:R · age on right */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <span style={{ fontSize: 12, color: "#64748B" }}>
+              {order.strategy_used}
+            </span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "#64748B" }}>
+              R:R 1:{rr}&nbsp;&nbsp;·&nbsp;&nbsp;{formatRelative(order.timestamp_utc)}
+            </span>
+          </div>
+        </div>
+
+        {/* ── Separator ──────────────────────────────────── */}
+        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 14 }} />
+
+        {/* ════════════════════════════════════════════════
+            EXECUTION PARAMETERS — three boxes
+        ════════════════════════════════════════════════ */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+          {[
+            { label: "Entry",        value: formatCurrency(order.limit_price),  color: "#F8FAFC" },
+            { label: "Stop loss",    value: formatCurrency(order.stop_loss),    color: "#F59E0B" },
+            { label: "Price target", value: formatCurrency(order.target_price), color: "#10B981" },
+          ].map((p) => (
+            <div
+              key={p.label}
+              style={{
+                flex: 1,
+                background: "#0B1121",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 3,
+                padding: "12px 14px",
+              }}
+            >
+              <p style={{ fontSize: 11, fontWeight: 500, color: "#64748B", marginBottom: 6, letterSpacing: "0.02em" }}>
+                {p.label}
+              </p>
+              <p style={{ fontFamily: "var(--font-mono)", fontSize: 16, fontWeight: 600, color: p.color, margin: 0 }}>
+                {p.value}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Metadata strip ───────────────────────────── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14, flexWrap: "wrap" }}>
+          {/* Conviction with bar */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ display: "flex", gap: 5, alignItems: "baseline" }}>
+              <span style={{ fontSize: 11, color: "#64748B" }}>Conviction</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "#CBD5E1" }}>
+                {order.conviction_score}/100
+              </span>
+            </div>
+            <div style={{ width: 72, height: 3, borderRadius: 2, background: "#1E293B", overflow: "hidden" }}>
+              <div
+                style={{
+                  width: `${order.conviction_score}%`,
+                  height: "100%",
+                  borderRadius: 2,
+                  background: "#64748B",
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.08)", alignSelf: "center" }} />
+
+          <div style={{ display: "flex", gap: 5, alignItems: "baseline" }}>
+            <span style={{ fontSize: 11, color: "#64748B" }}>Size</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "#CBD5E1" }}>
+              ${(order.recommended_size_usd / 1000).toFixed(0)}K
+            </span>
+          </div>
+
+          {order.execution && (
+            <>
+              <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.08)", alignSelf: "center" }} />
+              <div style={{ display: "flex", gap: 5, alignItems: "baseline" }}>
+                <span style={{ fontSize: 11, color: "#64748B" }}>Execution</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "#CBD5E1" }}>
+                  {formatExecutionLabel(order.execution)}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── Separator ──────────────────────────────────── */}
+        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 14 }} />
+
+        {/* ════════════════════════════════════════════════
+            BODY — 4 lines max
+        ════════════════════════════════════════════════ */}
+
+        {/* Line 1: catalyst label */}
+        <p style={{ fontSize: 12, fontWeight: 600, color: "#CBD5E1", margin: "0 0 5px", lineHeight: 1.5 }}>
+          Primary catalyst: {getCatalystLabel(order.catalyst_type)}
+        </p>
+
+        {/* Line 2: thesis */}
+        <p style={{ fontSize: 13, color: "#CBD5E1", margin: "0 0 9px", lineHeight: 1.5 }}>
+          {truncateThesis(order.rationale)}
+        </p>
+
+        {/* Line 3: compact tags */}
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 9 }}>
+          {tags.map((t) => (
+            <span key={t} style={TAG}>{t}</span>
+          ))}
+        </div>
+
+        {/* Line 4: risk line */}
+        <p style={{ fontSize: 12, color: "#64748B", margin: 0, lineHeight: 1.5 }}>
+          Risk: {riskLine}
+        </p>
+
+        {/* ── Action bar ───────────────────────────────── */}
+        <div
+          style={{
+            display: "flex",
+            gap: 16,
+            marginTop: 14,
+            paddingTop: 12,
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+          }}
+        >
+          <button
+            onClick={handleToggleChart}
+            aria-expanded={expanded}
+            style={ACTION_LINK}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.72"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+          >
+            {expanded ? <ChevronUp size={13} strokeWidth={2} /> : <ChevronDown size={13} strokeWidth={2} />}
+            View chart
+          </button>
+          <button
+            style={ACTION_LINK}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.72"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+          >
+            Set alert
+          </button>
+        </div>
+      </div>
+
+      {/* ── Footer ───────────────────────────────────────── */}
+      <div
         style={{
-          fontSize: 11,
-          fontFamily: mono ? "var(--font-mono)" : undefined,
-          fontWeight: 600,
-          color: color ?? "var(--color-text-secondary)",
+          padding: "7px 24px",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 8,
+          flexWrap: "wrap",
         }}
       >
-        {value}
-      </span>
+        <span style={{ fontSize: 11, color: "#64748B" }}>
+          Source: Gemini · Options flow · SEC filings
+        </span>
+        <span style={{ fontSize: 11, color: "#64748B" }}>
+          Generated: {formatDateTime(order.timestamp_utc)}
+        </span>
+      </div>
+
+      {/* ── Expandable chart ─────────────────────────────── */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeInOut" }}
+            style={{ overflow: "hidden" }}
+          >
+            <div
+              style={{
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+                padding: "16px 24px",
+                background: "#0B1121",
+              }}
+            >
+              <div style={{ display: "flex", gap: 16, marginBottom: 10 }}>
+                {[
+                  { color: "rgba(255,255,255,0.4)", label: "Entry",  dashed: false },
+                  { color: "#F59E0B",               label: "Stop",   dashed: true  },
+                  { color: "#10B981",               label: "Target", dashed: true  },
+                ].map((l) => (
+                  <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <div
+                      style={{
+                        width: 16,
+                        height: 0,
+                        borderTop: l.dashed ? `1px dashed ${l.color}` : `2px solid ${l.color}`,
+                      }}
+                    />
+                    <span style={{ fontSize: 10, color: "#64748B" }}>{l.label}</span>
+                  </div>
+                ))}
+                <span style={{ marginLeft: "auto", fontSize: 10, color: "#64748B" }}>
+                  Signal: {formatDateTime(order.timestamp_utc)}
+                </span>
+              </div>
+
+              {historyStatus === "loading" && (
+                <div style={{ height: 140, display: "flex", alignItems: "center" }}>
+                  <p style={{ fontSize: 11, color: "#64748B" }}>Fetching price data…</p>
+                </div>
+              )}
+              {(historyStatus === "live" || historyStatus === "synthetic") && (
+                <PriceChart
+                  order={order}
+                  bars={bars.length > 0 ? bars : undefined}
+                  height={200}
+                  dataSource={historyStatus === "live" ? "live" : "synthetic"}
+                />
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
+
+

@@ -1,34 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useFilterStore } from "@/store/filters";
 import type { TradeOrder, BatchPerformance } from "@/types";
 import { TradeCard } from "./TradeCard";
 import { getBatchPerformance } from "@/lib/api";
-import { subDays } from "date-fns";
 
 interface TradeListProps {
   orders: TradeOrder[];
+  hasActiveFilters: boolean;
 }
 
-export function TradeList({ orders }: TradeListProps) {
-  const { strategy, dateRange } = useFilterStore();
-
-  const cutoff = dateRange === "all"
-    ? null
-    : subDays(new Date(), dateRange === "7d" ? 7 : dateRange === "30d" ? 30 : 90);
-
-  const filtered = orders.filter((o) => {
-    if (strategy !== "all" && o.strategy_used !== strategy) return false;
-    if (cutoff && new Date(o.timestamp_utc) < cutoff) return false;
-    return true;
-  });
-
+export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
   const [perf, setPerf] = useState<Record<number, BatchPerformance>>({});
+  const [perfUnavailable, setPerfUnavailable] = useState(false);
+  const orderIdsKey = orders.map((o) => o.id).join(",");
 
   useEffect(() => {
-    if (filtered.length === 0) return;
-    const ids = filtered.map((o) => o.id);
+    if (orders.length === 0) return;
+    const ids = orders.map((o) => o.id);
     // Fetch in batches of 20 (API limit)
     const batches: number[][] = [];
     for (let i = 0; i < ids.length; i += 20) {
@@ -43,31 +32,53 @@ export function TradeList({ orders }: TradeListProps) {
           }
         }
         setPerf(merged);
+        setPerfUnavailable(false);
       })
       .catch(() => {
-        // Non-fatal: cards render without live P&L
+        setPerfUnavailable(true);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered.length, strategy, dateRange]);
+  }, [orderIdsKey, orders]);
 
-  if (filtered.length === 0) {
+  if (orders.length === 0) {
     return (
       <div
         style={{
           textAlign: "center",
-          padding: "60px 0",
-          color: "var(--color-text-muted)",
-          fontSize: 14,
+          padding: "48px 24px",
+          border: "1px solid rgba(255,255,255,0.12)",
+          borderRadius: 4,
+          background: "#111827",
         }}
       >
-        No trade orders match the current filters.
+        <p style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-secondary)", marginBottom: 8 }}>
+          {hasActiveFilters ? "No signals match current filters" : "No signals in queue"}
+        </p>
+        <p style={{ fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>
+          {hasActiveFilters
+            ? "Adjust strategy or expand the lookback window."
+            : "The pipeline will publish signals as opportunities are identified."}
+        </p>
       </div>
     );
   }
 
   return (
     <div>
-      {filtered.map((order, i) => {
+      {perfUnavailable && (
+        <div
+          style={{
+            marginBottom: 14,
+            padding: "10px 16px",
+            borderRadius: 4,
+            border: "1px solid rgba(255,255,255,0.12)",
+            color: "var(--color-text-secondary)",
+            fontSize: 12,
+          }}
+        >
+          Live P&amp;L data is temporarily unavailable. Showing last persisted values.
+        </div>
+      )}
+      {orders.map((order, i) => {
         const livePerf = perf[order.id];
         const enriched: TradeOrder = {
           ...(livePerf

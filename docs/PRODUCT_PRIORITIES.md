@@ -21,7 +21,7 @@
 - The **end-to-end pipeline is proven** in Compose: hunters → Kafka → gatekeeper → AI → engine → DB → API → UI, with evidence in [VALIDATION_REPORT_2026-04-21.md](VALIDATION_REPORT_2026-04-21.md) (including **NVDA** through AI + engine + `trade_orders`; synthetic tickers are fine for gatekeeper/AI but the engine needs **Yahoo-priced** symbols for sizing).
 - **Track 1 (recurrence):** squeeze and biotech run continuous loops with configurable intervals. **Accepted local proof** is an **accelerated-interval multi-cycle soak** (multiple “next sweep” log lines), then restore default intervals—documented in the validation report. A **literal 24h wall-clock** run at default intervals is optional hardening (archive `docker logs` if you do it); do not claim it without logs.
 - **Track 2 (confluence):** **Gatekeeper confluence ≥ 2** is **proven** with **controlled** `raw-events` injection plus Redis `gk:sources:{TICKER}` (and full-stack **NVDA** in the same report). **Organic** overlap (two distinct live hunters hitting the same ticker inside the rolling window without injection) is **sparse by design** and is a **stretch** validation—longer runs, market hours, and AWS-like retention help; it is not required to call Track 2 “implemented.”
-- **Drifter** is implemented and wired in Compose; **whale/shadow** remain defer-or-implement decisions after reliability closeout.
+- **Drifter** and **whale** are implemented and wired in Compose; **shadow** was dropped (Tradytics paywall, no viable free data source).
 
 ---
 
@@ -143,3 +143,4 @@ Rationale: captures the highest signal-density windows without pretending to be 
 | 2026-04 | Track 2: Drifter hunter (FMP earnings calendar) + `hunter-drifter` service. |
 | 2026-04 | Track 1/2 smoke + confluence evidence captured in `docs/VALIDATION_REPORT_2026-04-21.md`; pre-AWS checklist closed in `docs/PRE_AWS_READINESS_CHECKLIST.md`. |
 | 2026-04 | “Current reality,” Track 2 **Done when**, and Clerk/Alpaca gate wording reconciled with validation evidence (accelerated recurrence soak; controlled injection + Redis + NVDA full stack; organic overlap as optional stretch). |
+| 2026-04 | Shadow hunter dropped; frontend refinement + doc/CI/test hardening prioritized before auth/execution work. |
