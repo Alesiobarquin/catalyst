@@ -6,6 +6,7 @@ import type {
   PriceBar,
   PaginatedResponse,
   BatchPerformance,
+  SignalDetail,
 } from "@/types";
 import { MOCK_ORDERS, MOCK_SIGNALS, MOCK_STATS } from "./mock-data";
 
@@ -106,6 +107,21 @@ export async function getBatchPerformance(
   );
   if (!res.ok) return [];
   return res.json();
+}
+
+// ── Signal Detail (narrative synthesis) ──────────────────────────
+// GET /orders/{id}/detail
+// Returns the pipeline-generated SignalDetail object, which includes the
+// AI-structured thesis, confluence matrix, and risk protocol written by
+// the narrative synthesis step. Falls through with a TypeError (non-ok
+// response) so callers can gracefully degrade to the local mapper.
+
+export async function fetchSignalDetail(orderId: number): Promise<SignalDetail> {
+  const res = await fetch(`${apiBaseUrl()}/orders/${orderId}/detail`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Signal detail unavailable (${res.status})`);
+  return res.json() as Promise<SignalDetail>;
 }
 
 /** GET /executions/me — requires Clerk session token */

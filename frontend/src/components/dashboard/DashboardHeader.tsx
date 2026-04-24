@@ -11,7 +11,7 @@ export function DashboardHeader() {
           lineHeight: 1.25,
         }}
       >
-        Signal intelligence dashboard
+        Signal Dashboard
       </h1>
       <p
         style={{

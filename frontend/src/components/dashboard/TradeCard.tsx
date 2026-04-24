@@ -18,6 +18,7 @@ import {
 interface TradeCardProps {
   order: TradeOrder;
   index?: number;
+  onViewAnalysis?: (order: TradeOrder, trigger: HTMLButtonElement) => void;
 }
 
 function truncateThesis(text: string, maxWords = 20): string {
@@ -71,7 +72,7 @@ const ACTION_LINK: React.CSSProperties = {
   padding: 0,
 };
 
-export function TradeCard({ order, index = 0 }: TradeCardProps) {
+export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [bars, setBars] = useState<PriceBar[]>([]);
   const [historyStatus, setHistoryStatus] = useState<"idle" | "loading" | "live" | "synthetic">("idle");
@@ -339,6 +340,16 @@ export function TradeCard({ order, index = 0 }: TradeCardProps) {
             {expanded ? <ChevronUp size={13} strokeWidth={2} /> : <ChevronDown size={13} strokeWidth={2} />}
             View chart
           </button>
+          {onViewAnalysis && (
+            <button
+              onClick={(e) => onViewAnalysis(order, e.currentTarget as HTMLButtonElement)}
+              style={ACTION_LINK}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.72"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
+            >
+              View analysis
+            </button>
+          )}
           <button
             style={ACTION_LINK}
             onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.72"; }}

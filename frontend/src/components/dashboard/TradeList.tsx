@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import type { TradeOrder, BatchPerformance } from "@/types";
+import { useState, useEffect, useRef, useCallback } from "react";
+import type { TradeOrder, BatchPerformance, SignalDetail } from "@/types";
 import { TradeCard } from "./TradeCard";
-import { getBatchPerformance } from "@/lib/api";
+import { SignalDetailPanel } from "./SignalDetailPanel";
+import { getBatchPerformance, fetchSignalDetail } from "@/lib/api";
+import { orderToSignalDetail } from "@/lib/signalDetailUtils";
 
 interface TradeListProps {
   orders: TradeOrder[];
@@ -13,7 +15,39 @@ interface TradeListProps {
 export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
   const [perf, setPerf] = useState<Record<number, BatchPerformance>>({});
   const [perfUnavailable, setPerfUnavailable] = useState(false);
+
+  // Panel state: signal is immediately populated from the local mapper,
+  // then replaced by the server response when /orders/{id}/detail resolves.
+  const [panelSignal, setPanelSignal] = useState<SignalDetail | null>(null);
+  const [panelLoading, setPanelLoading] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
   const orderIdsKey = orders.map((o) => o.id).join(",");
+
+  const handleViewAnalysis = useCallback(
+    (order: TradeOrder, trigger: HTMLButtonElement) => {
+      triggerRef.current = trigger;
+
+      // Phase 1 — open immediately with locally-derived data (prices, risk params, etc.)
+      setPanelSignal(orderToSignalDetail(order));
+      setPanelLoading(true);
+
+      // Phase 2 — replace with server-generated detail (AI thesis, structured confluence)
+      fetchSignalDetail(order.id)
+        .then((detail) => setPanelSignal(detail))
+        .catch(() => {
+          // Backend endpoint not yet deployed or returned an error.
+          // Local mapper data already showing — leave it as-is.
+        })
+        .finally(() => setPanelLoading(false));
+    },
+    []
+  );
+
+  const handlePanelClose = useCallback(() => {
+    setPanelSignal(null);
+    setPanelLoading(false);
+    requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
 
   useEffect(() => {
     if (orders.length === 0) return;
@@ -63,36 +97,57 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
   }
 
   return (
-    <div>
-      {perfUnavailable && (
-        <div
-          style={{
-            marginBottom: 14,
-            padding: "10px 16px",
-            borderRadius: 4,
-            border: "1px solid rgba(255,255,255,0.12)",
-            color: "var(--color-text-secondary)",
-            fontSize: 12,
-          }}
-        >
-          Live P&amp;L data is temporarily unavailable. Showing last persisted values.
-        </div>
+    <>
+      <div>
+        {perfUnavailable && (
+          <div
+            style={{
+              marginBottom: 14,
+              padding: "10px 16px",
+              borderRadius: 4,
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "var(--color-text-secondary)",
+              fontSize: 12,
+            }}
+          >
+            Live P&amp;L data is temporarily unavailable. Showing last persisted values.
+          </div>
+        )}
+        {orders.map((order, i) => {
+          const livePerf = perf[order.id];
+          const enriched: TradeOrder = {
+            ...(livePerf
+              ? {
+                  ...order,
+                  current_price: livePerf.current_price ?? order.current_price,
+                  pnl_pct: livePerf.pnl_pct ?? order.pnl_pct,
+                  status: livePerf.status ?? order.status,
+                }
+              : order),
+            execution: null,
+          };
+          return (
+            <TradeCard
+              key={order.id}
+              order={enriched}
+              index={i}
+              onViewAnalysis={handleViewAnalysis}
+            />
+          );
+        })}
+      </div>
+
+      {/* Signal detail panel — rendered via portal to document.body.
+          panelSignal is set in phase 1 (local mapper) then overwritten in
+          phase 2 (server response). isLoading drives the thesis skeleton. */}
+      {panelSignal && (
+        <SignalDetailPanel
+          signal={panelSignal}
+          isOpen={panelSignal !== null}
+          isLoading={panelLoading}
+          onClose={handlePanelClose}
+        />
       )}
-      {orders.map((order, i) => {
-        const livePerf = perf[order.id];
-        const enriched: TradeOrder = {
-          ...(livePerf
-            ? {
-                ...order,
-                current_price: livePerf.current_price ?? order.current_price,
-                pnl_pct: livePerf.pnl_pct ?? order.pnl_pct,
-                status: livePerf.status ?? order.status,
-              }
-            : order),
-          execution: null,
-        };
-        return <TradeCard key={order.id} order={enriched} index={i} />;
-      })}
-    </div>
+    </>
   );
 }
