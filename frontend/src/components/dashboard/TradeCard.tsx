@@ -179,28 +179,28 @@ export function TradeCard({ order, index = 0 }: TradeCardProps) {
               </span>
             </div>
 
-            {/* Right: P&L */}
-            {pnlPct !== undefined ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                {pnlPct >= 0
-                  ? <TrendingUp size={12} color="#10B981" strokeWidth={2} />
-                  : <TrendingDown size={12} color="#EF4444" strokeWidth={2} />}
-                <span
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 15,
-                    fontWeight: 600,
-                    color: pnlColor,
-                  }}
-                >
-                  {pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%
+            {/* Right: current price + P&L */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {order.current_price !== undefined && (
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 500, color: "#CBD5E1" }}>
+                  {formatCurrency(order.current_price)}
                 </span>
-              </div>
-            ) : (
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 600, color: "#64748B" }}>
-                —
-              </span>
-            )}
+              )}
+              {pnlPct !== undefined ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  {pnlPct >= 0
+                    ? <TrendingUp size={12} color="#10B981" strokeWidth={2} />
+                    : <TrendingDown size={12} color="#EF4444" strokeWidth={2} />}
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 600, color: pnlColor }}>
+                    {pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%
+                  </span>
+                </div>
+              ) : (
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 600, color: "#64748B" }}>
+                  —
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Row 2: strategy on left, R:R · age on right */}
