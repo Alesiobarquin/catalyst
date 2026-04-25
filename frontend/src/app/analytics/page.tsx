@@ -7,9 +7,19 @@ import {
   PerformanceSummary,
 } from "@/components/analytics/Charts";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Analytics — Catalyst",
-  description: "Aggregate analytics: conviction distribution, strategy breakdown, signal volume, and performance metrics.",
+  description:
+    "Aggregate analytics: conviction distribution, strategy breakdown, signal volume, and performance metrics.",
+};
+
+const CATALYST_COLORS: Record<string, string> = {
+  SUPERNOVA: "#F97316",
+  SCALPER:   "#0EA5E9",
+  FOLLOWER:  "#10B981",
+  DRIFTER:   "#A855F7",
 };
 
 export default async function AnalyticsPage() {
@@ -17,25 +27,26 @@ export default async function AnalyticsPage() {
 
   return (
     <>
-      {/* ── Page header ────────────────────────────────── */}
+      {/* ── Page header ─────────────────────────────── */}
       <div style={{ marginBottom: 28 }}>
         <h1
           style={{
-            fontSize: 26,
-            fontWeight: 700,
-            color: "var(--color-text-primary)",
-            letterSpacing: "-0.02em",
+            fontSize: 24,
+            fontWeight: 600,
+            color: "#F8FAFC",
+            letterSpacing: "-0.01em",
             marginBottom: 4,
+            lineHeight: 1.25,
           }}
         >
           Analytics
         </h1>
-        <p style={{ fontSize: 14, color: "var(--color-text-secondary)" }}>
+        <p style={{ fontSize: 13, color: "#CBD5E1", margin: 0 }}>
           Pipeline performance · Signal quality · Strategy distribution
         </p>
       </div>
 
-      {/* ── 2×2 analytics grid ─────────────────────────── */}
+      {/* ── 2×2 analytics grid ──────────────────────── */}
       <div
         style={{
           display: "grid",
@@ -44,13 +55,13 @@ export default async function AnalyticsPage() {
           marginBottom: 16,
         }}
       >
-        <PerformanceSummary stats={stats} />
-        <StrategyBreakdown  stats={stats} />
+        <PerformanceSummary  stats={stats} />
+        <StrategyBreakdown   stats={stats} />
         <ConvictionHistogram stats={stats} />
-        <SignalTimeline      stats={stats} />
+        <SignalTimeline       stats={stats} />
       </div>
 
-      {/* ── Catalyst type breakdown ─────────────────────── */}
+      {/* ── Catalyst type breakdown ──────────────────── */}
       <div
         className="glass-card"
         style={{ padding: "20px 22px" }}
@@ -59,42 +70,62 @@ export default async function AnalyticsPage() {
           style={{
             fontSize: 13,
             fontWeight: 600,
-            color: "var(--color-text-secondary)",
-            letterSpacing: "0.06em",
+            color: "#F8FAFC",
             marginBottom: 18,
           }}
         >
-          CATALYST TYPE BREAKDOWN
+          Catalyst type breakdown
         </h3>
+
+        {Object.values(stats.catalyst_breakdown).every((c) => c === 0) && (
+          <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>
+            No catalyst data yet.
+          </p>
+        )}
+
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           {Object.entries(stats.catalyst_breakdown)
             .filter(([, v]) => v > 0)
             .map(([type, count]) => {
-              const colorMap: Record<string, string> = {
-                SUPERNOVA: "#f97316",
-                SCALPER:   "#eab308",
-                FOLLOWER:  "#3b82f6",
-                DRIFTER:   "#a855f7",
-              };
-              const col = colorMap[type] ?? "#6b7280";
+              const col = CATALYST_COLORS[type] ?? "#64748B";
               return (
                 <div
                   key={type}
                   style={{
-                    flex: "1 1 150px",
+                    flex: "1 1 140px",
                     padding: "16px 18px",
-                    borderRadius: 10,
+                    borderRadius: 3,
                     border: `1px solid ${col}33`,
                     background: `${col}0d`,
                   }}
                 >
-                  <p style={{ fontSize: 11, fontWeight: 700, color: col, letterSpacing: "0.08em", marginBottom: 6 }}>
-                    {type}
+                  <p
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: col,
+                      letterSpacing: "0.04em",
+                      marginBottom: 8,
+                      margin: "0 0 8px",
+                    }}
+                  >
+                    {type.charAt(0) + type.slice(1).toLowerCase()}
                   </p>
-                  <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "var(--color-text-primary)" }}>
+                  <p
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 28,
+                      fontWeight: 700,
+                      color: "#F8FAFC",
+                      margin: "0 0 2px",
+                      lineHeight: 1,
+                    }}
+                  >
                     {count}
                   </p>
-                  <p style={{ fontSize: 11, color: "var(--color-text-muted)" }}>signals</p>
+                  <p style={{ fontSize: 11, color: "#64748B", margin: 0 }}>
+                    signals
+                  </p>
                 </div>
               );
             })}

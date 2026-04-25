@@ -112,3 +112,87 @@ export interface BatchPerformance {
   status: TradeStatus;
   days_held: number;
 }
+
+// ── Signal Detail Panel ────────────────────────────────────────────
+// Prop shape for <SignalDetailPanel signal={...} />
+// All content is rendered from this object; the component contains no
+// ticker-specific strings. Missing fields render as "—" via safe().
+export interface SignalDetail {
+  // Header
+  ticker: string;
+  exchange: string;
+  sector: string;
+  action: "BUY" | "SELL";
+  status: "Active" | "Target hit" | "Stopped" | "Expired";
+  strategy: string;
+  strategyDescription: string;
+  convictionScore: number;
+  convictionMax: number;
+  convictionLabel: string;
+
+  // Prices
+  entryPrice: number;
+  stopLoss: number;
+  targetPrice: number;
+  currentPrice: number | null;
+  pnlPercent: number | null;
+
+  // Metadata
+  riskReward: string;
+  positionSize: string;
+  timeHorizon: string;
+  generatedAt: string;
+  age: string;
+  signalId: string;
+
+  // Thesis section
+  thesis: {
+    primaryCatalyst: string;
+    bodyParagraphs: string[];
+    counterArguments: string[];
+  };
+
+  // Confluence section
+  confluence: {
+    factors: Array<{
+      source: string;
+      strength: "HIGH" | "MODERATE" | "LOW";
+      data: string;
+    }>;
+    summaryText: string;
+  };
+
+  // Risk management section
+  risk: {
+    parameters: Array<{
+      label: string;
+      value: string;
+      description?: string;
+    }>;
+    exitTriggers: Array<{
+      priority: number;
+      condition: string;
+      action: string;
+    }>;
+    scenarios: Array<{
+      label: string;
+      value: string;
+      probability: string;
+      type: "best" | "base" | "worst";
+    }>;
+    expectedValue: string;
+  };
+
+  // Pipeline / debug section
+  pipeline: {
+    signalId: string;
+    generatedAt: string;
+    engineVersion: string;
+    timeline: Array<{
+      stage: string;
+      timestamp: string;
+      detail: string;
+    }>;
+    rawFactors: object;
+  };
+}

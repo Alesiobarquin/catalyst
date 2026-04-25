@@ -244,7 +244,7 @@ Consume validated-signals→hypertable validated_signals(time,ticker,...key_risk
 ### 13. Comprehensive Debt/Interview Flags (SWE Perspective)
 1. **Concurrency**: Gatekeeper Redis pipeline (atomic) but no WATCH/LOCK (hunter-parallel lpush race). Engine AtomicRef/CHM (safe), but Yahoo cache put-race stale price.
 2. **Hardcodes**: squeeze URL/ALPHA=0.2/thresholds[25/200k/2x/3]; insider CIK Apple-only; no env/scrape rotate.
-3. **Stubs**: whale/shadow/drifter reference-only; no impl.
+3. **Data-source constraints**: shadow was removed (Tradytics paywall, no viable free feed); whale/drifter are implemented.
 4. **No Microstructure**: ARCHITECTURE.md OFI gate missing (L2 needed).
 5. **Yahoo/SEC**: No auth/rate-limit; brittle parse (Pandas table score heuristic).
 6. **Gemini**: Proxy p=conv/100 (unvalidated); no safety/tool call parse.

@@ -87,15 +87,8 @@ Used by Gemini to establish fundamental shift narratives and swing setups.
 }
 ```
 
-#### Shadow Hunter (Dark Pool)
-Used by Gemini to spot hidden liquidity walls and off-exchange institutional accumulation.
-```json
-"signal_data": {
-  "net_value_usd": 150000000.00,
-  "block_trade_count": 15,
-  "sentiment": "Bullish"          // Estimated from bid/ask fills
-}
-```
+#### Shadow Hunter
+Removed from scope. Tradytics data is paywalled and not viable as a free, repeatable source.
 
 ---
 

@@ -8,16 +8,27 @@ interface PaginationProps {
   perPage: number;
   /** Base path, e.g. "/" or "/signals" */
   basePath: string;
+  query?: Record<string, string | number | undefined>;
 }
 
-export function Pagination({ page, total, perPage, basePath }: PaginationProps) {
+export function Pagination({ page, total, perPage, basePath, query }: PaginationProps) {
   const totalPages = Math.max(1, Math.ceil(total / perPage));
   if (totalPages <= 1) return null;
 
   const prev = Math.max(1, page - 1);
   const next = Math.min(totalPages, page + 1);
 
-  const href = (p: number) => (p <= 1 ? basePath : `${basePath}?page=${p}`);
+  const href = (p: number) => {
+    const qs = new URLSearchParams();
+    if (query) {
+      for (const [k, v] of Object.entries(query)) {
+        if (v !== undefined && v !== "") qs.set(k, String(v));
+      }
+    }
+    if (p > 1) qs.set("page", String(p));
+    const s = qs.toString();
+    return s ? `${basePath}?${s}` : basePath;
+  };
 
   return (
     <div
@@ -35,7 +46,7 @@ export function Pagination({ page, total, perPage, basePath }: PaginationProps) 
         href={href(prev)}
         style={{
           fontSize: 13,
-          color: page <= 1 ? "var(--color-text-muted)" : "var(--color-gold)",
+          color: page <= 1 ? "var(--color-text-muted)" : "#0EA5E9",
           pointerEvents: page <= 1 ? "none" : "auto",
           textDecoration: "none",
           fontWeight: 600,
@@ -51,7 +62,7 @@ export function Pagination({ page, total, perPage, basePath }: PaginationProps) 
         href={href(next)}
         style={{
           fontSize: 13,
-          color: page >= totalPages ? "var(--color-text-muted)" : "var(--color-gold)",
+          color: page >= totalPages ? "var(--color-text-muted)" : "#0EA5E9",
           pointerEvents: page >= totalPages ? "none" : "auto",
           textDecoration: "none",
           fontWeight: 600,

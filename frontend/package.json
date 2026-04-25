@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0 --port 3000",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings=20",
+    "typecheck": "tsc --noEmit",
     "build": "next build",
     "start": "next start"
   },
@@ -24,6 +26,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "16.2.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

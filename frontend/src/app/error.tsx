@@ -82,7 +82,7 @@ export default function GlobalError({ error, reset }: ErrorProps) {
           cursor: "pointer",
           background: "rgba(245,158,11,0.1)",
           border: "1px solid rgba(245,158,11,0.3)",
-          color: "var(--color-gold)",
+          color: "var(--color-teal)",
           transition: "background 150ms, border-color 150ms",
         }}
         onMouseEnter={(e) => {

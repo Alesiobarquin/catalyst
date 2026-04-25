@@ -7,7 +7,7 @@ export default function SignUpPage() {
       <p style={{ fontSize: 14, color: "var(--color-text-secondary)", lineHeight: 1.6, marginBottom: 24 }}>
         New accounts are not available until authentication is re-enabled after deploy.
       </p>
-      <Link href="/" style={{ color: "var(--color-gold)", fontWeight: 600, fontSize: 14 }}>
+      <Link href="/" style={{ color: "var(--color-teal)", fontWeight: 600, fontSize: 14 }}>
         ← Back to dashboard
       </Link>
     </div>

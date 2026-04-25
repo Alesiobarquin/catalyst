@@ -6,6 +6,7 @@ import type {
   PriceBar,
   PaginatedResponse,
   BatchPerformance,
+  SignalDetail,
 } from "@/types";
 import { MOCK_ORDERS, MOCK_SIGNALS, MOCK_STATS } from "./mock-data";
 
@@ -27,6 +28,7 @@ function apiBaseUrl(): string {
 
 export async function getOrders(params?: {
   strategy?: string;
+  date_range?: "7d" | "30d" | "90d" | "all";
   page?: number;
   per_page?: number;
 }): Promise<PaginatedResponse<TradeOrder>> {
@@ -38,7 +40,8 @@ export async function getOrders(params?: {
     return { items, total: items.length, page: 1, per_page: 20 };
   }
   const qs = new URLSearchParams();
-  if (params?.strategy) qs.set("strategy", params.strategy);
+  if (params?.strategy && params.strategy !== "all") qs.set("strategy", params.strategy);
+  if (params?.date_range && params.date_range !== "all") qs.set("date_range", params.date_range);
   if (params?.page) qs.set("page", String(params.page));
   if (params?.per_page) qs.set("per_page", String(params.per_page));
   const res = await fetch(`${apiBaseUrl()}/orders?${qs}`, { next: { revalidate: 30 } });
@@ -104,6 +107,21 @@ export async function getBatchPerformance(
   );
   if (!res.ok) return [];
   return res.json();
+}
+
+// ── Signal Detail (narrative synthesis) ──────────────────────────
+// GET /orders/{id}/detail
+// Returns the pipeline-generated SignalDetail object, which includes the
+// AI-structured thesis, confluence matrix, and risk protocol written by
+// the narrative synthesis step. Falls through with a TypeError (non-ok
+// response) so callers can gracefully degrade to the local mapper.
+
+export async function fetchSignalDetail(orderId: number): Promise<SignalDetail> {
+  const res = await fetch(`${apiBaseUrl()}/orders/${orderId}/detail`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Signal detail unavailable (${res.status})`);
+  return res.json() as Promise<SignalDetail>;
 }
 
 /** GET /executions/me — requires Clerk session token */

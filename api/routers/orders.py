@@ -12,23 +12,38 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 @router.get("", response_model=PaginatedResponse[TradeOrderResponse])
 async def list_orders(
     strategy: str | None = Query(None),
+    date_range: str | None = Query(None, pattern="^(7d|30d|90d|all)$"),
     page:     int        = Query(1, ge=1),
     per_page: int        = Query(20, ge=1, le=100),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    """Return paginated trade orders, newest first. Optionally filter by strategy_used."""
+    """Return paginated trade orders, newest first. Optional strategy/date filters."""
     offset = (page - 1) * per_page
+    clauses: list[str] = []
+    args: list[object] = []
 
-    where  = "WHERE strategy_used = $1" if strategy else ""
-    params_count = [strategy] if strategy else []
+    if strategy and strategy != "all":
+        args.append(strategy)
+        clauses.append(f"strategy_used = ${len(args)}")
+
+    if date_range and date_range != "all":
+        days_map = {"7d": 7, "30d": 30, "90d": 90}
+        days = days_map.get(date_range)
+        if days:
+            args.append(days)
+            clauses.append(
+                f"timestamp_utc >= (NOW() AT TIME ZONE 'UTC') - (${len(args)}::int * INTERVAL '1 day')"
+            )
+
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
 
     total = await conn.fetchval(
-        f"SELECT COUNT(*) FROM trade_orders {where}", *params_count
+        f"SELECT COUNT(*) FROM trade_orders {where}", *args
     )
 
-    p = [strategy, per_page, offset] if strategy else [per_page, offset]
-    limit_param  = "$2" if strategy else "$1"
-    offset_param = "$3" if strategy else "$2"
+    data_args = [*args, per_page, offset]
+    limit_param = f"${len(args) + 1}"
+    offset_param = f"${len(args) + 2}"
     rows = await conn.fetch(
         f"""
         SELECT id, ticker, timestamp_utc, action, strategy_used,
@@ -41,7 +56,7 @@ async def list_orders(
         LIMIT {limit_param}
         OFFSET {offset_param}
         """,
-        *p,
+        *data_args,
     )
 
     return {

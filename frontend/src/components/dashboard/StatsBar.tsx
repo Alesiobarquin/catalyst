@@ -1,48 +1,42 @@
 import type { OrderStats } from "@/types";
-import { formatCompact, formatCurrency } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Activity, Target } from "lucide-react";
+import { Activity, Target, TrendingUp, ShieldAlert } from "lucide-react";
 
 interface StatsBarProps {
   stats: OrderStats;
 }
 
 export function StatsBar({ stats }: StatsBarProps) {
-  const winRate = stats.total_orders > 0
-    ? ((stats.hit_target_count / (stats.hit_target_count + stats.hit_stop_count)) * 100).toFixed(0)
+  const closedTotal = stats.hit_target_count + stats.hit_stop_count;
+  const winRate = closedTotal > 0
+    ? `${((stats.hit_target_count / closedTotal) * 100).toFixed(0)}%`
     : "—";
 
   const cards = [
     {
-      label:  "Total Signals",
+      label:  "Active signals",
       value:  stats.total_orders.toString(),
-      sub:    `${stats.active_count} active`,
+      sub:    `${stats.active_count} currently open`,
       icon:   Activity,
-      color:  "var(--color-gold)",
-      glow:   "var(--color-gold-glow)",
     },
     {
-      label: "Avg Conviction",
-      value: `${stats.avg_conviction.toFixed(0)}`,
-      sub:   "out of 100",
-      icon:  Target,
-      color: "var(--color-green)",
-      glow:  "var(--color-green-glow)",
+      label:  "Avg confidence",
+      value:  `${stats.avg_conviction.toFixed(0)}/100`,
+      sub:    "out of 100",
+      icon:   Target,
     },
     {
-      label: "Hit Target",
-      value: stats.hit_target_count.toString(),
-      sub:   `Win rate ${winRate}%`,
-      icon:  TrendingUp,
-      color: "var(--color-green)",
-      glow:  "var(--color-green-glow)",
+      label:  "Win rate",
+      value:  winRate,
+      sub:    closedTotal > 0
+                ? `${stats.hit_target_count} of ${closedTotal} closed`
+                : "No closed positions",
+      icon:   TrendingUp,
     },
     {
-      label: "Hit Stop",
-      value: stats.hit_stop_count.toString(),
-      sub:   `${stats.active_count} unresolved`,
-      icon:  TrendingDown,
-      color: "var(--color-red)",
-      glow:  "var(--color-red-glow)",
+      label:  "Stop rate",
+      value:  stats.hit_stop_count === 0 ? "0" : stats.hit_stop_count.toString(),
+      sub:    stats.hit_stop_count === 0 ? "No risk events" : `${stats.hit_stop_count} triggered`,
+      icon:   ShieldAlert,
     },
   ];
 
@@ -51,56 +45,59 @@ export function StatsBar({ stats }: StatsBarProps) {
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(4, 1fr)",
-        gap: 16,
+        gap: 12,
         marginBottom: 24,
       }}
     >
-      {cards.map((card, i) => (
+      {cards.map((card) => (
         <div
           key={card.label}
-          className="glass-card animate-fade-up"
-          style={{
-            padding: "20px 22px",
-            animationDelay: `${i * 60}ms`,
-            animationFillMode: "both",
-          }}
+          className="stat-card"
+          style={{ padding: "20px 24px" }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <p style={{ fontSize: 11, color: "var(--color-text-muted)", fontWeight: 600, letterSpacing: "0.08em", marginBottom: 6 }}>
-                {card.label.toUpperCase()}
-              </p>
-              <p
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 28,
-                  fontWeight: 600,
-                  color: "var(--color-text-primary)",
-                  lineHeight: 1,
-                  marginBottom: 4,
-                }}
-              >
-                {card.value}
-              </p>
-              <p style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-                {card.sub}
-              </p>
-            </div>
-            <div
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+            <p
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: `color-mix(in srgb, ${card.color} 15%, transparent)`,
-                border: `1px solid color-mix(in srgb, ${card.color} 30%, transparent)`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                fontSize: 12,
+                fontWeight: 500,
+                color: "var(--color-text-muted)",
+                margin: 0,
+                lineHeight: 1.4,
               }}
             >
-              <card.icon size={16} color={card.color} />
-            </div>
+              {card.label}
+            </p>
+            <card.icon
+              size={16}
+              strokeWidth={1.5}
+              color="var(--color-text-muted)"
+              style={{ flexShrink: 0 }}
+            />
           </div>
+
+          <p
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 28,
+              fontWeight: 600,
+              color: "var(--color-text-primary)",
+              lineHeight: 1,
+              margin: "0 0 6px",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            {card.value}
+          </p>
+
+          <p
+            style={{
+              fontSize: 12,
+              color: "var(--color-text-muted)",
+              margin: 0,
+            }}
+          >
+            {card.sub}
+          </p>
         </div>
       ))}
     </div>
