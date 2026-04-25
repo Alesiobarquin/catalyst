@@ -84,12 +84,13 @@
 html {
   font-family: var(--font-sans);
   background-color: var(--color-bg-page);
-  /* Faint graph-paper grid — matches charting terminal aesthetic */
+  /* Subtle graph-paper texture; keep it behind content, not competing with tables. */
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
-  background-size: 28px 28px;
+    linear-gradient(rgba(255, 255, 255, 0.014) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.014) 1px, transparent 1px);
+  background-size: 36px 36px;
   background-attachment: fixed;
+  background-position: top center;
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
