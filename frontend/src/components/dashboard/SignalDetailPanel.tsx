@@ -63,16 +63,9 @@ export function SignalDetailPanel({
   onClose,
   isLoading = false,
 }: SignalDetailPanelProps) {
-  const [mounted, setMounted] = useState(false);
   const [rawFactorsOpen, setRawFactorsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-
-  // Mount check for portal (SSR safety)
-  useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
-  }, []);
 
   // ESC key
   useEffect(() => {
@@ -136,7 +129,8 @@ export function SignalDetailPanel({
     return () => document.removeEventListener("keydown", handleTab);
   }, [isOpen]);
 
-  if (!mounted) return null;
+  // Portal target is only available in a browser environment.
+  if (typeof document === "undefined") return null;
 
   const pnlColor =
     signal.pnlPercent != null && signal.pnlPercent < 0 ? "#EF4444" : "#10B981";
