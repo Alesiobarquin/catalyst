@@ -42,26 +42,34 @@ export function LiveStreamBanner() {
   const [status, setStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
   const [newCount, setNewCount] = useState(0);
   const [latestSignal, setLatestSignal] = useState<StreamSignalPayload | null>(null);
-  const [soundEnabled, setSoundEnabled] = useState(false);
-  const [autoReload, setAutoReload] = useState(false);
-
-  // Keep refs for event listener callbacks
-  const soundRef = useRef(soundEnabled);
-  soundRef.current = soundEnabled;
-  const autoReloadRef = useRef(autoReload);
-  autoReloadRef.current = autoReload;
-
-  // Initialize preferences from localStorage on mount
-  useEffect(() => {
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    if (typeof window === "undefined") return false;
     try {
-      const savedSound = localStorage.getItem("catalyst_stream_sound");
-      if (savedSound !== null) setSoundEnabled(savedSound === "true");
-      const savedReload = localStorage.getItem("catalyst_stream_autoreload");
-      if (savedReload !== null) setAutoReload(savedReload === "true");
+      return localStorage.getItem("catalyst_stream_sound") === "true";
     } catch {
-      // localStorage may be disabled
+      return false;
     }
-  }, []);
+  });
+  const [autoReload, setAutoReload] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem("catalyst_stream_autoreload") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  // Keep refs in sync for event listener callbacks without mutating during render
+  const soundRef = useRef(soundEnabled);
+  const autoReloadRef = useRef(autoReload);
+
+  useEffect(() => {
+    soundRef.current = soundEnabled;
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    autoReloadRef.current = autoReload;
+  }, [autoReload]);
 
   function toggleSound() {
     setSoundEnabled((prev) => {
