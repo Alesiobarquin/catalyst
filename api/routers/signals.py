@@ -1,12 +1,13 @@
 """Validated signals router — reads from the validated_signals hypertable (Python persistence)."""
 
+import asyncio
 import csv
 import io
 import json
 from datetime import datetime, timezone
 
 import asyncpg
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 
 from api.db import get_conn
@@ -174,6 +175,77 @@ async def export_signals_csv(
         iter([csv_data]),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/stream")
+async def stream_signals(
+    request: Request,
+    min_conviction: int = Query(70, ge=0, le=100),
+    max_events: int | None = Query(None, description="Optional cap on streamed events"),
+    poll_interval: float = Query(2.0, ge=0.01, le=60.0),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """
+    Server-Sent Events (SSE) endpoint streaming real-time validated signals.
+    Provides live push updates for trading terminals and notification feeds.
+    """
+
+    async def event_generator():
+        last_time = datetime.now(timezone.utc)
+        yield f"event: connected\ndata: {json.dumps({'status': 'stream_active', 'timestamp': last_time.isoformat()})}\n\n"
+        events_sent = 0
+
+        while True:
+            if max_events is not None and events_sent >= max_events:
+                break
+            if await request.is_disconnected():
+                break
+
+            try:
+                rows = await conn.fetch(
+                    """
+                    SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
+                           ticker, time AS timestamp_utc, conviction_score,
+                           catalyst_type, rationale, is_trap,
+                           confluence_sources, key_risks,
+                           suggested_entry_zone, suggested_stop
+                    FROM validated_signals
+                    WHERE time > $1 AND conviction_score >= $2
+                    ORDER BY time ASC
+                    LIMIT 20
+                    """,
+                    last_time,
+                    min_conviction,
+                )
+
+                for r in rows:
+                    formatted = _format_signal_row(r)
+                    if formatted.get("timestamp_utc"):
+                        last_time = formatted["timestamp_utc"]
+                        formatted["timestamp_utc"] = formatted["timestamp_utc"].isoformat()
+                    payload = json.dumps(formatted)
+                    yield f"event: signal\ndata: {payload}\n\n"
+                    events_sent += 1
+                    if max_events is not None and events_sent >= max_events:
+                        return
+
+            except Exception:
+                pass
+
+            yield ": ping\n\n"
+            if max_events is not None and events_sent >= max_events:
+                break
+            await asyncio.sleep(poll_interval)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

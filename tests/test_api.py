@@ -254,3 +254,26 @@ def test_export_signals_csv():
     assert "time,ticker,conviction_score" in lines[0]
     assert "TSLA" in lines[1]
     assert "SUPERNOVA" in lines[1]
+
+
+def test_stream_signals_sse():
+    from unittest.mock import AsyncMock
+
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = []
+
+    async def _mock_conn_generator():
+        yield mock_conn
+
+    app = create_app()
+    app.dependency_overrides[db.get_conn] = _mock_conn_generator
+
+    with (
+        TestClient(app) as client,
+        client.stream("GET", "/signals/stream?min_conviction=75&max_events=0") as response,
+    ):
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers["content-type"]
+        chunk = next(response.iter_text())
+        assert "event: connected" in chunk
+        assert "stream_active" in chunk

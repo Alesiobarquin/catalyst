@@ -5,6 +5,7 @@ Why asyncpg?
   C-extension performance. No thread pool overhead compared to psycopg2 + ThreadPool.
 """
 
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -13,11 +14,13 @@ from fastapi import FastAPI
 
 from api.config import settings
 
+logger = logging.getLogger("api.db")
+
 _pool: asyncpg.Pool | None = None
 
 
 async def init_pool() -> None:
-    """Create the connection pool on startup."""
+    """Create the connection pool on startup and warm up initial connection."""
     global _pool
     _pool = await asyncpg.create_pool(
         dsn=settings.database_url,
@@ -25,6 +28,12 @@ async def init_pool() -> None:
         max_size=10,
         command_timeout=30,
     )
+    try:
+        async with _pool.acquire() as conn:
+            await conn.fetchval("SELECT 1")
+        logger.info("Database connection pool initialized and warmed up.")
+    except Exception as exc:
+        logger.warning("Database connection pool created; warmup ping deferred: %s", exc)
 
 
 async def close_pool() -> None:
