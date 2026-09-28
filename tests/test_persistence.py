@@ -101,3 +101,28 @@ class TestPersistSignal:
 
         mock_conn.commit.assert_called_once()
         mock_cur.close.assert_called_once()
+
+    def test_persist_empty_ticker_returns_false_and_skips(self):
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+
+        payload = {"ticker": "   ", "conviction_score": 90}
+        success = persist_signal(mock_conn, payload)
+        assert success is False
+        mock_cur.execute.assert_not_called()
+        mock_conn.commit.assert_not_called()
+
+    def test_init_schema_executes_table_and_index_ddl(self):
+        from persistence.consumer import init_schema
+
+        mock_conn = MagicMock()
+        mock_cur = MagicMock()
+        mock_conn.cursor.return_value = mock_cur
+
+        init_schema(mock_conn)
+
+        assert mock_cur.execute.call_count >= 4
+        assert mock_conn.commit.call_count >= 4
+        mock_cur.close.assert_called_once()
+

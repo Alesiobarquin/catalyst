@@ -89,6 +89,11 @@ def init_schema(conn: Connection) -> None:
             ON validated_signals (ticker, time DESC)
         """)
         conn.commit()
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_validated_signals_catalyst
+            ON validated_signals (catalyst_type, time DESC)
+        """)
+        conn.commit()
     finally:
         cur.close()
     logger.info("Schema initialized")
@@ -107,7 +112,12 @@ INSERT INTO validated_signals (
 """
 
 
-def persist_signal(conn: Connection, payload: dict) -> None:
+def persist_signal(conn: Connection, payload: dict) -> bool:
+    ticker = (payload.get("ticker") or "").strip().upper()
+    if not ticker:
+        logger.warning("Skipping signal without ticker: %s", payload)
+        return False
+
     ts = parse_ts(payload.get("timestamp_utc")) or datetime.now(timezone.utc)
     cur = conn.cursor()
     try:
@@ -115,7 +125,7 @@ def persist_signal(conn: Connection, payload: dict) -> None:
             INSERT_SQL,
             (
                 ts,
-                payload.get("ticker", ""),
+                ticker,
                 int(payload.get("conviction_score", 0)),
                 str(payload.get("catalyst_type", "UNKNOWN")),
                 bool(payload.get("is_trap", False)),
@@ -135,8 +145,10 @@ def persist_signal(conn: Connection, payload: dict) -> None:
             ),
         )
         conn.commit()
+        return True
     finally:
         cur.close()
+
 
 
 def run():
@@ -161,10 +173,13 @@ def run():
         try:
             if conn.closed:
                 logger.warning("Database connection is closed. Reconnecting...")
-                conn = get_db_conn()
-            persist_signal(conn, message.value)
-            consumer.commit()
-            logger.info("Persisted %s", message.value.get("ticker", "?"))
+            if persist_signal(conn, message.value):
+                consumer.commit()
+                logger.info("Persisted %s", message.value.get("ticker", "?"))
+            else:
+                consumer.commit()
+                logger.info("Skipped invalid signal payload (offset committed)")
+
         except (OperationalError, DatabaseError) as db_exc:
             logger.error("Database error while persisting signal: %s. Reconnecting...", db_exc)
             try:
