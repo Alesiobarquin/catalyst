@@ -265,3 +265,74 @@ class TestAIAnalysisServiceWorkflow:
         # Should not raise exception out of run()
         service.run()
         service.process_event.assert_called_once_with(msg.value)
+
+    def test_analyze_with_retry_success(self):
+        from unittest.mock import MagicMock
+
+        service = AIAnalysisService.__new__(AIAnalysisService)
+        service.model_name = "gemini-2.5-pro"
+        service.fallback_model = "gemini-2.0-flash"
+        service.generation_config = None
+        service.client = MagicMock()
+
+        mock_resp = MagicMock()
+        mock_resp.text = '{"conviction_score": 88, "catalyst_type": "SUPERNOVA", "rationale": "High volume breakout"}'
+        service.client.models.generate_content.return_value = mock_resp
+
+        result = service.analyze_with_retry("Analyze AAPL")
+
+        assert result["conviction_score"] == 88
+        assert result["catalyst_type"] == "SUPERNOVA"
+        service.client.models.generate_content.assert_called_once_with(
+            model="gemini-2.5-pro",
+            contents="Analyze AAPL",
+            config=None,
+        )
+
+    def test_analyze_with_retry_fallback_model_on_failure(self):
+        from unittest.mock import MagicMock, patch
+
+        service = AIAnalysisService.__new__(AIAnalysisService)
+        service.model_name = "gemini-2.5-pro"
+        service.fallback_model = "gemini-2.0-flash"
+        service.generation_config = None
+        service.client = MagicMock()
+
+        mock_fallback_resp = MagicMock()
+        mock_fallback_resp.text = '{"conviction_score": 75, "catalyst_type": "DRIFTER", "rationale": "Earnings surprise"}'
+
+        service.client.models.generate_content.side_effect = [
+            RuntimeError("ResourceExhausted: Quota exceeded 429"),
+            mock_fallback_resp,
+        ]
+
+        with patch("time.sleep") as mock_sleep:
+            result = service.analyze_with_retry("Analyze NVDA")
+
+        assert result["conviction_score"] == 75
+        assert result["catalyst_type"] == "DRIFTER"
+        assert service.client.models.generate_content.call_count == 2
+        first_call = service.client.models.generate_content.call_args_list[0]
+        second_call = service.client.models.generate_content.call_args_list[1]
+        assert first_call.kwargs["model"] == "gemini-2.5-pro"
+        assert second_call.kwargs["model"] == "gemini-2.0-flash"
+        mock_sleep.assert_called_once()
+
+    def test_analyze_with_retry_exhausted_raises_error(self):
+        from unittest.mock import MagicMock, patch
+
+        import pytest
+
+        service = AIAnalysisService.__new__(AIAnalysisService)
+        service.model_name = "gemini-2.5-pro"
+        service.fallback_model = "gemini-2.0-flash"
+        service.generation_config = None
+        service.client = MagicMock()
+        service.client.models.generate_content.side_effect = RuntimeError("Persistent outage 503")
+
+        with (
+            patch("time.sleep"),
+            pytest.raises(RuntimeError, match="Gemini analysis failed after max retries"),
+        ):
+            service.analyze_with_retry("Analyze TSLA")
+

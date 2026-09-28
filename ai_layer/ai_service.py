@@ -7,6 +7,7 @@ from google.genai import types
 
 from ai_layer.ai_config import (
     GEMINI_API_KEY,
+    GEMINI_FALLBACK_MODEL,
     GEMINI_INITIAL_BACKOFF_SECONDS,
     GEMINI_MAX_RETRIES,
     GEMINI_MODEL,
@@ -47,6 +48,11 @@ class AIAnalysisService:
             raise ValueError("GEMINI_API_KEY is required")
 
         model_name = self.resolve_model_name(GEMINI_MODEL)
+        fallback_model = (
+            self.resolve_model_name(GEMINI_FALLBACK_MODEL)
+            if GEMINI_FALLBACK_MODEL
+            else None
+        )
         self.client = genai.Client(api_key=GEMINI_API_KEY)
         tools = [types.Tool(google_search=types.GoogleSearch())]
         self.generation_config = types.GenerateContentConfig(
@@ -54,7 +60,8 @@ class AIAnalysisService:
             tools=tools,
         )
         self.model_name = model_name
-        logger.info("Using Gemini model %s", model_name)
+        self.fallback_model = fallback_model
+        logger.info("Using Gemini model %s (fallback: %s)", model_name, fallback_model)
 
         # Kafka connections with basic retry to handle transient bootstrap issues.
         kafka_backoff = 1
@@ -145,11 +152,22 @@ class AIAnalysisService:
     def analyze_with_retry(self, prompt):
         backoff_seconds = GEMINI_INITIAL_BACKOFF_SECONDS
         last_error = None
+        current_model = self.model_name
+        fallback_model = getattr(self, "fallback_model", None)
 
         for attempt in range(1, GEMINI_MAX_RETRIES + 1):
+            if attempt > 1 and fallback_model and current_model != fallback_model:
+                logger.info(
+                    "Switching to fallback Gemini model %s for attempt %s/%s",
+                    fallback_model,
+                    attempt,
+                    GEMINI_MAX_RETRIES,
+                )
+                current_model = fallback_model
+
             try:
                 response = self.client.models.generate_content(
-                    model=self.model_name,
+                    model=current_model,
                     contents=prompt,
                     config=self.generation_config,
                 )
@@ -161,9 +179,10 @@ class AIAnalysisService:
                 if attempt == GEMINI_MAX_RETRIES:
                     break
                 logger.warning(
-                    "Gemini attempt %s/%s failed: %s. Retrying in %ss",
+                    "Gemini attempt %s/%s with model %s failed: %s. Retrying in %ss",
                     attempt,
                     GEMINI_MAX_RETRIES,
+                    current_model,
                     exc,
                     backoff_seconds,
                 )
