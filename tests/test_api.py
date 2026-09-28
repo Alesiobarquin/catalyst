@@ -213,3 +213,44 @@ def test_delete_alpaca_keys_authenticated():
     assert res.status_code == 200
     assert res.json() == {"ok": True}
     mock_conn.execute.assert_called_once()
+
+
+def test_export_signals_csv():
+    from datetime import datetime, timezone
+    from unittest.mock import AsyncMock
+
+    now = datetime.now(timezone.utc)
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = [
+        {
+            "time": now,
+            "ticker": "TSLA",
+            "conviction_score": 85,
+            "catalyst_type": "SUPERNOVA",
+            "is_trap": False,
+            "trap_reason": None,
+            "rationale": "High short interest and volume spike",
+            "confluence_count": 2,
+            "suggested_entry_zone": "$240 - $245",
+            "suggested_stop": "$230",
+            "risk_level": "MODERATE",
+            "suggested_timeframe": "SWING",
+        }
+    ]
+
+    async def _mock_conn_generator():
+        yield mock_conn
+
+    app = create_app()
+    app.dependency_overrides[db.get_conn] = _mock_conn_generator
+
+    with TestClient(app) as client:
+        res = client.get("/signals/export/csv?catalyst_type=SUPERNOVA")
+
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("text/csv")
+    assert "attachment; filename=" in res.headers["content-disposition"]
+    lines = res.text.strip().splitlines()
+    assert "time,ticker,conviction_score" in lines[0]
+    assert "TSLA" in lines[1]
+    assert "SUPERNOVA" in lines[1]

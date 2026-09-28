@@ -1,9 +1,13 @@
 """Validated signals router — reads from the validated_signals hypertable (Python persistence)."""
 
+import csv
+import io
 import json
+from datetime import datetime, timezone
 
 import asyncpg
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 
 from api.db import get_conn
 from api.models import PaginatedResponse, ValidatedSignalResponse
@@ -79,6 +83,98 @@ async def list_signals(
 
     items = [_format_signal_row(r) for r in rows]
     return {"items": items, "total": total or 0, "page": page, "per_page": per_page}
+
+
+@router.get("/export/csv")
+async def export_signals_csv(
+    catalyst_type: str | None = Query(None),
+    min_conviction: int | None = Query(None, ge=0, le=100),
+    is_trap: bool | None = Query(None),
+    ticker: str | None = Query(None),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Export filtered signals to RFC 4180 CSV format."""
+    clauses: list[str] = []
+    args: list[object] = []
+
+    if catalyst_type and catalyst_type != "all":
+        args.append(catalyst_type.upper())
+        clauses.append(f"catalyst_type = ${len(args)}")
+
+    if min_conviction is not None:
+        args.append(min_conviction)
+        clauses.append(f"conviction_score >= ${len(args)}")
+
+    if is_trap is not None:
+        args.append(is_trap)
+        clauses.append(f"is_trap = ${len(args)}")
+
+    if ticker:
+        args.append(ticker.strip().upper())
+        clauses.append(f"ticker = ${len(args)}")
+
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+
+    rows = await conn.fetch(
+        f"""
+        SELECT time, ticker, conviction_score, catalyst_type, is_trap,
+               trap_reason, rationale, confluence_count,
+               suggested_entry_zone, suggested_stop, risk_level, suggested_timeframe
+        FROM validated_signals
+        {where}
+        ORDER BY time DESC
+        LIMIT 5000
+        """,
+        *args,
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "time",
+            "ticker",
+            "conviction_score",
+            "catalyst_type",
+            "is_trap",
+            "trap_reason",
+            "suggested_entry_zone",
+            "suggested_stop",
+            "risk_level",
+            "suggested_timeframe",
+            "confluence_count",
+            "rationale",
+        ]
+    )
+
+    for r in rows:
+        ts = r["time"].isoformat() if r.get("time") else ""
+        writer.writerow(
+            [
+                ts,
+                r.get("ticker"),
+                r.get("conviction_score"),
+                r.get("catalyst_type"),
+                r.get("is_trap"),
+                r.get("trap_reason") or "",
+                r.get("suggested_entry_zone") or "",
+                r.get("suggested_stop") or "",
+                r.get("risk_level") or "",
+                r.get("suggested_timeframe") or "",
+                r.get("confluence_count"),
+                r.get("rationale") or "",
+            ]
+        )
+
+    csv_data = output.getvalue()
+    today_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+    filename = f"catalyst_signals_{today_str}.csv"
+
+    return StreamingResponse(
+        iter([csv_data]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/{ticker}", response_model=list[ValidatedSignalResponse])

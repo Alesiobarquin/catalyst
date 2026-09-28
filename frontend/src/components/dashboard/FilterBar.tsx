@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Filter, Search, X } from "lucide-react";
+import { Download, Filter, Search, X } from "lucide-react";
 import { useFilterStore } from "@/store/filters";
 import type { Strategy } from "@/types";
 
@@ -337,29 +337,64 @@ export function FilterBar({
           </div>
         </div>
 
-        {/* Clear Filters button */}
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={handleReset}
+        {/* Action buttons: Reset & Export CSV */}
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleReset}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                background: "none",
+                border: "none",
+                color: "#EF4444",
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: "pointer",
+                padding: "4px 8px",
+              }}
+            >
+              <Filter size={12} />
+              Reset filters
+            </button>
+          )}
+
+          <a
+            href={(() => {
+              const exportQs = new URLSearchParams();
+              if (strategy && strategy !== "all") exportQs.set("strategy", strategy);
+              if (dateRange && dateRange !== "all") exportQs.set("date_range", dateRange);
+              if (status && status !== "all") exportQs.set("status", status);
+              if (ticker) exportQs.set("ticker", ticker);
+              const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+              const qStr = exportQs.toString();
+              return `${apiBase}/orders/export/csv${qStr ? `?${qStr}` : ""}`;
+            })()}
+            download
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
-              marginLeft: "auto",
               display: "flex",
               alignItems: "center",
-              gap: 4,
-              background: "none",
-              border: "none",
-              color: "#EF4444",
-              fontSize: 12,
+              gap: 5,
+              background: "rgba(255, 255, 255, 0.04)",
+              border: "1px solid rgba(255, 255, 255, 0.10)",
+              borderRadius: 4,
+              color: "#94A3B8",
+              fontSize: 11,
               fontWeight: 500,
-              cursor: "pointer",
               padding: "4px 8px",
+              textDecoration: "none",
+              fontFamily: "var(--font-mono)",
             }}
+            title="Export filtered orders to CSV"
           >
-            <Filter size={12} />
-            Reset filters
-          </button>
-        )}
+            <Download size={12} />
+            Export CSV
+          </a>
+        </div>
       </div>
     </div>
   );

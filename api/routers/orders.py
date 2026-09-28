@@ -1,8 +1,12 @@
 import contextlib
+import csv
+import io
 import json
+from datetime import datetime, timezone
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 
 from api.db import get_conn
 from api.models import (
@@ -88,6 +92,110 @@ async def list_orders(
         "page": page,
         "per_page": per_page,
     }
+
+
+@router.get("/export/csv")
+async def export_orders_csv(
+    strategy: str | None = Query(None),
+    status: str | None = Query(None),
+    ticker: str | None = Query(None),
+    date_range: str | None = Query(None, pattern="^(7d|30d|90d|all)$"),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Export filtered trade orders to RFC 4180 CSV format."""
+    clauses: list[str] = []
+    args: list[object] = []
+
+    if strategy and strategy != "all":
+        args.append(strategy)
+        clauses.append(f"strategy_used = ${len(args)}")
+
+    if status and status != "all":
+        args.append(status.upper())
+        clauses.append(f"status = ${len(args)}")
+
+    if ticker:
+        args.append(ticker.strip().upper())
+        clauses.append(f"ticker = ${len(args)}")
+
+    if date_range and date_range != "all":
+        days_map = {"7d": 7, "30d": 30, "90d": 90}
+        days = days_map.get(date_range)
+        if days:
+            args.append(days)
+            clauses.append(
+                f"timestamp_utc >= (NOW() AT TIME ZONE 'UTC') - (${len(args)}::int * INTERVAL '1 day')"
+            )
+
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+
+    rows = await conn.fetch(
+        f"""
+        SELECT id, ticker, timestamp_utc, action, strategy_used,
+               recommended_size_usd, limit_price, stop_loss, target_price,
+               rationale, conviction_score, catalyst_type,
+               regime_vix, spy_above_200sma, status
+        FROM trade_orders
+        {where}
+        ORDER BY timestamp_utc DESC
+        LIMIT 5000
+        """,
+        *args,
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(
+        [
+            "id",
+            "timestamp_utc",
+            "ticker",
+            "action",
+            "strategy_used",
+            "recommended_size_usd",
+            "limit_price",
+            "stop_loss",
+            "target_price",
+            "conviction_score",
+            "catalyst_type",
+            "status",
+            "regime_vix",
+            "spy_above_200sma",
+            "rationale",
+        ]
+    )
+
+    for r in rows:
+        ts = r["timestamp_utc"].isoformat() if r.get("timestamp_utc") else ""
+        writer.writerow(
+            [
+                r.get("id"),
+                ts,
+                r.get("ticker"),
+                r.get("action"),
+                r.get("strategy_used"),
+                r.get("recommended_size_usd"),
+                r.get("limit_price"),
+                r.get("stop_loss"),
+                r.get("target_price"),
+                r.get("conviction_score"),
+                r.get("catalyst_type"),
+                r.get("status"),
+                r.get("regime_vix"),
+                r.get("spy_above_200sma"),
+                r.get("rationale"),
+            ]
+        )
+
+    csv_data = output.getvalue()
+    today_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+    filename = f"catalyst_orders_{today_str}.csv"
+
+    return StreamingResponse(
+        iter([csv_data]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/stats", response_model=OrderStatsResponse)
