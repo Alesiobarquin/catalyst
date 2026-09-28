@@ -5,6 +5,7 @@ import { getCatalystLabel } from "@/lib/utils";
 import { AlertTriangle, Radio, RotateCcw } from "lucide-react";
 import { SignalRow } from "@/components/signals/SignalRow";
 import { SignalFilterBar } from "@/components/signals/SignalFilterBar";
+import { LiveStreamBanner } from "@/components/signals/LiveStreamBanner";
 import { Pagination } from "@/components/ui/Pagination";
 
 export const dynamic = "force-dynamic";
@@ -109,8 +110,12 @@ export default async function SignalsPage({ searchParams }: PageProps) {
         </p>
       </div>
 
+      {/* ── Live real-time stream status ─────────────────── */}
+      <LiveStreamBanner />
+
       {/* ── Filter toolbar ──────────────────────────────── */}
       <SignalFilterBar
+
         initialCatalyst={sp.catalyst_type ?? "all"}
         initialMinConviction={sp.min_conviction ?? "all"}
         initialTrap={
