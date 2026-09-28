@@ -147,10 +147,12 @@ class GatekeeperService:
         }
         self.producer.send(TRIAGE_PRIORITY_TOPIC, triage_payload)
         self.producer.flush()
-        try:
-            self.consumer.commit()
-        except Exception as exc:
-            logger.warning("Kafka commit failed after forwarding triage payload: %s", exc)
+        if hasattr(self, "consumer") and self.consumer:
+            try:
+                self.consumer.commit()
+            except Exception as exc:
+                logger.warning("Kafka commit failed after forwarding triage payload: %s", exc)
+
         self.mark_sent(ticker)
         logger.info(
             "Forwarded %s to %s (confluence=%s, technical_score=%s)",
