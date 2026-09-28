@@ -55,6 +55,18 @@ async def ping_database() -> str:
         return "error"
 
 
+def get_pool_stats() -> dict[str, int]:
+    """Return live connection pool metrics for health monitoring."""
+    if _pool is None:
+        return {"size": 0, "idle": 0, "max_size": 10, "min_size": 2}
+    return {
+        "size": _pool.get_size(),
+        "idle": _pool.get_idle_size(),
+        "max_size": _pool.get_max_size(),
+        "min_size": _pool.get_min_size(),
+    }
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager wired into FastAPI app factory."""

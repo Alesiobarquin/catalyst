@@ -1,13 +1,17 @@
 """FastAPI application factory."""
 
+import time
+
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import settings
-from api.db import lifespan, ping_database
+from api.db import get_pool_stats, lifespan, ping_database
 from api.routers import execution, market, orders, performance, signals
 from api.routers import settings as settings_router
+
+START_TIME = time.time()
 
 
 def create_app() -> FastAPI:
@@ -43,7 +47,15 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["health"])
     async def health():
-        return {"status": "ok", "service": "catalyst-api"}
+        uptime = round(time.time() - START_TIME, 2)
+        return {
+            "status": "ok",
+            "service": "catalyst-api",
+            "version": "1.0.0",
+            "uptime_seconds": uptime,
+            "environment": settings.environment,
+            "pool": get_pool_stats(),
+        }
 
     @app.get("/health/pipeline", tags=["health"])
     async def health_pipeline():

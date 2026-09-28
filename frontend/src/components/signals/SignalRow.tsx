@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ValidatedSignal } from "@/types";
+import type { MarketQuote, ValidatedSignal } from "@/types";
 import { formatCurrency, formatRelative, getCatalystLabel, getConvictionColor } from "@/lib/utils";
 import { getQuote } from "@/lib/api";
 import { Activity, AlertTriangle, ChevronDown, ChevronUp, TrendingDown, TrendingUp } from "lucide-react";
@@ -17,17 +17,7 @@ export function SignalRow({
   isLast: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [quote, setQuote] = useState<{
-    price?: number;
-    change?: number;
-    change_percent?: number;
-    day_high?: number;
-    day_low?: number;
-    volume?: number;
-    fifty_two_week_high?: number;
-    fifty_two_week_low?: number;
-    market_cap?: number;
-  } | null>(null);
+  const [quote, setQuote] = useState<MarketQuote | null>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [quoteError, setQuoteError] = useState(false);
 

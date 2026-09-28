@@ -1,12 +1,13 @@
 // Dashboard home — Server Component
 // Data is fetched server-side; client components handle interactivity.
 
-import { getOrders, getOrderStats } from "@/lib/api";
+import { getOrders, getOrderStats, getMarketBenchmarks } from "@/lib/api";
 import { StatsBar } from "@/components/dashboard/StatsBar";
 import { FilterBar } from "@/components/dashboard/FilterBar";
 import { TradeList } from "@/components/dashboard/TradeList";
 import { Pagination } from "@/components/ui/Pagination";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { MarketOverviewBar } from "@/components/dashboard/MarketOverviewBar";
 
 export const dynamic = "force-dynamic";
 
@@ -45,21 +46,24 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     Boolean(status) ||
     Boolean(ticker);
 
-  const [{ items: orders, total, page: curPage, per_page }, stats] = await Promise.all([
-    getOrders({
-      page,
-      per_page: ORDERS_PER_PAGE,
-      strategy,
-      date_range: dateRange,
-      status,
-      ticker,
-    }),
-    getOrderStats(),
-  ]);
+  const [{ items: orders, total, page: curPage, per_page }, stats, marketBenchmarks] =
+    await Promise.all([
+      getOrders({
+        page,
+        per_page: ORDERS_PER_PAGE,
+        strategy,
+        date_range: dateRange,
+        status,
+        ticker,
+      }),
+      getOrderStats(),
+      getMarketBenchmarks(),
+    ]);
 
   return (
     <>
       <DashboardHeader />
+      <MarketOverviewBar initialQuotes={marketBenchmarks} />
       <StatsBar stats={stats} />
       <FilterBar
         initialStrategy={strategy}

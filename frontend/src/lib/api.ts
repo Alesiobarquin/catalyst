@@ -8,6 +8,7 @@ import type {
   PaginatedResponse,
   BatchPerformance,
   SignalDetail,
+  MarketQuote,
 } from "@/types";
 import { MOCK_ORDERS, MOCK_SIGNALS, MOCK_STATS } from "./mock-data";
 
@@ -178,23 +179,28 @@ export async function getMyExecutionSummary(token: string): Promise<ExecutionSum
 }
 
 /** GET /market/{ticker}/quote — real-time quote metrics */
-export async function getQuote(ticker: string): Promise<{
-  ticker: string;
-  price?: number;
-  change?: number;
-  change_percent?: number;
-  day_high?: number;
-  day_low?: number;
-  volume?: number;
-  fifty_two_week_high?: number;
-  fifty_two_week_low?: number;
-  market_cap?: number;
-} | null> {
+export async function getQuote(ticker: string): Promise<MarketQuote | null> {
   const res = await fetch(`${apiBaseUrl()}/market/${ticker}/quote`, {
     next: { revalidate: 15 },
   });
   if (!res.ok) return null;
   return res.json();
+}
+
+/** Fetch major market benchmark indices concurrently */
+export async function getMarketBenchmarks(): Promise<MarketQuote[]> {
+  const tickers = ["SPY", "QQQ", "DIA", "IWM"];
+  const quotes = await Promise.all(
+    tickers.map(async (t) => {
+      try {
+        const q = await getQuote(t);
+        return q ?? { ticker: t };
+      } catch {
+        return { ticker: t };
+      }
+    })
+  );
+  return quotes;
 }
 
 /** DELETE /settings/alpaca — disconnect Alpaca API keys */

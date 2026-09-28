@@ -29,7 +29,13 @@ def test_health_endpoint_ok():
     with make_test_client() as client:
         res = client.get("/health")
     assert res.status_code == 200
-    assert res.json()["status"] == "ok"
+    data = res.json()
+    assert data["status"] == "ok"
+    assert data["service"] == "catalyst-api"
+    assert data["version"] == "1.0.0"
+    assert "uptime_seconds" in data
+    assert "pool" in data
+    assert "size" in data["pool"]
 
 
 def test_executions_me_requires_bearer_token():

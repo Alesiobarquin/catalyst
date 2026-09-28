@@ -66,3 +66,38 @@ class TestComputeRelativeVolume:
         redis.set.assert_called_once()
         stored_val = redis.set.call_args[0][1]
         assert abs(float(stored_val) - 100_000) < 1
+
+    def test_redis_ema_updates_baseline(self):
+        redis = MagicMock()
+        redis.get.return_value = "100000"
+        compute_relative_volume(redis, "X", 200_000, 100_000)
+        # Next baseline should be 0.2 * 200000 + 0.8 * 100000 = 120000
+        redis.set.assert_called_once()
+        stored_val = float(redis.set.call_args[0][1])
+        assert abs(stored_val - 120_000) < 1
+
+
+class TestSqueezeHunterRedisClient:
+    def test_redis_client_success(self):
+        from unittest.mock import patch
+
+        from hunters.squeeze_hunter import get_redis_client
+
+        with patch("hunters.squeeze_hunter.Redis") as mock_redis_cls:
+            mock_inst = MagicMock()
+            mock_redis_cls.return_value = mock_inst
+            client = get_redis_client()
+            assert client is mock_inst
+            mock_inst.ping.assert_called_once()
+
+    def test_redis_client_failure_returns_none(self):
+        from unittest.mock import patch
+
+        from hunters.squeeze_hunter import get_redis_client
+
+        with patch("hunters.squeeze_hunter.Redis") as mock_redis_cls:
+            mock_inst = MagicMock()
+            mock_inst.ping.side_effect = ConnectionError("Redis unreachable")
+            mock_redis_cls.return_value = mock_inst
+            client = get_redis_client()
+            assert client is None

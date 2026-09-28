@@ -1,5 +1,6 @@
 import asyncio
 import io
+import random
 from datetime import datetime
 
 import pandas as pd
@@ -304,15 +305,16 @@ async def fetch_squeeze_targets():
                 all_results.extend(page_results)
                 logger.info("   -> Scraped %s items from this page.", len(page_results))
 
-                # If we got fewer than 20 results, it's likely the last page
-                if len(page_results) < 20:
+                # If Finviz returned fewer than 20 rows, we have reached the last page
+                if len(clean_df) < 20:
                     break
 
                 # Move to next page
                 start_index += 20
 
-                # Be nice to the server
-                await asyncio.sleep(1)
+                # Be polite to the server with randomized jitter delay (1.0s - 2.2s)
+                delay = 1.0 + random.uniform(0.2, 1.2)
+                await asyncio.sleep(delay)
 
             except Exception as e:
                 logger.error("   ❌ Error on index %s: %s", start_index, e)

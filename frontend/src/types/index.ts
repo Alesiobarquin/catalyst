@@ -116,6 +116,19 @@ export interface SignalStats {
   catalyst_breakdown: Record<CatalystType, number>;
 }
 
+export interface MarketQuote {
+  ticker: string;
+  price?: number | null;
+  change?: number | null;
+  change_percent?: number | null;
+  day_high?: number | null;
+  day_low?: number | null;
+  volume?: number | null;
+  fifty_two_week_high?: number | null;
+  fifty_two_week_low?: number | null;
+  market_cap?: number | null;
+}
+
 // Response shape from GET /performance/batch
 export interface BatchPerformance {
   order_id: number;
