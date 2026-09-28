@@ -82,6 +82,7 @@ async def scrape_whale(page) -> list[dict]:
             continue
         seen.add(key)
 
+        now_iso = datetime.now(timezone.utc).isoformat()
         found.append(
             {
                 "ticker": ticker,
@@ -89,10 +90,13 @@ async def scrape_whale(page) -> list[dict]:
                 "strike_price": strike,
                 "option_volume": int(vol_hint) if vol_hint and vol_hint > 10 else None,
                 "source": "barchart_unusual",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": now_iso,
+                "timestamp_utc": now_iso,
                 "hunter": "whale",
+                "source_hunter": "whale",
             }
         )
+
 
     return found
 

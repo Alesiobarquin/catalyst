@@ -120,8 +120,10 @@ async def _run_sweep(client: httpx.AsyncClient, kafka: KafkaClient) -> int:
             logger.debug("Skipping %s: liquidity lookup failed", symbol)
             continue
 
+        now_iso = datetime.now(timezone.utc).isoformat()
         payload = {
             "hunter": "drifter",
+            "source_hunter": "drifter",
             "ticker": symbol,
             "surprise_percent": round(surp, 4),
             "eps_estimate": eps_est,
@@ -129,11 +131,13 @@ async def _run_sweep(client: httpx.AsyncClient, kafka: KafkaClient) -> int:
             "revenue_estimate": rev_est,
             "revenue_actual": rev,
             "earnings_date": date_str,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": now_iso,
+            "timestamp_utc": now_iso,
             "price": liq["price"],
             "volume": liq["volume"],
             "relative_volume": liq["relative_volume"],
         }
+
         rev_surp = _rev_surprise_pct(rev, rev_est)
         if rev_surp is not None:
             payload["revenue_surprise_percent"] = round(rev_surp, 4)

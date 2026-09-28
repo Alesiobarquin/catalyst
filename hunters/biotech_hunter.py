@@ -97,6 +97,7 @@ async def scrape_biopharm(page):
 
                 # Filter for high-impact phases
                 if any(x in stage.upper() for x in ["PHASE 3", "PDUFA", "NDA", "BLA"]):
+                    now_iso = datetime.now(timezone.utc).isoformat()
                     catalysts.append(
                         {
                             "ticker": ticker,
@@ -104,10 +105,13 @@ async def scrape_biopharm(page):
                             "catalyst_type": stage,
                             "event_date": catalyst_date,
                             "source": "BioPharmCatalyst",
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "timestamp": now_iso,
+                            "timestamp_utc": now_iso,
                             "hunter": "biotech",
+                            "source_hunter": "biotech",
                         }
                     )
+
 
     except Exception as e:
         # await page.screenshot(path="debug_biotech.png")
