@@ -2,9 +2,11 @@ import asyncio
 import logging
 from datetime import datetime
 
+import asyncpg
 import yfinance as yf
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from api.db import get_conn
 from api.models import MarketQuoteResponse, PriceBar
 
 logger = logging.getLogger(__name__)
@@ -57,6 +59,28 @@ def _fetch_quote(symbol: str) -> dict:
         "fifty_two_week_low": round(float(year_low), 4) if year_low else None,
         "market_cap": int(market_cap) if market_cap else None,
     }
+
+
+@router.get("/search")
+async def search_tickers(
+    q: str = Query(..., min_length=1, max_length=10),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Search tracked tickers across active orders and validated signals matching prefix/query."""
+    pattern = f"{q.strip().upper()}%"
+    rows = await conn.fetch(
+        """
+        SELECT DISTINCT ticker FROM (
+            SELECT ticker FROM trade_orders WHERE ticker ILIKE $1
+            UNION
+            SELECT ticker FROM validated_signals WHERE ticker ILIKE $1
+        ) sub
+        ORDER BY ticker ASC
+        LIMIT 15
+        """,
+        pattern,
+    )
+    return [{"ticker": r["ticker"]} for r in rows]
 
 
 @router.get("/{ticker}/quote", response_model=MarketQuoteResponse)

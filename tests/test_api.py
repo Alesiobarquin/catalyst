@@ -277,3 +277,35 @@ def test_stream_signals_sse():
         chunk = next(response.iter_text())
         assert "event: connected" in chunk
         assert "stream_active" in chunk
+
+
+def test_security_headers_present():
+    with make_test_client() as client:
+        res = client.get("/health")
+    assert res.status_code == 200
+    assert res.headers.get("x-content-type-options") == "nosniff"
+    assert res.headers.get("x-frame-options") == "DENY"
+    assert res.headers.get("x-xss-protection") == "1; mode=block"
+    assert res.headers.get("referrer-policy") == "strict-origin-when-cross-origin"
+
+
+def test_market_search_tickers():
+    from unittest.mock import AsyncMock
+
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = [{"ticker": "NVDA"}, {"ticker": "NVO"}]
+
+    async def _mock_conn_generator():
+        yield mock_conn
+
+    app = create_app()
+    app.dependency_overrides[db.get_conn] = _mock_conn_generator
+
+    with TestClient(app) as client:
+        res = client.get("/market/search?q=NV")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data) == 2
+    assert data[0]["ticker"] == "NVDA"
+    assert data[1]["ticker"] == "NVO"

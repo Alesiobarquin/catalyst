@@ -2,7 +2,6 @@
 import os
 
 import aws_cdk as cdk
-
 from catalyst_stack import CatalystStack
 
 app = cdk.App()
