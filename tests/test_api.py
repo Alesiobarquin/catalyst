@@ -137,3 +137,73 @@ def test_signals_list_and_by_ticker():
         assert data_ticker[0]["ticker"] == "NVDA"
         assert data_ticker[0]["confluence_sources"] == ["squeeze", "whale"]
         assert data_ticker[0]["key_risks"] == ["Earnings volatility"]
+
+        # 3. Test /signals with filters
+        res_filtered = client.get(
+            "/signals?catalyst_type=SUPERNOVA&min_conviction=80&is_trap=false&ticker=NVDA"
+        )
+        assert res_filtered.status_code == 200
+        assert res_filtered.json()["total"] == 1
+
+
+def test_market_quote_success():
+    from unittest.mock import MagicMock, patch
+
+    mock_fast_info = MagicMock()
+    mock_fast_info.last_price = 125.50
+    mock_fast_info.previous_close = 120.00
+    mock_fast_info.day_high = 127.00
+    mock_fast_info.day_low = 123.00
+    mock_fast_info.last_volume = 45000000
+    mock_fast_info.year_high = 140.00
+    mock_fast_info.year_low = 80.00
+    mock_fast_info.market_cap = 3000000000000
+
+    mock_ticker_instance = MagicMock()
+    mock_ticker_instance.fast_info = mock_fast_info
+
+    with (
+        patch("yfinance.Ticker", return_value=mock_ticker_instance),
+        make_test_client() as client,
+    ):
+        res = client.get("/market/NVDA/quote")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["ticker"] == "NVDA"
+    assert data["price"] == 125.50
+    assert data["change"] == 5.50
+    assert data["change_percent"] == 4.58
+    assert data["day_high"] == 127.00
+    assert data["volume"] == 45000000
+
+
+def test_delete_alpaca_keys_requires_auth():
+    with make_test_client() as client:
+        res = client.delete("/settings/alpaca")
+    assert res.status_code == 401
+    assert "Bearer token required" in res.json()["detail"]
+
+
+def test_delete_alpaca_keys_authenticated():
+    from unittest.mock import AsyncMock
+
+    mock_conn = AsyncMock()
+
+    async def _mock_conn_generator():
+        yield mock_conn
+
+    app = create_app()
+    app.dependency_overrides[db.get_conn] = _mock_conn_generator
+
+    # Override require_clerk_user dependency
+    from api.auth import require_clerk_user
+
+    app.dependency_overrides[require_clerk_user] = lambda: {"sub": "user_12345"}
+
+    with TestClient(app) as client:
+        res = client.delete("/settings/alpaca")
+
+    assert res.status_code == 200
+    assert res.json() == {"ok": True}
+    mock_conn.execute.assert_called_once()

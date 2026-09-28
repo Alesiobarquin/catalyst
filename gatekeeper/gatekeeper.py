@@ -87,7 +87,18 @@ class GatekeeperService:
             TRIAGE_PRIORITY_TOPIC,
         )
         for message in self.consumer:
-            self.process_event(message.value)
+            try:
+                self.process_event(message.value)
+            except Exception as exc:
+                logger.error("Unhandled error processing raw event: %s", exc, exc_info=True)
+
+    def close(self):
+        if hasattr(self, "consumer"):
+            self.consumer.close()
+        if hasattr(self, "producer"):
+            self.producer.close()
+        if hasattr(self, "redis"):
+            self.redis.close()
 
     def process_event(self, raw_event):
         normalized = self.normalize_event(raw_event)

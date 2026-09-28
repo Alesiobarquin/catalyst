@@ -27,12 +27,14 @@ router = APIRouter(prefix="/orders", tags=["orders"])
 @router.get("", response_model=PaginatedResponse[TradeOrderResponse])
 async def list_orders(
     strategy: str | None = Query(None),
+    status: str | None = Query(None),
+    ticker: str | None = Query(None),
     date_range: str | None = Query(None, pattern="^(7d|30d|90d|all)$"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    """Return paginated trade orders, newest first. Optional strategy/date filters."""
+    """Return paginated trade orders, newest first. Optional strategy/status/ticker/date filters."""
     offset = (page - 1) * per_page
     clauses: list[str] = []
     args: list[object] = []
@@ -40,6 +42,14 @@ async def list_orders(
     if strategy and strategy != "all":
         args.append(strategy)
         clauses.append(f"strategy_used = ${len(args)}")
+
+    if status and status != "all":
+        args.append(status.upper())
+        clauses.append(f"status = ${len(args)}")
+
+    if ticker:
+        args.append(ticker.strip().upper())
+        clauses.append(f"ticker = ${len(args)}")
 
     if date_range and date_range != "all":
         days_map = {"7d": 7, "30d": 30, "90d": 90}

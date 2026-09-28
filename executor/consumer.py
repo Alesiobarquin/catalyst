@@ -5,6 +5,7 @@ Matches persisted rows in trade_orders by ticker + timestamp_utc (with short ret
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import time
@@ -212,16 +213,26 @@ def main() -> None:
         value_deserializer=lambda b: json.loads(b.decode("utf-8")),
     )
 
-    with get_db() as conn:
-        for msg in consumer:
-            if not msg.value:
-                continue
+    conn = get_db()
+    for msg in consumer:
+        if not msg.value:
+            continue
+        try:
+            if conn.closed:
+                logger.warning("Database connection is closed. Reconnecting...")
+                conn = get_db()
+            process_message(conn, msg.value)
+            conn.commit()
+        except Exception as e:
+            logger.exception("Message error: %s", e)
             try:
-                process_message(conn, msg.value)
-                conn.commit()
-            except Exception as e:
-                logger.exception("Message error: %s", e)
-                conn.rollback()
+                if not conn.closed:
+                    conn.rollback()
+                else:
+                    conn = get_db()
+            except Exception:
+                with contextlib.suppress(Exception):
+                    conn = get_db()
 
 
 if __name__ == "__main__":

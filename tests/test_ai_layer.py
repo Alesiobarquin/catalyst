@@ -242,3 +242,26 @@ class TestAIAnalysisServiceWorkflow:
         service.producer.send.assert_called_once()
         service.producer.flush.assert_called_once()
         service.consumer.commit.assert_called_once()
+
+    def test_ai_service_close(self):
+        from unittest.mock import MagicMock
+
+        service = AIAnalysisService.__new__(AIAnalysisService)
+        service.consumer = MagicMock()
+        service.producer = MagicMock()
+        service.close()
+        service.consumer.close.assert_called_once()
+        service.producer.close.assert_called_once()
+
+    def test_ai_service_run_error_handling(self):
+        from unittest.mock import MagicMock
+
+        service = AIAnalysisService.__new__(AIAnalysisService)
+        msg = MagicMock()
+        msg.value = {"ticker": "CRASH"}
+        service.consumer = [msg]
+        service.process_event = MagicMock(side_effect=RuntimeError("Parsing explosion"))
+
+        # Should not raise exception out of run()
+        service.run()
+        service.process_event.assert_called_once_with(msg.value)

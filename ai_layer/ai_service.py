@@ -95,7 +95,16 @@ class AIAnalysisService:
             VALIDATED_SIGNALS_TOPIC,
         )
         for message in self.consumer:
-            self.process_event(message.value)
+            try:
+                self.process_event(message.value)
+            except Exception as exc:
+                logger.error("Unhandled error processing triage message: %s", exc, exc_info=True)
+
+    def close(self):
+        if hasattr(self, "consumer"):
+            self.consumer.close()
+        if hasattr(self, "producer"):
+            self.producer.close()
 
     def process_event(self, triage_payload):
         prompt = build_analysis_prompt(triage_payload)

@@ -341,3 +341,21 @@ class TestGatekeeperRedisAndWorkflow:
         }
         gatekeeper.process_event(raw)
         gatekeeper.producer.send.assert_not_called()
+
+    def test_gatekeeper_close(self, gatekeeper):
+        gatekeeper.consumer = MagicMock()
+        gatekeeper.producer = MagicMock()
+        gatekeeper.close()
+        gatekeeper.consumer.close.assert_called_once()
+        gatekeeper.producer.close.assert_called_once()
+        gatekeeper.redis.close.assert_called_once()
+
+    def test_gatekeeper_run_error_handling(self, gatekeeper):
+        msg = MagicMock()
+        msg.value = {"source_hunter": "whale", "ticker": "BAD"}
+        gatekeeper.consumer = [msg]
+        gatekeeper.process_event = MagicMock(side_effect=RuntimeError("Corrupt payload"))
+
+        # Should not raise exception out of run()
+        gatekeeper.run()
+        gatekeeper.process_event.assert_called_once_with(msg.value)

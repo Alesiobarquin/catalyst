@@ -59,6 +59,73 @@ def test_list_orders_success():
     assert data["items"][0]["ticker"] == "NVDA"
 
 
+def test_list_orders_with_status_and_ticker_filters():
+    now = datetime.now(timezone.utc)
+    mock_conn = AsyncMock()
+    mock_conn.fetchval.return_value = 1
+    mock_conn.fetch.return_value = [
+        {
+            "id": 2,
+            "ticker": "TSLA",
+            "timestamp_utc": now,
+            "action": "BUY",
+            "strategy_used": "Supernova",
+            "recommended_size_usd": 12000.0,
+            "limit_price": 240.0,
+            "stop_loss": 225.0,
+            "target_price": 280.0,
+            "rationale": "High short interest squeeze",
+            "conviction_score": 88,
+            "catalyst_type": "SUPERNOVA",
+            "regime_vix": 17.0,
+            "spy_above_200sma": True,
+            "status": "ACTIVE",
+        }
+    ]
+
+    with make_orders_test_client(mock_conn) as client:
+        res = client.get("/orders?status=ACTIVE&ticker=TSLA&strategy=Supernova")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total"] == 1
+    assert data["items"][0]["ticker"] == "TSLA"
+    assert data["items"][0]["status"] == "ACTIVE"
+
+
+def test_orders_by_ticker():
+    now = datetime.now(timezone.utc)
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = [
+        {
+            "id": 5,
+            "ticker": "MSFT",
+            "timestamp_utc": now,
+            "action": "BUY",
+            "strategy_used": "Follower",
+            "recommended_size_usd": 20000.0,
+            "limit_price": 420.0,
+            "stop_loss": 405.0,
+            "target_price": 460.0,
+            "rationale": "C-suite insider buy",
+            "conviction_score": 75,
+            "catalyst_type": "FOLLOWER",
+            "regime_vix": 14.0,
+            "spy_above_200sma": True,
+            "status": "ACTIVE",
+        }
+    ]
+
+    with make_orders_test_client(mock_conn) as client:
+        res = client.get("/orders/MSFT")
+
+    assert res.status_code == 200
+    items = res.json()
+    assert len(items) == 1
+    assert items[0]["ticker"] == "MSFT"
+    assert items[0]["strategy_used"] == "Follower"
+
+
 def test_get_order_detail_success():
     now = datetime.now(timezone.utc)
     mock_conn = AsyncMock()

@@ -5,9 +5,10 @@ Consumes validated-signals from Kafka and writes to a TimescaleDB hypertable.
 
 import json
 import logging
+import time
 from datetime import datetime, timezone
 
-from psycopg import Connection, connect
+from psycopg import Connection, DatabaseError, OperationalError, connect
 
 from kafka import KafkaConsumer
 from persistence.config import (
@@ -154,9 +155,20 @@ def run():
 
     for message in consumer:
         try:
+            if conn.closed:
+                logger.warning("Database connection is closed. Reconnecting...")
+                conn = get_db_conn()
             persist_signal(conn, message.value)
             consumer.commit()
             logger.info("Persisted %s", message.value.get("ticker", "?"))
+        except (OperationalError, DatabaseError) as db_exc:
+            logger.error("Database error while persisting signal: %s. Reconnecting...", db_exc)
+            time.sleep(1)
+            try:
+                conn = get_db_conn()
+                logger.info("Reconnected to TimescaleDB.")
+            except Exception as reconn_err:
+                logger.error("Database reconnection failed: %s", reconn_err)
         except Exception as exc:
             logger.error("Failed to persist signal: %s", exc)
             # Do not commit - will retry on next poll

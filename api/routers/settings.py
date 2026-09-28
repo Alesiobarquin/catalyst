@@ -53,3 +53,14 @@ async def save_alpaca_keys(
         body.secret_key.strip(),
     )
     return {"ok": True}
+
+
+@router.delete("/alpaca")
+async def delete_alpaca_keys(
+    _user: dict = Depends(require_clerk_user),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Disconnect and delete stored Alpaca API keys for the current user."""
+    uid = _user["sub"]
+    await conn.execute("DELETE FROM user_alpaca_keys WHERE clerk_user_id = $1", uid)
+    return {"ok": True}

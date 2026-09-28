@@ -28,6 +28,8 @@ function apiBaseUrl(): string {
 
 export async function getOrders(params?: {
   strategy?: string;
+  status?: string;
+  ticker?: string;
   date_range?: "7d" | "30d" | "90d" | "all";
   page?: number;
   per_page?: number;
@@ -37,10 +39,18 @@ export async function getOrders(params?: {
     if (params?.strategy && params.strategy !== "all") {
       items = items.filter((o) => o.strategy_used === params.strategy);
     }
+    if (params?.status && params.status !== "all") {
+      items = items.filter((o) => o.status === params.status);
+    }
+    if (params?.ticker) {
+      items = items.filter((o) => o.ticker.toUpperCase() === params.ticker?.toUpperCase());
+    }
     return { items, total: items.length, page: 1, per_page: 20 };
   }
   const qs = new URLSearchParams();
   if (params?.strategy && params.strategy !== "all") qs.set("strategy", params.strategy);
+  if (params?.status && params.status !== "all") qs.set("status", params.status);
+  if (params?.ticker) qs.set("ticker", params.ticker);
   if (params?.date_range && params.date_range !== "all") qs.set("date_range", params.date_range);
   if (params?.page) qs.set("page", String(params.page));
   if (params?.per_page) qs.set("per_page", String(params.per_page));
@@ -66,11 +76,19 @@ export async function getOrderStats(): Promise<OrderStats> {
 // ── Validated Signals ─────────────────────────────────────────────
 
 export async function getSignals(params?: {
+  catalyst_type?: string;
+  min_conviction?: number;
+  is_trap?: boolean;
+  ticker?: string;
   page?: number;
   per_page?: number;
 }): Promise<PaginatedResponse<ValidatedSignal>> {
   if (USE_MOCK) return { items: MOCK_SIGNALS, total: MOCK_SIGNALS.length, page: 1, per_page: 20 };
   const qs = new URLSearchParams();
+  if (params?.catalyst_type && params.catalyst_type !== "all") qs.set("catalyst_type", params.catalyst_type);
+  if (params?.min_conviction !== undefined) qs.set("min_conviction", String(params.min_conviction));
+  if (params?.is_trap !== undefined) qs.set("is_trap", String(params.is_trap));
+  if (params?.ticker) qs.set("ticker", params.ticker);
   if (params?.page) qs.set("page", String(params.page));
   if (params?.per_page) qs.set("per_page", String(params.per_page));
   const res = await fetch(`${apiBaseUrl()}/signals?${qs}`, { next: { revalidate: 30 } });
@@ -133,3 +151,33 @@ export async function getMyExecutions(token: string): Promise<TradeExecution[]> 
   if (!res.ok) return [];
   return res.json();
 }
+
+/** GET /market/{ticker}/quote — real-time quote metrics */
+export async function getQuote(ticker: string): Promise<{
+  ticker: string;
+  price?: number;
+  change?: number;
+  change_percent?: number;
+  day_high?: number;
+  day_low?: number;
+  volume?: number;
+  fifty_two_week_high?: number;
+  fifty_two_week_low?: number;
+  market_cap?: number;
+} | null> {
+  const res = await fetch(`${apiBaseUrl()}/market/${ticker}/quote`, {
+    next: { revalidate: 15 },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+/** DELETE /settings/alpaca — disconnect Alpaca API keys */
+export async function deleteAlpacaKeys(token: string): Promise<boolean> {
+  const res = await fetch(`${apiBaseUrl()}/settings/alpaca`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.ok;
+}
+
