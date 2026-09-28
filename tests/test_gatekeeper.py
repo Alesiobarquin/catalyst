@@ -11,16 +11,18 @@ from gatekeeper.gatekeeper import GatekeeperService
 @pytest.fixture
 def gatekeeper():
     """GatekeeperService with mocked Redis and Kafka."""
-    with patch("gatekeeper.gatekeeper.Redis") as mock_redis:
-        with patch("gatekeeper.gatekeeper.KafkaConsumer"):
-            with patch("gatekeeper.gatekeeper.KafkaProducer"):
-                mock_redis.return_value.ping.return_value = True
-                gk = GatekeeperService()
-                gk.redis = MagicMock()
-                gk.redis.smembers.return_value = set()
-                gk.redis.lrange.return_value = []
-                gk.redis.exists.return_value = False
-                return gk
+    with (
+        patch("gatekeeper.gatekeeper.Redis") as mock_redis,
+        patch("gatekeeper.gatekeeper.KafkaConsumer"),
+        patch("gatekeeper.gatekeeper.KafkaProducer"),
+    ):
+        mock_redis.return_value.ping.return_value = True
+        gk = GatekeeperService()
+        gk.redis = MagicMock()
+        gk.redis.smembers.return_value = set()
+        gk.redis.lrange.return_value = []
+        gk.redis.exists.return_value = False
+        return gk
 
 
 class TestGatekeeperStaticHelpers:

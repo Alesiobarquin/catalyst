@@ -18,6 +18,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
       - name: Install dependencies
         run: |
@@ -27,12 +28,13 @@ jobs:
           pip install -r gatekeeper/requirements.txt
           pip install -r ai_layer/requirements.txt
           pip install -r hunters/requirements.txt
+          pip install -r executor/requirements.txt
 
       - name: Ruff lint
-        run: ruff check gatekeeper ai_layer hunters persistence tests --output-format=github
+        run: ruff check api gatekeeper ai_layer hunters persistence executor tests --output-format=github
 
       - name: Ruff format check
-        run: ruff format --check gatekeeper ai_layer hunters persistence tests
+        run: ruff format --check api gatekeeper ai_layer hunters persistence executor tests
 
       - name: Unit tests
         run: PYTHONPATH=. python -m pytest tests/ -v --tb=short

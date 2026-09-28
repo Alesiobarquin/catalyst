@@ -115,7 +115,7 @@ async def fetch_squeeze_targets():
 
         while len(all_results) < max_results:
             url = BASE_URL.format(start_index)
-            logger.info(f"   -> Navigating to Finviz (Start Index: {start_index})...")
+            logger.info("   -> Navigating to Finviz (Start Index: %s)...", start_index)
 
             try:
                 # 'domcontentloaded' is faster than 'networkidle'
@@ -131,7 +131,7 @@ async def fetch_squeeze_targets():
                 target_df = None
 
                 # Debugging: Log what we found
-                logger.info(f"   -> Found {len(dfs)} tables on page.")
+                logger.info("   -> Found %s tables on page.", len(dfs))
 
                 # Intelligent Table Selection
                 best_len = 0
@@ -150,7 +150,9 @@ async def fetch_squeeze_targets():
 
                     # Log candidate tables
                     if score >= 5:
-                        logger.debug(f"   Candidate Table {i}: Score {score}, Shape {df.shape}")
+                        logger.debug(
+                            "   Candidate Table %s: Score %s, Shape %s", i, score, df.shape
+                        )
                         if len(df) > best_len:
                             target_df = df
                             best_len = len(df)
@@ -300,7 +302,7 @@ async def fetch_squeeze_targets():
                         page_results.append(signal)
 
                 all_results.extend(page_results)
-                logger.info(f"   -> Scraped {len(page_results)} items from this page.")
+                logger.info("   -> Scraped %s items from this page.", len(page_results))
 
                 # If we got fewer than 20 results, it's likely the last page
                 if len(page_results) < 20:
@@ -313,13 +315,13 @@ async def fetch_squeeze_targets():
                 await asyncio.sleep(1)
 
             except Exception as e:
-                logger.error(f"   ❌ Error on index {start_index}: {e}")
+                logger.error("   ❌ Error on index %s: %s", start_index, e)
                 import traceback
 
                 logger.error(traceback.format_exc())
                 break
 
-    logger.info(f"   ✅ Success: Found total {len(all_results)} potential squeeze targets.")
+    logger.info("   ✅ Success: Found total %s potential squeeze targets.", len(all_results))
     return all_results
 
 

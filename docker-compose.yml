@@ -2,7 +2,7 @@ x-hunter-common: &hunter-common
   build:
     context: ./hunters # Looks up one folder to 'catalyst/hunters'
     dockerfile: Dockerfile # Uses the Dockerfile we created
-  image: alpha-stream-hunters # Names the image so all hunters reuse it
+  image: catalyst-hunters # Names the image so all hunters reuse it
   environment:
     - KAFKA_BOOTSTRAP_SERVERS=kafka:29092 # Connects internally to Kafka
     - REDIS_HOST=redis
@@ -84,6 +84,7 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    restart: unless-stopped
 
   kafka:
     image: confluentinc/cp-kafka:7.5.0
@@ -121,12 +122,19 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: catalyst_user
-      POSTGRES_PASSWORD: password123
-      POSTGRES_DB: catalyst_db
+      POSTGRES_USER: ${POSTGRES_USER:-catalyst_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
+      POSTGRES_DB: ${POSTGRES_DB:-catalyst_db}
     volumes:
       # Persist data so you don't lose trades when you restart Docker
       - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-catalyst_user} -d ${POSTGRES_DB:-catalyst_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -157,6 +165,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import os; os.getpid()' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
     volumes:
       - ./gatekeeper:/app/gatekeeper
@@ -205,14 +219,20 @@ services:
       - VALIDATED_SIGNALS_TOPIC=validated-signals
       - TIMESCALE_HOST=timescaledb
       - TIMESCALE_PORT=5432
-      - TIMESCALE_USER=catalyst_user
-      - TIMESCALE_PASSWORD=password123
-      - TIMESCALE_DB=catalyst_db
+      - TIMESCALE_USER=${POSTGRES_USER:-catalyst_user}
+      - TIMESCALE_PASSWORD=${POSTGRES_PASSWORD:-password123}
+      - TIMESCALE_DB=${POSTGRES_DB:-catalyst_db}
     depends_on:
       kafka:
         condition: service_healthy
       timescaledb:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import os; os.getpid()' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
     volumes:
       - ./persistence:/app/persistence
@@ -236,9 +256,9 @@ services:
       # TimescaleDB
       - TIMESCALE_HOST=timescaledb
       - TIMESCALE_PORT=5432
-      - TIMESCALE_USER=catalyst_user
-      - TIMESCALE_PASSWORD=password123
-      - TIMESCALE_DB=catalyst_db
+      - TIMESCALE_USER=${POSTGRES_USER:-catalyst_user}
+      - TIMESCALE_PASSWORD=${POSTGRES_PASSWORD:-password123}
+      - TIMESCALE_DB=${POSTGRES_DB:-catalyst_db}
       # Kelly sizing
       - PORTFOLIO_VALUE=100000
       - MAX_KELLY_FRACTION=0.25
@@ -250,7 +270,7 @@ services:
       kafka:
         condition: service_healthy
       timescaledb:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
       interval: 30s
@@ -271,14 +291,14 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://catalyst_user:password123@timescaledb:5432/catalyst_db
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-catalyst_user}:${POSTGRES_PASSWORD:-password123}@timescaledb:5432/${POSTGRES_DB:-catalyst_db}
       - CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
       - ENGINE_HEALTH_URL=http://engine:8081/actuator/health
       - CLERK_ISSUER=${CLERK_ISSUER:-}
       - CLERK_JWKS_URL=${CLERK_JWKS_URL:-}
     depends_on:
       timescaledb:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
       interval: 15s
@@ -300,17 +320,23 @@ services:
       - KAFKA_AUTO_OFFSET_RESET=latest
       - TIMESCALE_HOST=timescaledb
       - TIMESCALE_PORT=5432
-      - TIMESCALE_USER=catalyst_user
-      - TIMESCALE_PASSWORD=password123
-      - TIMESCALE_DB=catalyst_db
+      - TIMESCALE_USER=${POSTGRES_USER:-catalyst_user}
+      - TIMESCALE_PASSWORD=${POSTGRES_PASSWORD:-password123}
+      - TIMESCALE_DB=${POSTGRES_DB:-catalyst_db}
       - ALPACA_PAPER_BASE=https://paper-api.alpaca.markets
     depends_on:
       kafka:
         condition: service_healthy
       timescaledb:
-        condition: service_started
+        condition: service_healthy
       engine:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import os; os.getpid()' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
 
   # ==========================================

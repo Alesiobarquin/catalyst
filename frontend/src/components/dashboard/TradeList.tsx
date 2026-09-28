@@ -19,6 +19,7 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
   // Panel state: signal is immediately populated from the local mapper,
   // then replaced by the server response when /orders/{id}/detail resolves.
   const [panelSignal, setPanelSignal] = useState<SignalDetail | null>(null);
+  const [panelOrder, setPanelOrder] = useState<TradeOrder | null>(null);
   const [panelLoading, setPanelLoading] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const orderIdsKey = orders.map((o) => o.id).join(",");
@@ -28,6 +29,7 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
       triggerRef.current = trigger;
 
       // Phase 1 — open immediately with locally-derived data (prices, risk params, etc.)
+      setPanelOrder(order);
       setPanelSignal(orderToSignalDetail(order));
       setPanelLoading(true);
 
@@ -45,6 +47,7 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
 
   const handlePanelClose = useCallback(() => {
     setPanelSignal(null);
+    setPanelOrder(null);
     setPanelLoading(false);
     requestAnimationFrame(() => triggerRef.current?.focus());
   }, []);
@@ -143,6 +146,7 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
       {panelSignal && (
         <SignalDetailPanel
           signal={panelSignal}
+          order={panelOrder ?? undefined}
           isOpen={panelSignal !== null}
           isLoading={panelLoading}
           onClose={handlePanelClose}

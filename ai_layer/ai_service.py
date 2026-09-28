@@ -5,39 +5,21 @@ import time
 from google import genai
 from google.genai import types
 
+from ai_layer.ai_config import (
+    GEMINI_API_KEY,
+    GEMINI_INITIAL_BACKOFF_SECONDS,
+    GEMINI_MAX_RETRIES,
+    GEMINI_MODEL,
+    GEMINI_TEMPERATURE,
+    KAFKA_AUTO_OFFSET_RESET,
+    KAFKA_BOOTSTRAP_SERVERS,
+    KAFKA_CONSUMER_GROUP,
+    MIN_CONVICTION_SCORE,
+    TRIAGE_PRIORITY_TOPIC,
+    VALIDATED_SIGNALS_TOPIC,
+)
+from ai_layer.prompt_builder import build_analysis_prompt
 from kafka import KafkaConsumer, KafkaProducer
-
-try:
-    from ai_layer.ai_config import (
-        GEMINI_API_KEY,
-        GEMINI_INITIAL_BACKOFF_SECONDS,
-        GEMINI_MAX_RETRIES,
-        GEMINI_MODEL,
-        GEMINI_TEMPERATURE,
-        KAFKA_AUTO_OFFSET_RESET,
-        KAFKA_BOOTSTRAP_SERVERS,
-        KAFKA_CONSUMER_GROUP,
-        MIN_CONVICTION_SCORE,
-        TRIAGE_PRIORITY_TOPIC,
-        VALIDATED_SIGNALS_TOPIC,
-    )
-    from ai_layer.prompt_builder import build_analysis_prompt
-except ImportError:
-    from ai_config import (
-        GEMINI_API_KEY,
-        GEMINI_INITIAL_BACKOFF_SECONDS,
-        GEMINI_MAX_RETRIES,
-        GEMINI_MODEL,
-        GEMINI_TEMPERATURE,
-        KAFKA_AUTO_OFFSET_RESET,
-        KAFKA_BOOTSTRAP_SERVERS,
-        KAFKA_CONSUMER_GROUP,
-        MIN_CONVICTION_SCORE,
-        TRIAGE_PRIORITY_TOPIC,
-        VALIDATED_SIGNALS_TOPIC,
-    )
-    from prompt_builder import build_analysis_prompt
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -49,12 +31,13 @@ logger = logging.getLogger("ai-layer")
 MODEL_ALIASES = {
     "gemini-flash": "gemini-2.0-flash",
     "gemini-2-flash": "gemini-2.0-flash",
-    "gemini-3-flash": "gemini-2.0-flash",
-    "gemini-3.1-flash-lite": "gemini-3.1-flash-lite-preview",
-    "gemini-2-pro": "gemini-1.5-pro",
-    "gemini-3-pro": "gemini-1.5-pro",
-    "gemini-3.1-pro": "gemini-1.5-pro",
-    "gemini-3.1-pro-preview": "gemini-1.5-pro",
+    "gemini-3-flash": "gemini-2.5-flash",
+    "gemini-3.0-flash-preview": "gemini-2.5-flash",
+    "gemini-3.1-flash-lite": "gemini-2.0-flash-lite",
+    "gemini-2-pro": "gemini-2.5-pro",
+    "gemini-3-pro": "gemini-2.5-pro",
+    "gemini-3.1-pro": "gemini-2.5-pro",
+    "gemini-3.1-pro-preview": "gemini-2.5-pro",
 }
 
 

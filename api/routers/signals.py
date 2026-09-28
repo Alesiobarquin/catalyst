@@ -1,25 +1,26 @@
 """Validated signals router — reads from the validated_signals hypertable (Python persistence)."""
 
 import json
-from fastapi import APIRouter, Depends, Query
+
 import asyncpg
+from fastapi import APIRouter, Depends, Query
 
 from api.db import get_conn
-from api.models import ValidatedSignalResponse, PaginatedResponse
+from api.models import PaginatedResponse, ValidatedSignalResponse
 
 router = APIRouter(prefix="/signals", tags=["signals"])
 
 
 @router.get("", response_model=PaginatedResponse[ValidatedSignalResponse])
 async def list_signals(
-    page:     int = Query(1, ge=1),
+    page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     """Return paginated Gemini-validated signals, newest first."""
     offset = (page - 1) * per_page
-    total  = await conn.fetchval("SELECT COUNT(*) FROM validated_signals")
-    rows   = await conn.fetch(
+    total = await conn.fetchval("SELECT COUNT(*) FROM validated_signals")
+    rows = await conn.fetch(
         """
         SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
                ticker, time AS timestamp_utc, conviction_score,

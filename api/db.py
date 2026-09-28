@@ -5,8 +5,8 @@ Why asyncpg?
   C-extension performance. No thread pool overhead compared to psycopg2 + ThreadPool.
 """
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import asyncpg
 from fastapi import FastAPI

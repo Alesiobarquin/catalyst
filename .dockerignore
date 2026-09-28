@@ -1,0 +1,36 @@
+# Git & IDE
+.git
+.gitignore
+.DS_Store
+.idea
+.vscode
+
+# Local data & logs
+data/
+*.log
+
+# Frontend build & dependencies
+frontend/node_modules
+frontend/.next
+frontend/out
+node_modules/
+
+# Java engine build artifacts
+engine/target/
+engine/.mvn/
+
+# Python cache & virtualenvs
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+
+# Documentation
+docs/
+*.md
+!README.md

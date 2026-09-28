@@ -1,0 +1,145 @@
+"""Unit tests for the Alpaca paper executor service."""
+
+from datetime import datetime, timezone
+from unittest.mock import MagicMock, patch
+
+from executor.consumer import (
+    parse_ts,
+    place_alpaca_order,
+    resolve_trade_order_row,
+)
+
+
+class TestExecutorParseTs:
+    def test_parse_none_or_empty(self):
+        assert parse_ts(None) is None
+        assert parse_ts("") is None
+
+    def test_parse_utc_iso_string(self):
+        dt = parse_ts("2026-03-27T14:30:00Z")
+        assert dt is not None
+        assert dt.year == 2026
+        assert dt.month == 3
+        assert dt.day == 27
+        assert dt.hour == 14
+        assert dt.minute == 30
+        assert dt.tzinfo is not None
+
+    def test_parse_with_offset(self):
+        dt = parse_ts("2026-03-27T10:00:00+00:00")
+        assert dt is not None
+        assert dt.tzinfo == timezone.utc
+
+    def test_parse_invalid_string(self):
+        assert parse_ts("invalid-timestamp") is None
+
+
+class TestPlaceAlpacaOrder:
+    def test_invalid_payload_skipped(self):
+        ok, oid, st, _fill, err = place_alpaca_order(
+            "key", "secret", {"ticker": "", "limit_price": 0, "recommended_size_usd": 0}
+        )
+        assert not ok
+        assert oid is None
+        assert st == "skipped_invalid_payload"
+        assert err is not None
+
+    def test_zero_limit_price_skipped(self):
+        ok, _oid, st, _fill, _err = place_alpaca_order(
+            "key", "secret", {"ticker": "AAPL", "limit_price": 0, "recommended_size_usd": 1000}
+        )
+        assert not ok
+        assert st == "skipped_invalid_payload"
+
+    @patch("executor.consumer.httpx.Client")
+    def test_order_success_filled(self, mock_client_cls):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.content = (
+            b'{"id": "alpaca-order-1", "status": "filled", "filled_avg_price": "150.50"}'
+        )
+        mock_resp.json.return_value = {
+            "id": "alpaca-order-1",
+            "status": "filled",
+            "filled_avg_price": "150.50",
+        }
+        mock_client = MagicMock()
+        mock_client.__enter__.return_value.post.return_value = mock_resp
+        mock_client_cls.return_value = mock_client
+
+        payload = {
+            "ticker": "AAPL",
+            "action": "BUY",
+            "limit_price": 150.0,
+            "recommended_size_usd": 1500.0,
+        }
+        ok, oid, st, fill, err = place_alpaca_order("test-key", "test-secret", payload)
+        assert ok
+        assert oid == "alpaca-order-1"
+        assert st == "filled"
+        assert fill == 150.50
+        assert err is None
+
+    @patch("executor.consumer.httpx.Client")
+    def test_order_rejected(self, mock_client_cls):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 403
+        mock_resp.content = b'{"message": "insufficient buying power"}'
+        mock_resp.json.return_value = {"message": "insufficient buying power"}
+        mock_client = MagicMock()
+        mock_client.__enter__.return_value.post.return_value = mock_resp
+        mock_client_cls.return_value = mock_client
+
+        payload = {
+            "ticker": "TSLA",
+            "action": "BUY",
+            "limit_price": 200.0,
+            "recommended_size_usd": 5000.0,
+        }
+        ok, oid, st, _fill, err = place_alpaca_order("test-key", "test-secret", payload)
+        assert not ok
+        assert oid is None
+        assert st == "rejected"
+        assert "insufficient" in str(err)
+
+    @patch("executor.consumer.httpx.Client")
+    def test_order_network_exception(self, mock_client_cls):
+        mock_client = MagicMock()
+        mock_client.__enter__.return_value.post.side_effect = ConnectionError("network unreachable")
+        mock_client_cls.return_value = mock_client
+
+        payload = {
+            "ticker": "NVDA",
+            "action": "BUY",
+            "limit_price": 120.0,
+            "recommended_size_usd": 2000.0,
+        }
+        ok, _oid, st, _fill, err = place_alpaca_order("key", "secret", payload)
+        assert not ok
+        assert st == "error"
+        assert "network unreachable" in str(err)
+
+
+class TestResolveTradeOrderRow:
+    def test_resolves_existing_row(self):
+        now = datetime.now(timezone.utc)
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = (101, now)
+        mock_conn.execute.return_value = mock_cursor
+
+        result = resolve_trade_order_row(mock_conn, "NVDA", now)
+        assert result == (101, now)
+        mock_conn.execute.assert_called_once()
+
+    @patch("time.sleep", return_value=None)
+    def test_resolves_after_retries_returns_none(self, mock_sleep):
+        now = datetime.now(timezone.utc)
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = None
+        mock_conn.execute.return_value = mock_cursor
+
+        result = resolve_trade_order_row(mock_conn, "NVDA", now)
+        assert result is None
+        assert mock_conn.execute.call_count == 15

@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .common.config import BIOPHARM_URL, BIOTECH_INTERVAL_SECONDS
 from .common.kafka_client import KafkaClient
@@ -19,7 +19,7 @@ async def scrape_biopharm(page):
     try:
         # 1. Navigate with a longer timeout and less strict 'wait_until'
         # 'networkidle' is often blocked or hangs on ad-heavy sites.
-        logger.info(f"Navigating to {BIOPHARM_URL}")
+        logger.info("Navigating to %s", BIOPHARM_URL)
         await page.goto(BIOPHARM_URL, wait_until="domcontentloaded", timeout=60000)
 
         # 2. Give the JavaScript a few seconds to actually build the table
@@ -50,14 +50,14 @@ async def scrape_biopharm(page):
                             "catalyst_type": stage,
                             "event_date": catalyst_date,
                             "source": "BioPharmCatalyst",
-                            "timestamp": datetime.utcnow().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                             "hunter": "biotech",
                         }
                     )
 
     except Exception as e:
         # await page.screenshot(path="debug_biotech.png")
-        logger.error(f"Error during scraping: {str(e)}")
+        logger.error("Error during scraping: %s", e)
 
     return catalysts
 

@@ -48,4 +48,9 @@ data/
 .gemini/
 gha-creds-*.json
 
+# === AWS CDK ===
+infra/cdk.out/
+infra/.venv/
+infra/cdk.context.json
+
 # === NODE / NEXT.JS ===

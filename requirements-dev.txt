@@ -3,10 +3,20 @@ pytest-asyncio>=0.23.0
 ruff>=0.6.0
 # Gatekeeper tests
 redis>=5.0
-kafka-python-ng>=2.0
-# AI layer tests (mock Gemini)
-google-genai
+kafka-python-ng>=2.2.0
+# AI layer tests
+google-genai>=1.0.0
 # Squeeze hunter tests
 pandas>=2.0
+playwright>=1.50.0
 # Hunters liquidity lookup
 yfinance>=0.2.40
+# API tests
+fastapi>=0.115.0
+httpx>=0.27.0
+asyncpg>=0.29.0
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+PyJWT[crypto]>=2.8.0
+# Persistence and Executor tests
+psycopg[binary]>=3.1.0

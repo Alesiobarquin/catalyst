@@ -1,5 +1,21 @@
 line-length = 100
 
 [lint]
-select = ["E", "F", "I", "N", "W"]
-ignore = ["E501"]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF", "PT", "C4"]
+ignore = [
+    "E501",    # line length handled by formatter
+    "UP007",   # X | Y union syntax — keep Optional for broader compat
+    "SIM108",  # ternary — sometimes less readable
+    "C408",    # dict() calls in seed/fixture data
+    "RUF001",  # unicode characters in strings
+    "RUF002",  # unicode characters in docstrings
+    "RUF003",  # unicode characters in comments
+    "PT018",   # compound assertions in tests
+    "B008",    # FastAPI Depends() in endpoint signatures
+    "B904",    # raise HTTPException without from clause
+    "N815",    # camelCase field names in API response models matching frontend JSON
+]
+
+[format]
+quote-style = "double"
+indent-style = "space"

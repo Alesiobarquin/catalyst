@@ -1,10 +1,9 @@
 """Alpaca paper execution status (trade_order_executions)."""
 
 from datetime import datetime
-from typing import Optional
 
-from fastapi import APIRouter, Depends
 import asyncpg
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from api.auth import require_clerk_user
@@ -18,10 +17,10 @@ class TradeExecutionOut(BaseModel):
     trade_order_id: int
     timestamp_utc: datetime
     ticker: str
-    alpaca_order_id: Optional[str] = None
+    alpaca_order_id: str | None = None
     execution_status: str
-    filled_avg_price: Optional[float] = None
-    error_message: Optional[str] = None
+    filled_avg_price: float | None = None
+    error_message: str | None = None
 
 
 @router.get("/me", response_model=list[TradeExecutionOut])
@@ -51,7 +50,9 @@ async def list_my_executions(
             ticker=r["ticker"],
             alpaca_order_id=r["alpaca_order_id"],
             execution_status=r["execution_status"],
-            filled_avg_price=float(r["filled_avg_price"]) if r["filled_avg_price"] is not None else None,
+            filled_avg_price=float(r["filled_avg_price"])
+            if r["filled_avg_price"] is not None
+            else None,
             error_message=r["error_message"],
         )
         for r in rows

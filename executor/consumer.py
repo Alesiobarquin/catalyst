@@ -12,35 +12,21 @@ from datetime import datetime, timezone
 from typing import Any
 
 import httpx
-from kafka import KafkaConsumer
 from psycopg import Connection, connect
 
-try:
-    from executor.config import (
-        ALPACA_PAPER_BASE,
-        EXECUTOR_CONSUMER_GROUP,
-        KAFKA_AUTO_OFFSET_RESET,
-        KAFKA_BOOTSTRAP_SERVERS,
-        TIMESCALE_DB,
-        TIMESCALE_HOST,
-        TIMESCALE_PASSWORD,
-        TIMESCALE_PORT,
-        TIMESCALE_USER,
-        TRADE_ORDERS_TOPIC,
-    )
-except ImportError:
-    from config import (
-        ALPACA_PAPER_BASE,
-        EXECUTOR_CONSUMER_GROUP,
-        KAFKA_AUTO_OFFSET_RESET,
-        KAFKA_BOOTSTRAP_SERVERS,
-        TIMESCALE_DB,
-        TIMESCALE_HOST,
-        TIMESCALE_PASSWORD,
-        TIMESCALE_PORT,
-        TIMESCALE_USER,
-        TRADE_ORDERS_TOPIC,
-    )
+from executor.config import (
+    ALPACA_PAPER_BASE,
+    EXECUTOR_CONSUMER_GROUP,
+    KAFKA_AUTO_OFFSET_RESET,
+    KAFKA_BOOTSTRAP_SERVERS,
+    TIMESCALE_DB,
+    TIMESCALE_HOST,
+    TIMESCALE_PASSWORD,
+    TIMESCALE_PORT,
+    TIMESCALE_USER,
+    TRADE_ORDERS_TOPIC,
+)
+from kafka import KafkaConsumer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -73,7 +59,9 @@ def parse_ts(ts_str: str | None) -> datetime | None:
         return None
 
 
-def resolve_trade_order_row(conn: Connection, ticker: str, ts: datetime) -> tuple[int, datetime] | None:
+def resolve_trade_order_row(
+    conn: Connection, ticker: str, ts: datetime
+) -> tuple[int, datetime] | None:
     for _ in range(15):
         cur = conn.execute(
             """
@@ -91,9 +79,7 @@ def resolve_trade_order_row(conn: Connection, ticker: str, ts: datetime) -> tupl
 
 
 def fetch_users(conn: Connection) -> list[tuple[str, str, str]]:
-    cur = conn.execute(
-        "SELECT clerk_user_id, api_key, secret_key FROM user_alpaca_keys"
-    )
+    cur = conn.execute("SELECT clerk_user_id, api_key, secret_key FROM user_alpaca_keys")
     rows = cur.fetchall()
     return [(r[0], r[1], r[2]) for r in rows]
 

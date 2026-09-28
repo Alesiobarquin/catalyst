@@ -5,37 +5,22 @@ Consumes validated-signals from Kafka and writes to a TimescaleDB hypertable.
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 from psycopg import Connection, connect
 
 from kafka import KafkaConsumer
-
-try:
-    from persistence.config import (
-        KAFKA_AUTO_OFFSET_RESET,
-        KAFKA_BOOTSTRAP_SERVERS,
-        KAFKA_CONSUMER_GROUP,
-        TIMESCALE_DB,
-        TIMESCALE_HOST,
-        TIMESCALE_PASSWORD,
-        TIMESCALE_PORT,
-        TIMESCALE_USER,
-        VALIDATED_SIGNALS_TOPIC,
-    )
-except ImportError:
-    from config import (
-        KAFKA_AUTO_OFFSET_RESET,
-        KAFKA_BOOTSTRAP_SERVERS,
-        KAFKA_CONSUMER_GROUP,
-        TIMESCALE_DB,
-        TIMESCALE_HOST,
-        TIMESCALE_PASSWORD,
-        TIMESCALE_PORT,
-        TIMESCALE_USER,
-        VALIDATED_SIGNALS_TOPIC,
-    )
-
+from persistence.config import (
+    KAFKA_AUTO_OFFSET_RESET,
+    KAFKA_BOOTSTRAP_SERVERS,
+    KAFKA_CONSUMER_GROUP,
+    TIMESCALE_DB,
+    TIMESCALE_HOST,
+    TIMESCALE_PASSWORD,
+    TIMESCALE_PORT,
+    TIMESCALE_USER,
+    VALIDATED_SIGNALS_TOPIC,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -120,7 +105,7 @@ INSERT INTO validated_signals (
 
 
 def persist_signal(conn: Connection, payload: dict) -> None:
-    ts = parse_ts(payload.get("timestamp_utc")) or datetime.utcnow()
+    ts = parse_ts(payload.get("timestamp_utc")) or datetime.now(timezone.utc)
     cur = conn.cursor()
     cur.execute(
         INSERT_SQL,

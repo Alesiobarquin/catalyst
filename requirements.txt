@@ -1,1 +1,11 @@
-yfinance
+# Catalyst Monorepo Python Requirements
+# For container deployments, each service has its own requirements.txt:
+#   - api/requirements.txt
+#   - gatekeeper/requirements.txt
+#   - ai_layer/requirements.txt
+#   - hunters/requirements.txt
+#   - persistence/requirements.txt
+#   - executor/requirements.txt
+#
+# For local development and test runner, install requirements-dev.txt:
+-r requirements-dev.txt

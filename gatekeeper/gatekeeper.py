@@ -5,49 +5,26 @@ from datetime import datetime, timezone
 
 from redis import Redis
 
+from gatekeeper.config import (
+    CONFLUENCE_THRESHOLD,
+    KAFKA_AUTO_OFFSET_RESET,
+    KAFKA_BOOTSTRAP_SERVERS,
+    KAFKA_CONSUMER_GROUP,
+    MAX_PRICE,
+    MIN_PRICE,
+    MIN_RELATIVE_VOLUME,
+    MIN_VOLUME,
+    RAW_EVENTS_TOPIC,
+    REDIS_HOST,
+    REDIS_PORT,
+    REDIS_SENT_KEY,
+    REDIS_SIGNALS_KEY,
+    REDIS_SOURCES_KEY,
+    ROLLING_WINDOW_SECONDS,
+    TECHNICAL_SCORE_THRESHOLD,
+    TRIAGE_PRIORITY_TOPIC,
+)
 from kafka import KafkaConsumer, KafkaProducer
-
-try:
-    from gatekeeper.config import (
-        CONFLUENCE_THRESHOLD,
-        KAFKA_AUTO_OFFSET_RESET,
-        KAFKA_BOOTSTRAP_SERVERS,
-        KAFKA_CONSUMER_GROUP,
-        MAX_PRICE,
-        MIN_PRICE,
-        MIN_RELATIVE_VOLUME,
-        MIN_VOLUME,
-        RAW_EVENTS_TOPIC,
-        REDIS_HOST,
-        REDIS_PORT,
-        REDIS_SENT_KEY,
-        REDIS_SIGNALS_KEY,
-        REDIS_SOURCES_KEY,
-        ROLLING_WINDOW_SECONDS,
-        TECHNICAL_SCORE_THRESHOLD,
-        TRIAGE_PRIORITY_TOPIC,
-    )
-except ImportError:
-    from config import (
-        CONFLUENCE_THRESHOLD,
-        KAFKA_AUTO_OFFSET_RESET,
-        KAFKA_BOOTSTRAP_SERVERS,
-        KAFKA_CONSUMER_GROUP,
-        MAX_PRICE,
-        MIN_PRICE,
-        MIN_RELATIVE_VOLUME,
-        MIN_VOLUME,
-        RAW_EVENTS_TOPIC,
-        REDIS_HOST,
-        REDIS_PORT,
-        REDIS_SENT_KEY,
-        REDIS_SIGNALS_KEY,
-        REDIS_SOURCES_KEY,
-        ROLLING_WINDOW_SECONDS,
-        TECHNICAL_SCORE_THRESHOLD,
-        TRIAGE_PRIORITY_TOPIC,
-    )
-
 
 logging.basicConfig(
     level=logging.INFO,

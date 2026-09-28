@@ -1,0 +1,118 @@
+"""API integration tests for /orders and /orders/{id}/detail."""
+
+from collections.abc import AsyncGenerator
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock
+
+from fastapi.testclient import TestClient
+
+import api.db as db
+from api.main import create_app
+
+
+def make_orders_test_client(mock_conn: AsyncMock) -> TestClient:
+    async def _noop() -> None:
+        return None
+
+    async def _override_conn() -> AsyncGenerator[AsyncMock, None]:
+        yield mock_conn
+
+    db.init_pool = _noop  # type: ignore[assignment]
+    db.close_pool = _noop  # type: ignore[assignment]
+    app = create_app()
+    app.dependency_overrides[db.get_conn] = _override_conn
+    return TestClient(app)
+
+
+def test_list_orders_success():
+    now = datetime.now(timezone.utc)
+    mock_conn = AsyncMock()
+    mock_conn.fetchval.return_value = 1
+    mock_conn.fetch.return_value = [
+        {
+            "id": 1,
+            "ticker": "NVDA",
+            "timestamp_utc": now,
+            "action": "BUY",
+            "strategy_used": "Supernova",
+            "recommended_size_usd": 10000.0,
+            "limit_price": 120.0,
+            "stop_loss": 110.0,
+            "target_price": 140.0,
+            "rationale": "High short interest breakout",
+            "conviction_score": 90,
+            "catalyst_type": "SUPERNOVA",
+            "regime_vix": 16.5,
+            "spy_above_200sma": True,
+            "status": "ACTIVE",
+        }
+    ]
+
+    with make_orders_test_client(mock_conn) as client:
+        res = client.get("/orders?page=1&per_page=20")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total"] == 1
+    assert data["page"] == 1
+    assert len(data["items"]) == 1
+    assert data["items"][0]["ticker"] == "NVDA"
+
+
+def test_get_order_detail_success():
+    now = datetime.now(timezone.utc)
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow.side_effect = [
+        # 1. trade_orders row
+        {
+            "id": 42,
+            "ticker": "AAPL",
+            "timestamp_utc": now,
+            "action": "BUY",
+            "strategy_used": "Supernova",
+            "recommended_size_usd": 15000.0,
+            "limit_price": 180.0,
+            "stop_loss": 170.0,
+            "target_price": 205.0,
+            "rationale": "Key breakout over 50-day moving average.\n\nInstitutional flow detected.",
+            "conviction_score": 85,
+            "catalyst_type": "SUPERNOVA",
+            "regime_vix": 15.2,
+            "spy_above_200sma": True,
+            "status": "ACTIVE",
+        },
+        # 2. validated_signals row
+        {
+            "id": 10,
+            "confluence_count": 2,
+            "confluence_sources": ["squeeze", "whale"],
+            "key_risks": ["Earnings announcement in 3 weeks", "Tech sector weakness"],
+        },
+    ]
+
+    with make_orders_test_client(mock_conn) as client:
+        res = client.get("/orders/42/detail")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["ticker"] == "AAPL"
+    assert data["convictionScore"] == 85
+    assert data["convictionLabel"] == "VERY HIGH"
+    assert data["entryPrice"] == 180.0
+    assert data["stopLoss"] == 170.0
+    assert data["targetPrice"] == 205.0
+    assert len(data["thesis"]["bodyParagraphs"]) == 2
+    assert len(data["thesis"]["counterArguments"]) == 2
+    assert data["pipeline"]["engineVersion"] == "2.1.0-spring-boot"
+    assert len(data["pipeline"]["timeline"]) == 4
+
+
+def test_get_order_detail_not_found():
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow.return_value = None
+
+    with make_orders_test_client(mock_conn) as client:
+        res = client.get("/orders/999/detail")
+
+    assert res.status_code == 404
+    assert "not found" in res.json()["detail"].lower()

@@ -1,7 +1,7 @@
 """User settings (Alpaca API keys stored per Clerk user)."""
 
-from fastapi import APIRouter, Depends
 import asyncpg
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from api.auth import require_clerk_user

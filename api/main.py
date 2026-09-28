@@ -6,7 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import settings
 from api.db import lifespan, ping_database
-from api.routers import execution, market, orders, performance, settings as settings_router, signals
+from api.routers import execution, market, orders, performance, signals
+from api.routers import settings as settings_router
 
 
 def create_app() -> FastAPI:

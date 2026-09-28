@@ -14,13 +14,13 @@ Route order matters: /batch must be declared before /{order_id} so
 FastAPI does not try to coerce the literal string "batch" as an integer.
 """
 
-from datetime import datetime, timezone
-from typing import Optional
+import asyncio
 import logging
+from datetime import datetime, timezone
 
+import asyncpg
 import yfinance as yf
 from fastapi import APIRouter, Depends, HTTPException, Query
-import asyncpg
 
 from api.db import get_conn
 
@@ -28,7 +28,54 @@ router = APIRouter(prefix="/performance", tags=["performance"])
 logger = logging.getLogger("api.performance")
 
 
+def _compute_ticker_performance(
+    order_id: int,
+    ticker: str,
+    signal_dt: datetime,
+    entry_price: float,
+    stop_loss: float,
+    target_price: float,
+    db_status: str,
+    now: datetime,
+) -> dict:
+    days_held = max(0, (now - signal_dt).days)
+    current_price: float | None = None
+    computed_status = db_status
+
+    try:
+        start_str = signal_dt.strftime("%Y-%m-%d")
+        hist = yf.Ticker(ticker).history(start=start_str, interval="1d", auto_adjust=True)
+        if not hist.empty:
+            current_price = round(float(hist["Close"].iloc[-1]), 4)
+            if db_status == "ACTIVE":
+                for _, bar in hist.iterrows():
+                    if float(bar["Low"]) <= stop_loss:
+                        computed_status = "HIT_STOP"
+                        break
+                    if float(bar["High"]) >= target_price:
+                        computed_status = "HIT_TARGET"
+                        break
+                if computed_status == "ACTIVE" and days_held > 90:
+                    computed_status = "EXPIRED"
+    except Exception as exc:
+        logger.warning("Performance lookup failed for %s: %s", ticker, exc)
+
+    pnl_pct = None
+    if current_price is not None and entry_price > 0:
+        pnl_pct = round(((current_price - entry_price) / entry_price) * 100, 2)
+
+    return {
+        "order_id": order_id,
+        "ticker": ticker,
+        "current_price": current_price,
+        "pnl_pct": pnl_pct,
+        "status": computed_status,
+        "days_held": days_held,
+    }
+
+
 # ── Batch endpoint (must come first) ──────────────────────────────────────────
+
 
 @router.get("/batch")
 async def get_batch_performance(
@@ -37,17 +84,7 @@ async def get_batch_performance(
 ):
     """
     Fetch performance for up to 20 orders in one call.
-    Used by the dashboard to enrich all visible trade cards with live P&L.
-
-    Response items:
-    {
-        "order_id": int,
-        "ticker": str,
-        "current_price": float | null,
-        "pnl_pct": float | null,
-        "status": "ACTIVE" | "HIT_TARGET" | "HIT_STOP" | "EXPIRED",
-        "days_held": int,
-    }
+    Uses asyncio.gather to fetch ticker histories concurrently in parallel worker threads.
     """
     try:
         id_list = [int(x.strip()) for x in ids.split(",") if x.strip()]
@@ -66,56 +103,26 @@ async def get_batch_performance(
     )
 
     now = datetime.now(timezone.utc)
-    results = []
+    tasks = [
+        asyncio.to_thread(
+            _compute_ticker_performance,
+            row["id"],
+            row["ticker"],
+            row["timestamp_utc"],
+            float(row["limit_price"]),
+            float(row["stop_loss"]),
+            float(row["target_price"]),
+            row["status"],
+            now,
+        )
+        for row in rows
+    ]
 
-    for row in rows:
-        entry_price  = float(row["limit_price"])
-        stop_loss    = float(row["stop_loss"])
-        target_price = float(row["target_price"])
-        signal_dt    = row["timestamp_utc"]
-        db_status    = row["status"]
-        days_held    = max(0, (now - signal_dt).days)
-
-        current_price: Optional[float] = None
-        computed_status = db_status
-
-        try:
-            start_str  = signal_dt.strftime("%Y-%m-%d")
-            hist = yf.Ticker(row["ticker"]).history(
-                start=start_str, interval="1d", auto_adjust=True
-            )
-            if not hist.empty:
-                current_price = round(float(hist["Close"].iloc[-1]), 4)
-                if db_status == "ACTIVE":
-                    for _, bar in hist.iterrows():
-                        if float(bar["Low"]) <= stop_loss:
-                            computed_status = "HIT_STOP"
-                            break
-                        if float(bar["High"]) >= target_price:
-                            computed_status = "HIT_TARGET"
-                            break
-                    if computed_status == "ACTIVE" and days_held > 90:
-                        computed_status = "EXPIRED"
-        except Exception as exc:
-            logger.warning("Batch performance lookup failed for %s: %s", row["ticker"], exc)
-
-        pnl_pct = None
-        if current_price is not None and entry_price > 0:
-            pnl_pct = round(((current_price - entry_price) / entry_price) * 100, 2)
-
-        results.append({
-            "order_id":      row["id"],
-            "ticker":        row["ticker"],
-            "current_price": current_price,
-            "pnl_pct":       pnl_pct,
-            "status":        computed_status,
-            "days_held":     days_held,
-        })
-
-    return results
+    return await asyncio.gather(*tasks)
 
 
 # ── Single-order endpoint ──────────────────────────────────────────────────────
+
 
 @router.get("/{order_id}")
 async def get_order_performance(
@@ -124,21 +131,6 @@ async def get_order_performance(
 ):
     """
     Returns live performance data for a single trade order.
-
-    Response:
-    {
-        "order_id": int,
-        "ticker": str,
-        "entry_price": float,
-        "stop_loss": float,
-        "target_price": float,
-        "current_price": float | null,
-        "pnl_pct": float | null,
-        "status": "ACTIVE" | "HIT_TARGET" | "HIT_STOP" | "EXPIRED",
-        "status_source": "db" | "live",
-        "days_held": int,
-        "signal_date": str,
-    }
     """
     row = await conn.fetchrow(
         "SELECT id, ticker, timestamp_utc, limit_price, stop_loss, target_price, status "
@@ -148,55 +140,37 @@ async def get_order_performance(
     if row is None:
         raise HTTPException(status_code=404, detail=f"Order {order_id} not found")
 
-    ticker       = row["ticker"]
-    entry_price  = float(row["limit_price"])
-    stop_loss    = float(row["stop_loss"])
+    ticker = row["ticker"]
+    entry_price = float(row["limit_price"])
+    stop_loss = float(row["stop_loss"])
     target_price = float(row["target_price"])
-    signal_dt    = row["timestamp_utc"]
-    db_status    = row["status"]
-
-    now           = datetime.now(timezone.utc)
-    days_held     = max(0, (now - signal_dt).days)
+    signal_dt = row["timestamp_utc"]
+    db_status = row["status"]
+    now = datetime.now(timezone.utc)
     resolved_in_db = db_status in ("HIT_TARGET", "HIT_STOP", "EXPIRED")
 
-    current_price: Optional[float] = None
-    computed_status = db_status
-    status_source   = "db"
-
-    try:
-        start_str  = signal_dt.strftime("%Y-%m-%d")
-        hist = yf.Ticker(ticker).history(start=start_str, interval="1d", auto_adjust=True)
-
-        if not hist.empty:
-            current_price = round(float(hist["Close"].iloc[-1]), 4)
-            if not resolved_in_db:
-                status_source = "live"
-                for _, bar in hist.iterrows():
-                    if float(bar["Low"]) <= stop_loss:
-                        computed_status = "HIT_STOP"
-                        break
-                    if float(bar["High"]) >= target_price:
-                        computed_status = "HIT_TARGET"
-                        break
-                if computed_status == "ACTIVE" and days_held > 90:
-                    computed_status = "EXPIRED"
-    except Exception as exc:
-        logger.warning("Single performance lookup failed for %s: %s", ticker, exc)
-
-    pnl_pct: Optional[float] = None
-    if current_price is not None and entry_price > 0:
-        pnl_pct = round(((current_price - entry_price) / entry_price) * 100, 2)
+    perf = await asyncio.to_thread(
+        _compute_ticker_performance,
+        order_id,
+        ticker,
+        signal_dt,
+        entry_price,
+        stop_loss,
+        target_price,
+        db_status,
+        now,
+    )
 
     return {
-        "order_id":      order_id,
-        "ticker":        ticker,
-        "entry_price":   entry_price,
-        "stop_loss":     stop_loss,
-        "target_price":  target_price,
-        "current_price": current_price,
-        "pnl_pct":       pnl_pct,
-        "status":        computed_status,
-        "status_source": status_source,
-        "days_held":     days_held,
-        "signal_date":   signal_dt.strftime("%Y-%m-%d"),
+        "order_id": order_id,
+        "ticker": ticker,
+        "entry_price": entry_price,
+        "stop_loss": stop_loss,
+        "target_price": target_price,
+        "current_price": perf["current_price"],
+        "pnl_pct": perf["pnl_pct"],
+        "status": perf["status"],
+        "status_source": "db" if resolved_in_db else "live",
+        "days_held": perf["days_held"],
+        "signal_date": signal_dt.strftime("%Y-%m-%d"),
     }

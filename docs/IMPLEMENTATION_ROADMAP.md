@@ -228,7 +228,7 @@ Phase 3 (Auth, Alpaca)
 | Item | Reason |
 |------|--------|
 | Shadow hunter | Removed from scope; no viable free source and weak standalone signal |
-| Terraform / IaC | EC2 + Docker Compose + Lambda is sufficient for student scope |
+| Terraform / IaC | **Added:** CDK stack in `infra/` for Lambda + EventBridge; EC2 optional via `createEc2=true` |
 | 24/7 deployment | Market-hours-only is correct trade-off per DEPLOYMENT.md |
 | Live (non-paper) Alpaca trading | Start paper only; add live as explicit Phase 3+ feature |
 | Python-only strategy engine | Java chosen for resume; Python fallback exists if scope slips |
