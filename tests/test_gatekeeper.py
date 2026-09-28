@@ -52,6 +52,9 @@ class TestGatekeeperStaticHelpers:
         assert GatekeeperService.normalize_ticker("NASDAQ:AAPL") == "AAPL"
         assert GatekeeperService.normalize_ticker("NVDA\nNvidia Corp") == "NVDA"
         assert GatekeeperService.normalize_ticker("BIIB.TO") == "BIIB"
+        assert GatekeeperService.normalize_ticker("BRK.A") == "BRK.A"
+        assert GatekeeperService.normalize_ticker("BRK.B") == "BRK.B"
+        assert GatekeeperService.normalize_ticker("BF.B") == "BF.B"
 
 
     def test_first_from_values(self):
@@ -120,6 +123,15 @@ class TestGatekeeperDropReason:
         }
         # price=0 bypasses price checks (if price > 0)
         assert gatekeeper.get_drop_reason(norm) is None
+
+    def test_drop_negative_price(self, gatekeeper):
+        norm = {
+            "ticker": "X",
+            "liquidity_metrics": {"price": -5.0, "volume": 100_000.0, "relative_volume": 2.0},
+        }
+        reason = gatekeeper.get_drop_reason(norm)
+        assert reason is not None
+        assert "invalid" in reason.lower() or "negative" in reason.lower()
 
 
 class TestGatekeeperCoercers:

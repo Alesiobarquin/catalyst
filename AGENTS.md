@@ -190,6 +190,7 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
 | **Phase 25** | Utility scripts & full diagnostics suite | Added `confluence_watcher.py`, `inject_synthetic_signals.py`, React 19 hook purity fixes, and 4 agent skills (197 tests). |
 | **Phase 26** | Execution parity, Prometheus metrics & date filters | Order executions lateral join, signals date range filtering (`7d`/`30d`/`90d`), `POST /testing/inject`, `GET /metrics`, Next.js 16 `proxy.ts` (203 tests). |
 | **Phase 27** | Redis health telemetry, schedule parity & verification probe | Redis async health check in API (`ping_redis()`), aggregate `/health/pipeline` (`api`, `database`, `redis`, `engine`, `ready`), Prometheus `catalyst_redis_up` gauge, EventBridge shutdown alignment (16:10 ET / 20:10 UTC), and automated `scripts/verify_pipeline_health.py` CLI probe (211 tests). |
+| **Phase 28** | Critical bug fixes, Java engine tests & Frontend test suite | Fixed 11 critical bugs (SSE DB pool starvation, TradeList execution wipe, Gatekeeper/AI Kafka offset commits, negative price checks, dual-class tickers `.A`/`.B`/`.C`/`.WS`, settings `isConnected` state, AudioContext leak, CDK `t3.medium`/30GB sizing, Prometheus active pool metric). Added 33-test Java engine JUnit 5 suite (Lombok 1.18.34, strategies, RegimeFilter, KellySizer). Added 31-test frontend Vitest + Testing Library suite (276 total automated tests across stack). |
 
 ---
 
@@ -201,7 +202,7 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
   ```bash
   .venv/bin/pytest
   ```
-  *Current status: 211 passing tests.*
+  *Current status: 212 passing tests.*
 - **Linting & Code Style**:
   ```bash
   .venv/bin/ruff check .
@@ -210,6 +211,11 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
 
 ### 5.2 Frontend Environment & Testing
 - **Location**: `frontend/` directory.
+- **Unit & Component Testing (Vitest)**:
+  ```bash
+  npm --prefix frontend run test
+  ```
+  *Current status: 31 passing tests.*
 - **Type Checking**:
   ```bash
   npm --prefix frontend run typecheck
@@ -222,12 +228,22 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
   ```bash
   npm --prefix frontend run build
   ```
+
+### 5.3 Java Strategy Engine Testing
+- **Location**: `engine/` directory.
+- **Java Version**: Java 21 (Temurin).
+- **Running Tests**:
+  ```bash
+  export JAVA_HOME=/Users/alesio/Library/Java/JavaVirtualMachines/temurin-21.0.11/Contents/Home && cd engine && mvn -B test
+  ```
+  *Current status: 33 passing tests (0 failures).*
+
 - **React 19 & Next.js 16 Rules**:
   - Never mutate ref values (`ref.current = value`) during rendering. Use `useEffect` or lazy state initializers.
   - Never call `setState()` synchronously in the root of a `useEffect` hook.
   - Use `src/proxy.ts` for route interception and proxying instead of deprecated `middleware.ts`.
 
-### 5.3 Working with Docker Compose
+### 5.4 Working with Docker Compose
 - Start infrastructure only:
   ```bash
   docker compose up -d zookeeper kafka redis gatekeeper ai-layer persistence catalyst-api

@@ -90,9 +90,12 @@ def get_pool_stats() -> dict[str, int]:
     """Return live connection pool metrics for health monitoring."""
     if _pool is None:
         return {"size": 0, "idle": 0, "max_size": 10, "min_size": 2}
+    size = _pool.get_size()
+    idle = _pool.get_idle_size()
     return {
-        "size": _pool.get_size(),
-        "idle": _pool.get_idle_size(),
+        "size": size,
+        "idle": idle,
+        "active": size - idle,
         "max_size": _pool.get_max_size(),
         "min_size": _pool.get_min_size(),
     }

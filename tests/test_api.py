@@ -294,6 +294,8 @@ def test_stream_signals_sse():
     async def _mock_conn_generator():
         yield mock_conn
 
+    db.init_pool = _noop  # type: ignore[assignment]
+    db.close_pool = _noop  # type: ignore[assignment]
     app = create_app()
     app.dependency_overrides[db.get_conn] = _mock_conn_generator
 

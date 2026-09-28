@@ -78,4 +78,117 @@ class KellySizerTest {
         double bearishSize = sizer.calculate(signal, order, bearishRegime);
         assertEquals(bullSize * 0.5, bearishSize, 0.0001);
     }
+
+    @Test
+    void returnsZeroForNegativeExpectedValue() {
+        KellySizer sizer = new KellySizer(100_000, 0.25);
+
+        ValidatedSignal signal = new ValidatedSignal();
+        signal.setTicker("BAD");
+        signal.setConvictionScore(10); // Very low conviction, p = 0.1
+
+        TradeOrder order = TradeOrder.builder()
+                .ticker("BAD")
+                .limitPrice(100.0)
+                .stopLoss(90.0)
+                .targetPrice(105.0) // Poor reward-to-risk, b = 0.5
+                .build();
+
+        RegimeSnapshot regime = RegimeSnapshot.builder()
+                .status(RegimeStatus.PASS)
+                .vix(18.0)
+                .spyPrice(500.0)
+                .spy200Sma(470.0)
+                .spyAbove200Sma(true)
+                .capturedAt(Instant.now())
+                .build();
+
+        double result = sizer.calculate(signal, order, regime);
+        assertEquals(0.0, result, 0.0001);
+    }
+
+    @Test
+    void testConvictionFiftyBoundary() {
+        KellySizer sizer = new KellySizer(100_000, 0.25);
+
+        ValidatedSignal signal = new ValidatedSignal();
+        signal.setTicker("MID");
+        signal.setConvictionScore(50); // p = 0.5
+
+        TradeOrder order = TradeOrder.builder()
+                .ticker("MID")
+                .limitPrice(100.0)
+                .stopLoss(90.0)
+                .targetPrice(120.0) // b = 2.0
+                .build();
+
+        RegimeSnapshot regime = RegimeSnapshot.builder()
+                .status(RegimeStatus.PASS)
+                .vix(18.0)
+                .spyPrice(500.0)
+                .spy200Sma(470.0)
+                .spyAbove200Sma(true)
+                .capturedAt(Instant.now())
+                .build();
+
+        double result = sizer.calculate(signal, order, regime);
+        assertEquals(12500.0, result, 1.0);
+    }
+
+    @Test
+    void testConvictionOneHundredMaximum() {
+        KellySizer sizer = new KellySizer(100_000, 0.25);
+
+        ValidatedSignal signal = new ValidatedSignal();
+        signal.setTicker("MAX");
+        signal.setConvictionScore(100); // p = 1.0
+
+        TradeOrder order = TradeOrder.builder()
+                .ticker("MAX")
+                .limitPrice(100.0)
+                .stopLoss(90.0)
+                .targetPrice(120.0) // b = 2.0
+                .build();
+
+        RegimeSnapshot regime = RegimeSnapshot.builder()
+                .status(RegimeStatus.PASS)
+                .vix(18.0)
+                .spyPrice(500.0)
+                .spy200Sma(470.0)
+                .spyAbove200Sma(true)
+                .capturedAt(Instant.now())
+                .build();
+
+        double result = sizer.calculate(signal, order, regime);
+        assertEquals(25000.0, result, 1.0);
+    }
+
+    @Test
+    void testVeryTightStopLossEdgeCase() {
+        KellySizer sizer = new KellySizer(100_000, 0.25);
+
+        ValidatedSignal signal = new ValidatedSignal();
+        signal.setTicker("TIGHT");
+        signal.setConvictionScore(80); // p = 0.8
+
+        TradeOrder order = TradeOrder.builder()
+                .ticker("TIGHT")
+                .limitPrice(100.0)
+                .stopLoss(99.9) // very tight stop
+                .targetPrice(101.0)
+                .build();
+
+        RegimeSnapshot regime = RegimeSnapshot.builder()
+                .status(RegimeStatus.PASS)
+                .vix(18.0)
+                .spyPrice(500.0)
+                .spy200Sma(470.0)
+                .spyAbove200Sma(true)
+                .capturedAt(Instant.now())
+                .build();
+
+        double result = sizer.calculate(signal, order, regime);
+        assertTrue(result > 0);
+        assertTrue(result <= 25_000);
+    }
 }

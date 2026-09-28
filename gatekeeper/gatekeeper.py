@@ -91,6 +91,12 @@ class GatekeeperService:
                 self.process_event(message.value)
             except Exception as exc:
                 logger.error("Unhandled error processing raw event: %s", exc, exc_info=True)
+            finally:
+                if hasattr(self, "consumer") and self.consumer:
+                    try:
+                        self.consumer.commit()
+                    except Exception as exc:
+                        logger.warning("Kafka commit failed: %s", exc)
 
     def close(self):
         if hasattr(self, "consumer"):
@@ -381,6 +387,8 @@ class GatekeeperService:
                 return f"relative_volume {relative_volume} below minimum {MIN_RELATIVE_VOLUME}"
 
         price = liquidity.get("price") or 0.0
+        if price < 0:
+            return f"price {price} is invalid (negative)"
         if price > 0 and price < MIN_PRICE:
             return f"price {price} below minimum {MIN_PRICE}"
         if price > 0 and price > MAX_PRICE:
@@ -460,8 +468,8 @@ class GatekeeperService:
         # Strip exchange prefix (e.g., NASDAQ:AAPL -> AAPL)
         if ":" in s:
             s = s.split(":")[-1].strip()
-        # Strip exchange dot suffix (e.g., BIIB.TO -> BIIB)
-        if "." in s and not s.endswith(".WS"):
+        # Strip exchange dot suffix (e.g., BIIB.TO -> BIIB), preserving US share classes (.A, .B, .C, .WS)
+        if "." in s and not any(s.endswith(f".{suff}") for suff in ("A", "B", "C", "WS")):
             s = s.split(".")[0].strip()
         return s if s else None
 

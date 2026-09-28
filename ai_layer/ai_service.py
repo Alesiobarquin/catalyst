@@ -106,6 +106,12 @@ class AIAnalysisService:
                 self.process_event(message.value)
             except Exception as exc:
                 logger.error("Unhandled error processing triage message: %s", exc, exc_info=True)
+            finally:
+                if hasattr(self, "consumer") and self.consumer:
+                    try:
+                        self.consumer.commit()
+                    except Exception as exc:
+                        logger.warning("Kafka commit failed: %s", exc)
 
     def close(self):
         if hasattr(self, "consumer"):
@@ -138,11 +144,11 @@ class AIAnalysisService:
         validated_signal = self.merge_payload(triage_payload, analysis)
         self.producer.send(VALIDATED_SIGNALS_TOPIC, validated_signal)
         self.producer.flush()
-        # Commit offsets only after successful processing to avoid message loss.
-        try:
-            self.consumer.commit()
-        except Exception as exc:
-            logger.warning("Kafka commit failed after publishing validated signal: %s", exc)
+        if hasattr(self, "consumer") and self.consumer:
+            try:
+                self.consumer.commit()
+            except Exception as exc:
+                logger.warning("Kafka commit failed after publishing validated signal: %s", exc)
         logger.info(
             "Published validated signal for %s with conviction %s",
             validated_signal["ticker"],

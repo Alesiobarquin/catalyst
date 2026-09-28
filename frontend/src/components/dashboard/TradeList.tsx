@@ -127,7 +127,6 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
                   status: livePerf.status ?? order.status,
                 }
               : order),
-            execution: null,
           };
           return (
             <TradeCard

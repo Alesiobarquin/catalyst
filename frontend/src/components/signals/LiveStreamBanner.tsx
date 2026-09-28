@@ -11,11 +11,18 @@ interface StreamSignalPayload {
   timestamp_utc?: string;
 }
 
+let sharedAudioCtx: AudioContext | null = null;
+
 function playSignalChime() {
   try {
-    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AudioContextClass =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
-    const ctx = new AudioContextClass();
+    if (!sharedAudioCtx || sharedAudioCtx.state === "closed") {
+      sharedAudioCtx = new AudioContextClass();
+    }
+    const ctx = sharedAudioCtx;
     if (ctx.state === "suspended") {
       ctx.resume().catch(() => {});
     }

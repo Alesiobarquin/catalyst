@@ -4,6 +4,7 @@ import asyncio
 import csv
 import io
 import json
+import logging
 from datetime import datetime, timezone
 
 import asyncpg
@@ -12,6 +13,8 @@ from fastapi.responses import StreamingResponse
 
 from api.db import get_conn
 from api.models import PaginatedResponse, SignalStatsResponse, ValidatedSignalResponse
+
+logger = logging.getLogger("api.signals")
 
 router = APIRouter(prefix="/signals", tags=["signals"])
 
@@ -241,13 +244,19 @@ async def export_signals_csv(
     )
 
 
+def _get_conn_provider(request: Request):
+    """Return database connection provider, respecting test dependency overrides."""
+    override = request.app.dependency_overrides.get(get_conn)
+    return override if override is not None else get_conn
+
+
 @router.get("/stream")
 async def stream_signals(
     request: Request,
     min_conviction: int = Query(70, ge=0, le=100),
     max_events: int | None = Query(None, description="Optional cap on streamed events"),
     poll_interval: float = Query(2.0, ge=0.01, le=60.0),
-    conn: asyncpg.Connection = Depends(get_conn),
+    conn_provider=Depends(_get_conn_provider),
 ):
     """
     Server-Sent Events (SSE) endpoint streaming real-time validated signals.
@@ -266,21 +275,44 @@ async def stream_signals(
                 break
 
             try:
-                rows = await conn.fetch(
-                    """
-                    SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
-                           ticker, time AS timestamp_utc, conviction_score,
-                           catalyst_type, rationale, is_trap,
-                           confluence_sources, key_risks,
-                           suggested_entry_zone, suggested_stop
-                    FROM validated_signals
-                    WHERE time > $1 AND conviction_score >= $2
-                    ORDER BY time ASC
-                    LIMIT 20
-                    """,
-                    last_time,
-                    min_conviction,
-                )
+                gen = conn_provider()
+                rows = []
+                if hasattr(gen, "__aiter__"):
+                    async for conn in gen:
+                        rows = await conn.fetch(
+                            """
+                            SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
+                                   ticker, time AS timestamp_utc, conviction_score,
+                                   catalyst_type, rationale, is_trap,
+                                   confluence_sources, key_risks,
+                                   suggested_entry_zone, suggested_stop
+                            FROM validated_signals
+                            WHERE time > $1 AND conviction_score >= $2
+                            ORDER BY time ASC
+                            LIMIT 20
+                            """,
+                            last_time,
+                            min_conviction,
+                        )
+                        break
+                elif hasattr(gen, "__iter__"):
+                    for conn in gen:
+                        rows = await conn.fetch(
+                            """
+                            SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
+                                   ticker, time AS timestamp_utc, conviction_score,
+                                   catalyst_type, rationale, is_trap,
+                                   confluence_sources, key_risks,
+                                   suggested_entry_zone, suggested_stop
+                            FROM validated_signals
+                            WHERE time > $1 AND conviction_score >= $2
+                            ORDER BY time ASC
+                            LIMIT 20
+                            """,
+                            last_time,
+                            min_conviction,
+                        )
+                        break
 
                 for r in rows:
                     formatted = _format_signal_row(r)
@@ -293,8 +325,10 @@ async def stream_signals(
                     if max_events is not None and events_sent >= max_events:
                         return
 
-            except Exception:
-                pass
+            except (asyncpg.PostgresError, ConnectionError, OSError) as db_err:
+                logger.warning("Transient error during signal stream poll: %s", db_err)
+            except Exception as exc:
+                logger.debug("Unexpected error during signal stream poll: %s", exc)
 
             yield ": ping\n\n"
             if max_events is not None and events_sent >= max_events:

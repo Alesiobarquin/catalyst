@@ -77,7 +77,7 @@ class CatalystStack(Stack):
             instance = ec2.Instance(
                 self,
                 "CatalystInstance",
-                instance_type=ec2.InstanceType("t3.micro"),
+                instance_type=ec2.InstanceType("t3.medium"),
                 machine_image=machine_image,
                 vpc=vpc,
                 vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
@@ -87,7 +87,7 @@ class CatalystStack(Stack):
                 block_devices=[
                     ec2.BlockDevice(
                         device_name="/dev/sda1",
-                        volume=ec2.BlockDeviceVolume.ebs(8, volume_type=ec2.EbsDeviceVolumeType.GP3),
+                        volume=ec2.BlockDeviceVolume.ebs(30, volume_type=ec2.EbsDeviceVolumeType.GP3),
                     )
                 ],
             )

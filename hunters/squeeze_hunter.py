@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import io
 import random
 from datetime import datetime
@@ -68,17 +69,18 @@ def clean_number(value):
 
 
 def compute_relative_volume(redis_client, ticker, current_volume, avg_volume):
-    baseline_key = f"vol_baseline:{ticker}"
+    baseline_key = f"gk:baseline_vol:{ticker}"
     # Establish a sane, non-zero baseline.
     baseline_volume = avg_volume if avg_volume and avg_volume > 0 else None
 
     if redis_client is not None:
         stored_baseline = redis_client.get(baseline_key)
+        if stored_baseline is None:
+            # Fallback to legacy key pattern if present
+            stored_baseline = redis_client.get(f"vol_baseline:{ticker}")
         if stored_baseline is not None:
-            try:
+            with contextlib.suppress(ValueError):
                 baseline_volume = float(stored_baseline)
-            except ValueError:
-                baseline_volume = baseline_volume
 
     relative_volume = 0.0
     if baseline_volume and baseline_volume > 0 and current_volume and current_volume > 0:

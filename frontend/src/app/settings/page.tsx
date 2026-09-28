@@ -17,6 +17,7 @@ import {
 import {
   deleteAlpacaKeys,
   getPipelineHealth,
+  getAlpacaStatus,
   injectSyntheticSignal,
   saveAlpacaKeys,
 } from "@/lib/api";
@@ -28,7 +29,7 @@ export default function SettingsPage() {
   const [validateCreds, setValidateCreds] = useState(true);
   const [saving, setSaving] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
-  const [isConnected, setIsConnected] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const [pipelineHealth, setPipelineHealth] = useState<PipelineHealth | null>(null);
@@ -43,15 +44,19 @@ export default function SettingsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    async function loadHealth() {
+    async function loadData() {
       setHealthLoading(true);
-      const res = await getPipelineHealth();
+      const [healthRes, alpacaRes] = await Promise.all([
+        getPipelineHealth(),
+        getAlpacaStatus("demo-session-token"),
+      ]);
       if (!cancelled) {
-        setPipelineHealth(res);
+        setPipelineHealth(healthRes);
         setHealthLoading(false);
+        setIsConnected(alpacaRes.has_keys);
       }
     }
-    loadHealth();
+    loadData();
     return () => {
       cancelled = true;
     };
