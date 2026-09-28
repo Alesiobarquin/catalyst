@@ -145,8 +145,7 @@ class AIAnalysisService:
                     config=self.generation_config,
                 )
                 raw_text = getattr(response, "text", "")
-                cleaned_text = self.strip_code_fences(raw_text)
-                parsed = json.loads(cleaned_text)
+                parsed = self.extract_json_object(raw_text)
                 return self.normalize_analysis(parsed)
             except Exception as exc:
                 last_error = exc
@@ -178,9 +177,40 @@ class AIAnalysisService:
             **analysis,
         }
 
+    @classmethod
+    def extract_json_object(cls, text):
+        """Robustly extracts and parses a JSON object from model output."""
+        if not text:
+            raise ValueError("Empty model response")
+
+        cleaned = cls.strip_code_fences(text)
+        try:
+            return json.loads(cleaned)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+        first_brace = text.find("{")
+        last_brace = text.rfind("}")
+        if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+            candidate = text[first_brace : last_brace + 1]
+            try:
+                return json.loads(candidate)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        return json.loads(text)
+
     @staticmethod
     def strip_code_fences(text):
         cleaned = (text or "").strip()
+        if "```json" in cleaned:
+            parts = cleaned.split("```json", 1)[1]
+            if "```" in parts:
+                return parts.split("```", 1)[0].strip()
+        if "```" in cleaned:
+            parts = cleaned.split("```", 1)[1]
+            if "```" in parts:
+                return parts.split("```", 1)[0].strip()
         if cleaned.startswith("```"):
             lines = cleaned.splitlines()
             if lines:

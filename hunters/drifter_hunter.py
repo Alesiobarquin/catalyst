@@ -48,7 +48,7 @@ def _eps_surprise_pct(eps: float | None, est: float | None) -> float | None:
         return None
     if abs(est) < 1e-9:
         return None
-    return ((eps - est) / abs(est)) * 100.0
+    return round(((eps - est) / abs(est)) * 100.0, 4)
 
 
 def _rev_surprise_pct(rev: float | None, est: float | None) -> float | None:
@@ -56,7 +56,7 @@ def _rev_surprise_pct(rev: float | None, est: float | None) -> float | None:
         return None
     if abs(est) < 1e-9:
         return None
-    return ((rev - est) / abs(est)) * 100.0
+    return round(((rev - est) / abs(est)) * 100.0, 4)
 
 
 def _num(v) -> float | None:

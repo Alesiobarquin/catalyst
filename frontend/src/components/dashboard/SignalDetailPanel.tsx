@@ -160,7 +160,7 @@ export function SignalDetailPanel({
       setBars([]);
       setHistoryStatus("idle");
     };
-  }, [isOpen, order?.id, order?.ticker, order?.timestamp_utc]);
+  }, [isOpen, order]);
 
   // Portal target is only available in a browser environment.
   if (typeof document === "undefined") return null;

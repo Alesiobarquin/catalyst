@@ -11,6 +11,20 @@ from api.models import PaginatedResponse, ValidatedSignalResponse
 router = APIRouter(prefix="/signals", tags=["signals"])
 
 
+def _format_signal_row(row: asyncpg.Record | dict) -> dict:
+    d = dict(row)
+    for field in ("confluence_sources", "key_risks"):
+        v = d.get(field)
+        if isinstance(v, str):
+            try:
+                d[field] = json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                d[field] = [v] if v.strip() else []
+        elif v is None:
+            d[field] = []
+    return d
+
+
 @router.get("", response_model=PaginatedResponse[ValidatedSignalResponse])
 async def list_signals(
     page: int = Query(1, ge=1),
@@ -34,17 +48,7 @@ async def list_signals(
         offset,
     )
 
-    items = []
-    for r in rows:
-        d = dict(r)
-        for field in ("confluence_sources", "key_risks"):
-            v = d.get(field)
-            if isinstance(v, str):
-                d[field] = json.loads(v)
-            elif v is None:
-                d[field] = []
-        items.append(d)
-
+    items = [_format_signal_row(r) for r in rows]
     return {"items": items, "total": total or 0, "page": page, "per_page": per_page}
 
 
@@ -65,4 +69,4 @@ async def signals_by_ticker(
         """,
         ticker.upper(),
     )
-    return [dict(r) for r in rows]
+    return [_format_signal_row(r) for r in rows]

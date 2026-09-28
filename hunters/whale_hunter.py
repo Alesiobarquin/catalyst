@@ -32,7 +32,7 @@ def _parse_option_type(text: str) -> str:
 
 def _first_float(cells: list[str]) -> float | None:
     for c in cells:
-        for token in re.split(r"[\s,]+", c):
+        for token in c.strip().split():
             try:
                 v = float(token.replace(",", "").replace("$", ""))
                 if 0.01 < v < 1e6:

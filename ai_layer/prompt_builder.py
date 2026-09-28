@@ -3,14 +3,14 @@ from textwrap import dedent
 
 
 def build_analysis_prompt(triage_payload):
-    ticker = triage_payload.get("ticker", "UNKNOWN")
-    signal_blocks = format_signal_blocks(triage_payload.get("signals", []))
+    ticker = triage_payload.get("ticker") or "UNKNOWN"
+    signal_blocks = format_signal_blocks(triage_payload.get("signals") or [])
     metadata = {
         "ticker": ticker,
         "timestamp_utc": triage_payload.get("timestamp_utc"),
         "confluence_count": triage_payload.get("confluence_count"),
-        "confluence_sources": triage_payload.get("confluence_sources", []),
-        "liquidity_metrics": triage_payload.get("liquidity_metrics", {}),
+        "confluence_sources": triage_payload.get("confluence_sources") or [],
+        "liquidity_metrics": triage_payload.get("liquidity_metrics") or {},
         "market_cap": triage_payload.get("market_cap"),
         "float_shares": triage_payload.get("float_shares"),
     }
