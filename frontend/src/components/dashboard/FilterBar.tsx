@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Download, Filter, Search, X } from "lucide-react";
+import { Download, Filter } from "lucide-react";
 import { useFilterStore } from "@/store/filters";
+import { TickerSearchInput } from "@/components/ui/TickerSearchInput";
 import type { Strategy } from "@/types";
 
 /* Original strategy codenames — do not rename */
@@ -198,63 +199,24 @@ export function FilterBar({
           </div>
         </div>
 
-        {/* Ticker Search Box */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setTicker(tickerInput);
-            updateQuery({ nextTicker: tickerInput });
+        {/* Ticker Search Box with Autocomplete */}
+        <TickerSearchInput
+          value={tickerInput}
+          onChange={setTickerInput}
+          onSubmit={(val) => {
+            setTicker(val);
+            updateQuery({ nextTicker: val });
           }}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            background: "#1E293B",
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 4,
-            padding: "4px 8px",
+          onClear={() => {
+            setTickerInput("");
+            setTicker("");
+            updateQuery({ nextTicker: "" });
           }}
-        >
-          <Search size={14} color="#94A3B8" />
-          <input
-            type="text"
-            placeholder="Search ticker..."
-            value={tickerInput}
-            onChange={(e) => setTickerInput(e.target.value)}
-            style={{
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              color: "#F8FAFC",
-              fontSize: 12,
-              fontFamily: "var(--font-mono)",
-              width: 140,
-            }}
-          />
-          {tickerInput && (
-            <button
-              type="button"
-              onClick={() => {
-                setTickerInput("");
-                setTicker("");
-                updateQuery({ nextTicker: "" });
-              }}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
-                display: "flex",
-                alignItems: "center",
-                color: "#94A3B8",
-              }}
-              title="Clear search"
-            >
-              <X size={13} />
-            </button>
-          )}
-        </form>
+          placeholder="Search ticker..."
+          width={140}
+        />
       </div>
+
 
       {/* ── Bottom row: Status, Date Range & Reset ───────── */}
       <div

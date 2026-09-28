@@ -212,3 +212,16 @@ export async function deleteAlpacaKeys(token: string): Promise<boolean> {
   return res.ok;
 }
 
+/** GET /market/search?q= — autocomplete tickers */
+export async function searchTickers(query: string): Promise<Array<{ ticker: string }>> {
+  if (!query || query.trim().length === 0) return [];
+  try {
+    const res = await fetch(`${apiBaseUrl()}/market/search?q=${encodeURIComponent(query.trim())}`);
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
+

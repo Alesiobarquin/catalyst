@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Download, Filter, Search, X } from "lucide-react";
+import { Download, Filter } from "lucide-react";
+import { TickerSearchInput } from "@/components/ui/TickerSearchInput";
 import type { CatalystType } from "@/types";
 
 const CATALYST_OPTIONS: Array<{ value: CatalystType | "all"; label: string }> = [
@@ -176,61 +177,22 @@ export function SignalFilterBar({
           })}
         </div>
 
-        {/* Ticker Search Box */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            applyFilters({ ticker: tickerQuery });
+        {/* Ticker Search Box with Autocomplete */}
+        <TickerSearchInput
+          value={tickerQuery}
+          onChange={setTickerQuery}
+          onSubmit={(val) => {
+            applyFilters({ ticker: val });
           }}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            background: "#1E293B",
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 4,
-            padding: "4px 8px",
+          onClear={() => {
+            setTickerQuery("");
+            applyFilters({ ticker: "" });
           }}
-        >
-          <Search size={14} color="#94A3B8" />
-          <input
-            type="text"
-            placeholder="Filter ticker (e.g. NVDA)..."
-            value={tickerQuery}
-            onChange={(e) => setTickerQuery(e.target.value)}
-            style={{
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              color: "#F8FAFC",
-              fontSize: 12,
-              fontFamily: "var(--font-mono)",
-              width: 170,
-            }}
-          />
-          {tickerQuery && (
-            <button
-              type="button"
-              onClick={() => {
-                setTickerQuery("");
-                applyFilters({ ticker: "" });
-              }}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
-                display: "flex",
-                alignItems: "center",
-                color: "#94A3B8",
-              }}
-              title="Clear search"
-            >
-              <X size={13} />
-            </button>
-          )}
-        </form>
+          placeholder="Filter ticker (e.g. NVDA)..."
+          width={170}
+        />
       </div>
+
 
       {/* Secondary filter row: Conviction & Trap */}
       <div
