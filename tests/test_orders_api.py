@@ -183,3 +183,36 @@ def test_get_order_detail_not_found():
 
     assert res.status_code == 404
     assert "not found" in res.json()["detail"].lower()
+
+
+def test_order_stats_success():
+    mock_conn = AsyncMock()
+    mock_conn.fetchval.side_effect = [10, 82.5, 250000.0]
+    mock_conn.fetch.side_effect = [
+        [{"strategy_used": "Supernova", "cnt": 6}, {"strategy_used": "Scalper", "cnt": 4}],
+        [{"catalyst_type": "SUPERNOVA", "cnt": 7}, {"catalyst_type": "EARNINGS", "cnt": 3}],
+        [
+            {"status": "HIT_TARGET", "cnt": 6},
+            {"status": "HIT_STOP", "cnt": 2},
+            {"status": "ACTIVE", "cnt": 2},
+        ],
+        [{"date": "Sep 27", "cnt": 10}],
+        [{"bucket": "80–89", "cnt": 10}],
+    ]
+
+    with make_orders_test_client(mock_conn) as client:
+        res = client.get("/orders/stats")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total_orders"] == 10
+    assert data["avg_conviction"] == 82.5
+    assert data["hit_target_count"] == 6
+    assert data["hit_stop_count"] == 2
+    assert data["active_count"] == 2
+    assert data["win_rate_percent"] == 75.0
+    assert data["total_recommended_volume_usd"] == 250000.0
+    assert data["strategy_breakdown"]["Supernova"] == 6
+    assert data["catalyst_breakdown"]["SUPERNOVA"] == 7
+    assert len(data["daily_volume"]) == 1
+    assert len(data["conviction_distribution"]) == 1

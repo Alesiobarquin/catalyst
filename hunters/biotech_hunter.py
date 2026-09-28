@@ -1,4 +1,5 @@
 import asyncio
+import re
 from datetime import datetime, timezone
 
 from .common.config import BIOPHARM_URL, BIOTECH_INTERVAL_SECONDS
@@ -9,6 +10,56 @@ from .common.playwright_context import BrowserContext
 from .common.topics import KAFKA_TOPIC_BIOTECH, RAW_EVENTS_TOPIC
 
 logger = get_logger("biotech_hunter")
+
+
+KNOWN_EXCHANGES = {"NASDAQ", "NYSE", "AMEX", "OTC", "BATS", "ARCA", "XNAS", "XNYS"}
+KNOWN_COUNTRY_SUFFIXES = {"US", "TO", "V", "L", "DE", "PA", "LN", "CA", "AU"}
+
+
+def _clean_ticker(raw: str | None) -> str | None:
+    """
+    Sanitize raw ticker string from HTML tables.
+    Strips currency symbols ($), leading/trailing whitespace, newlines,
+    exchange prefixes/suffixes (e.g. 'NASDAQ:BIIB' -> 'BIIB', 'BIIB:US' -> 'BIIB'),
+    and validates standard 1-6 alphanumeric format.
+    """
+    if not raw or not isinstance(raw, str):
+        return None
+
+    # Take first line if multiple lines exist
+    text = raw.split("\n")[0].strip().upper()
+    # Strip leading $
+    text = text.lstrip("$").strip()
+
+    # If exchange prefix or country suffix exists (e.g. NASDAQ:BIIB, BIIB:US)
+    if ":" in text:
+        parts = [p.strip() for p in text.split(":") if p.strip()]
+        if len(parts) == 2:
+            if parts[0] in KNOWN_EXCHANGES:
+                text = parts[1]
+            elif parts[1] in KNOWN_COUNTRY_SUFFIXES:
+                text = parts[0]
+            elif (
+                len(parts[1]) <= 5
+                and parts[1].replace("-", "").isalnum()
+                and not parts[0].replace("-", "").isalnum()
+            ):
+                text = parts[1]
+            else:
+                text = parts[0]
+
+    # If dot suffix exists for foreign or share class (e.g. BIIB.US, BIIB.TO -> BIIB)
+    if "." in text:
+        suffix = text.split(".")[-1]
+        if suffix in KNOWN_COUNTRY_SUFFIXES:
+            text = text.split(".")[0]
+
+    # Remove any non-alphanumeric except hyphen (e.g., BRK-B)
+    cleaned = re.sub(r"[^A-Z0-9-]", "", text)
+    if not cleaned or len(cleaned) > 6 or len(cleaned) < 1:
+        return None
+
+    return cleaned
 
 
 async def scrape_biopharm(page):
@@ -36,7 +87,10 @@ async def scrape_biopharm(page):
             cells = await row.query_selector_all("td")
 
             if len(cells) >= 4:
-                ticker = (await cells[0].inner_text()).strip().upper()
+                raw_ticker = await cells[0].inner_text()
+                ticker = _clean_ticker(raw_ticker)
+                if not ticker:
+                    continue
                 drug = (await cells[1].inner_text()).strip()
                 stage = (await cells[2].inner_text()).strip()
                 catalyst_date = (await cells[3].inner_text()).strip()

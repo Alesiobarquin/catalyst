@@ -135,13 +135,22 @@ async def order_stats(conn: asyncpg.Connection = Depends(get_conn)):
         """
     )
 
+    tot_vol = (
+        await conn.fetchval("SELECT COALESCE(SUM(recommended_size_usd), 0) FROM trade_orders")
+        or 0.0
+    )
+
     status_map = {r["status"]: r["cnt"] for r in status_rows}
+    hit_target = int(status_map.get("HIT_TARGET", 0))
+    hit_stop = int(status_map.get("HIT_STOP", 0))
+    closed_total = hit_target + hit_stop
+    win_rate = round((hit_target / closed_total) * 100.0, 1) if closed_total > 0 else 0.0
 
     return {
         "total_orders": int(total),
         "avg_conviction": float(avg_con),
-        "hit_target_count": int(status_map.get("HIT_TARGET", 0)),
-        "hit_stop_count": int(status_map.get("HIT_STOP", 0)),
+        "hit_target_count": hit_target,
+        "hit_stop_count": hit_stop,
         "active_count": int(status_map.get("ACTIVE", 0)),
         "strategy_breakdown": {r["strategy_used"]: r["cnt"] for r in strat_rows},
         "catalyst_breakdown": {r["catalyst_type"]: r["cnt"] for r in cat_rows},
@@ -149,6 +158,8 @@ async def order_stats(conn: asyncpg.Connection = Depends(get_conn)):
         "conviction_distribution": [
             {"bucket": r["bucket"], "count": r["cnt"]} for r in bucket_rows
         ],
+        "win_rate_percent": win_rate,
+        "total_recommended_volume_usd": float(tot_vol),
     }
 
 

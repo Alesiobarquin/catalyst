@@ -43,6 +43,8 @@ class OrderStatsResponse(BaseModel):
     catalyst_breakdown: dict[str, int]
     daily_volume: list[DailyVolume] = []
     conviction_distribution: list[ConvictionBucket] = []
+    win_rate_percent: float = 0.0
+    total_recommended_volume_usd: float = 0.0
 
 
 # ── Validated Signals ─────────────────────────────────────────────

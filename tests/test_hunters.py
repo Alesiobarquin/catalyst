@@ -2,6 +2,7 @@
 
 import xml.etree.ElementTree as ET
 
+from hunters.biotech_hunter import _clean_ticker
 from hunters.drifter_hunter import (
     _eps_surprise_pct,
     _num,
@@ -285,3 +286,27 @@ class TestAsyncHttpGetWithRetry:
         )
         assert resp.status_code == 200
         assert client.get.call_count == 2
+
+
+class TestBiotechHunterHelpers:
+    def test_clean_ticker_standard(self):
+        assert _clean_ticker("BIIB") == "BIIB"
+        assert _clean_ticker("pfe") == "PFE"
+
+    def test_clean_ticker_strips_dollar_and_whitespace(self):
+        assert _clean_ticker("  $BIIB  ") == "BIIB"
+        assert _clean_ticker("$MRNA") == "MRNA"
+
+    def test_clean_ticker_strips_exchange_prefix_or_suffix(self):
+        assert _clean_ticker("NASDAQ:BIIB") == "BIIB"
+        assert _clean_ticker("BIIB:US") == "BIIB"
+        assert _clean_ticker("BIIB.TO") == "BIIB"
+
+    def test_clean_ticker_multiline_cell(self):
+        assert _clean_ticker("BIIB\nBiogen Inc.") == "BIIB"
+
+    def test_clean_ticker_invalid_inputs(self):
+        assert _clean_ticker("") is None
+        assert _clean_ticker(None) is None
+        assert _clean_ticker("   ") is None
+        assert _clean_ticker("TOOLONGTICKERNAME") is None

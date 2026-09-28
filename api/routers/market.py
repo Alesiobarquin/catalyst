@@ -15,32 +15,48 @@ router = APIRouter(prefix="/market", tags=["market"])
 def _fetch_quote(symbol: str) -> dict:
     t = yf.Ticker(symbol.upper())
     fast_info = getattr(t, "fast_info", None)
-    if fast_info:
-        last_price = getattr(fast_info, "last_price", None)
-        prev_close = getattr(fast_info, "previous_close", None)
-        day_high = getattr(fast_info, "day_high", None)
-        day_low = getattr(fast_info, "day_low", None)
-        volume = getattr(fast_info, "last_volume", None)
-        year_high = getattr(fast_info, "year_high", None)
-        year_low = getattr(fast_info, "year_low", None)
-        market_cap = getattr(fast_info, "market_cap", None)
 
-        change = round(last_price - prev_close, 4) if last_price and prev_close else None
-        pct_change = round((change / prev_close) * 100, 2) if change and prev_close else None
+    last_price = getattr(fast_info, "last_price", None) if fast_info else None
+    prev_close = getattr(fast_info, "previous_close", None) if fast_info else None
+    day_high = getattr(fast_info, "day_high", None) if fast_info else None
+    day_low = getattr(fast_info, "day_low", None) if fast_info else None
+    volume = getattr(fast_info, "last_volume", None) if fast_info else None
+    year_high = getattr(fast_info, "year_high", None) if fast_info else None
+    year_low = getattr(fast_info, "year_low", None) if fast_info else None
+    market_cap = getattr(fast_info, "market_cap", None) if fast_info else None
 
-        return {
-            "ticker": symbol.upper(),
-            "price": round(float(last_price), 4) if last_price else None,
-            "change": change,
-            "change_percent": pct_change,
-            "day_high": round(float(day_high), 4) if day_high else None,
-            "day_low": round(float(day_low), 4) if day_low else None,
-            "volume": int(volume) if volume else None,
-            "fifty_two_week_high": round(float(year_high), 4) if year_high else None,
-            "fifty_two_week_low": round(float(year_low), 4) if year_low else None,
-            "market_cap": int(market_cap) if market_cap else None,
-        }
-    return {"ticker": symbol.upper()}
+    # Fallback to history(period="2d") if last_price is missing from fast_info
+    if last_price is None:
+        try:
+            hist = t.history(period="2d")
+            if not hist.empty:
+                last_price = float(hist["Close"].iloc[-1])
+                if day_high is None and "High" in hist:
+                    day_high = float(hist["High"].iloc[-1])
+                if day_low is None and "Low" in hist:
+                    day_low = float(hist["Low"].iloc[-1])
+                if volume is None and "Volume" in hist:
+                    volume = int(hist["Volume"].iloc[-1])
+                if prev_close is None and len(hist) > 1:
+                    prev_close = float(hist["Close"].iloc[-2])
+        except Exception as h_err:
+            logger.debug("History fallback failed for %s: %s", symbol, h_err)
+
+    change = round(last_price - prev_close, 4) if last_price and prev_close else None
+    pct_change = round((change / prev_close) * 100, 2) if change and prev_close else None
+
+    return {
+        "ticker": symbol.upper(),
+        "price": round(float(last_price), 4) if last_price else None,
+        "change": change,
+        "change_percent": pct_change,
+        "day_high": round(float(day_high), 4) if day_high else None,
+        "day_low": round(float(day_low), 4) if day_low else None,
+        "volume": int(volume) if volume else None,
+        "fifty_two_week_high": round(float(year_high), 4) if year_high else None,
+        "fifty_two_week_low": round(float(year_low), 4) if year_low else None,
+        "market_cap": int(market_cap) if market_cap else None,
+    }
 
 
 @router.get("/{ticker}/quote", response_model=MarketQuoteResponse)

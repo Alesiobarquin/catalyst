@@ -54,41 +54,43 @@ def get_db_conn() -> Connection:
 def init_schema(conn: Connection) -> None:
     """Create validated_signals table and hypertable if not exists."""
     cur = conn.cursor()
-    cur.execute("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE")
-    conn.commit()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS validated_signals (
-            time TIMESTAMPTZ NOT NULL,
-            ticker TEXT NOT NULL,
-            conviction_score INT NOT NULL,
-            catalyst_type TEXT NOT NULL,
-            is_trap BOOLEAN NOT NULL DEFAULT FALSE,
-            trap_reason TEXT,
-            rationale TEXT,
-            confluence_count INT NOT NULL DEFAULT 0,
-            confluence_sources JSONB,
-            liquidity_metrics JSONB,
-            signals JSONB,
-            news_sentiment TEXT,
-            risk_level TEXT,
-            suggested_timeframe TEXT,
-            key_risks JSONB,
-            raw_signals_summary TEXT,
-            suggested_entry_zone TEXT,
-            suggested_stop TEXT
-        )
-    """)
-    conn.commit()
-    cur.execute("""
-        SELECT create_hypertable('validated_signals', 'time', if_not_exists => TRUE)
-    """)
-    conn.commit()
-    cur.execute("""
-        CREATE INDEX IF NOT EXISTS idx_validated_signals_ticker
-        ON validated_signals (ticker, time DESC)
-    """)
-    conn.commit()
-    cur.close()
+    try:
+        cur.execute("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE")
+        conn.commit()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS validated_signals (
+                time TIMESTAMPTZ NOT NULL,
+                ticker TEXT NOT NULL,
+                conviction_score INT NOT NULL,
+                catalyst_type TEXT NOT NULL,
+                is_trap BOOLEAN NOT NULL DEFAULT FALSE,
+                trap_reason TEXT,
+                rationale TEXT,
+                confluence_count INT NOT NULL DEFAULT 0,
+                confluence_sources JSONB,
+                liquidity_metrics JSONB,
+                signals JSONB,
+                news_sentiment TEXT,
+                risk_level TEXT,
+                suggested_timeframe TEXT,
+                key_risks JSONB,
+                raw_signals_summary TEXT,
+                suggested_entry_zone TEXT,
+                suggested_stop TEXT
+            )
+        """)
+        conn.commit()
+        cur.execute("""
+            SELECT create_hypertable('validated_signals', 'time', if_not_exists => TRUE)
+        """)
+        conn.commit()
+        cur.execute("""
+            CREATE INDEX IF NOT EXISTS idx_validated_signals_ticker
+            ON validated_signals (ticker, time DESC)
+        """)
+        conn.commit()
+    finally:
+        cur.close()
     logger.info("Schema initialized")
 
 
@@ -108,31 +110,33 @@ INSERT INTO validated_signals (
 def persist_signal(conn: Connection, payload: dict) -> None:
     ts = parse_ts(payload.get("timestamp_utc")) or datetime.now(timezone.utc)
     cur = conn.cursor()
-    cur.execute(
-        INSERT_SQL,
-        (
-            ts,
-            payload.get("ticker", ""),
-            int(payload.get("conviction_score", 0)),
-            str(payload.get("catalyst_type", "UNKNOWN")),
-            bool(payload.get("is_trap", False)),
-            payload.get("trap_reason"),
-            payload.get("rationale") or "",
-            int(payload.get("confluence_count", 0)),
-            json.dumps(payload.get("confluence_sources", [])),
-            json.dumps(payload.get("liquidity_metrics", {})),
-            json.dumps(payload.get("signals", [])),
-            payload.get("news_sentiment"),
-            payload.get("risk_level"),
-            payload.get("suggested_timeframe"),
-            json.dumps(payload.get("key_risks", [])),
-            payload.get("raw_signals_summary"),
-            payload.get("suggested_entry_zone"),
-            payload.get("suggested_stop"),
-        ),
-    )
-    conn.commit()
-    cur.close()
+    try:
+        cur.execute(
+            INSERT_SQL,
+            (
+                ts,
+                payload.get("ticker", ""),
+                int(payload.get("conviction_score", 0)),
+                str(payload.get("catalyst_type", "UNKNOWN")),
+                bool(payload.get("is_trap", False)),
+                payload.get("trap_reason"),
+                payload.get("rationale") or "",
+                int(payload.get("confluence_count", 0)),
+                json.dumps(payload.get("confluence_sources", [])),
+                json.dumps(payload.get("liquidity_metrics", {})),
+                json.dumps(payload.get("signals", [])),
+                payload.get("news_sentiment"),
+                payload.get("risk_level"),
+                payload.get("suggested_timeframe"),
+                json.dumps(payload.get("key_risks", [])),
+                payload.get("raw_signals_summary"),
+                payload.get("suggested_entry_zone"),
+                payload.get("suggested_stop"),
+            ),
+        )
+        conn.commit()
+    finally:
+        cur.close()
 
 
 def run():
@@ -163,6 +167,11 @@ def run():
             logger.info("Persisted %s", message.value.get("ticker", "?"))
         except (OperationalError, DatabaseError) as db_exc:
             logger.error("Database error while persisting signal: %s. Reconnecting...", db_exc)
+            try:
+                if not conn.closed:
+                    conn.rollback()
+            except Exception:
+                pass
             time.sleep(1)
             try:
                 conn = get_db_conn()
@@ -171,6 +180,11 @@ def run():
                 logger.error("Database reconnection failed: %s", reconn_err)
         except Exception as exc:
             logger.error("Failed to persist signal: %s", exc)
+            try:
+                if not conn.closed:
+                    conn.rollback()
+            except Exception:
+                pass
             # Do not commit - will retry on next poll
 
 

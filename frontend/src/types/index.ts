@@ -105,6 +105,8 @@ export interface OrderStats {
   catalyst_breakdown: Record<CatalystType, number>;
   daily_volume: Array<{ date: string; count: number }>;
   conviction_distribution: Array<{ bucket: string; count: number }>;
+  win_rate_percent?: number;
+  total_recommended_volume_usd?: number;
 }
 
 export interface SignalStats {

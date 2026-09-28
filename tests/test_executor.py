@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 from executor.consumer import (
     parse_ts,
     place_alpaca_order,
+    process_message,
     resolve_trade_order_row,
 )
 
@@ -143,3 +144,72 @@ class TestResolveTradeOrderRow:
         result = resolve_trade_order_row(mock_conn, "NVDA", now)
         assert result is None
         assert mock_conn.execute.call_count == 15
+
+
+class TestProcessMessage:
+    @patch("executor.consumer.fetch_users")
+    def test_process_message_no_users_skips(self, mock_fetch_users):
+        mock_fetch_users.return_value = []
+        mock_conn = MagicMock()
+
+        payload = {
+            "ticker": "NVDA",
+            "timestamp_utc": "2026-03-27T14:30:00Z",
+            "limit_price": 120.0,
+        }
+        process_message(mock_conn, payload)
+        mock_conn.execute.assert_not_called()
+
+    @patch("executor.consumer.place_alpaca_order")
+    @patch("executor.consumer.resolve_trade_order_row")
+    @patch("executor.consumer.fetch_users")
+    def test_process_message_successful_execution(
+        self, mock_fetch_users, mock_resolve, mock_place_order
+    ):
+        now = datetime.now(timezone.utc)
+        mock_fetch_users.return_value = [("user_123", "apk_live", "sec_live")]
+        mock_resolve.return_value = (42, now)
+        mock_place_order.return_value = (True, "alpaca-ord-99", "filled", 120.50, None)
+
+        mock_conn = MagicMock()
+        mock_insert_cur = MagicMock()
+        mock_insert_cur.fetchone.return_value = (1,)  # inserted successfully
+        mock_conn.execute.return_value = mock_insert_cur
+
+        payload = {
+            "ticker": "NVDA",
+            "timestamp_utc": now.isoformat(),
+            "action": "BUY",
+            "limit_price": 120.0,
+            "recommended_size_usd": 2000.0,
+        }
+        process_message(mock_conn, payload)
+
+        mock_place_order.assert_called_once_with("apk_live", "sec_live", payload)
+        assert mock_conn.execute.call_count == 2  # INSERT + UPDATE
+
+    @patch("executor.consumer.place_alpaca_order")
+    @patch("executor.consumer.resolve_trade_order_row")
+    @patch("executor.consumer.fetch_users")
+    def test_process_message_duplicate_skipped(
+        self, mock_fetch_users, mock_resolve, mock_place_order
+    ):
+        now = datetime.now(timezone.utc)
+        mock_fetch_users.return_value = [("user_123", "apk_live", "sec_live")]
+        mock_resolve.return_value = (42, now)
+
+        mock_conn = MagicMock()
+        mock_insert_cur = MagicMock()
+        mock_insert_cur.fetchone.return_value = None  # ON CONFLICT DO NOTHING -> None
+        mock_conn.execute.return_value = mock_insert_cur
+
+        payload = {
+            "ticker": "NVDA",
+            "timestamp_utc": now.isoformat(),
+            "action": "BUY",
+            "limit_price": 120.0,
+        }
+        process_message(mock_conn, payload)
+
+        mock_place_order.assert_not_called()
+        assert mock_conn.execute.call_count == 1  # only INSERT attempted
