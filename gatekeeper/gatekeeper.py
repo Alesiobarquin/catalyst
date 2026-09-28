@@ -449,7 +449,21 @@ class GatekeeperService:
     def normalize_ticker(value):
         if value is None:
             return None
-        return str(value).strip().upper()
+        s = str(value).strip().upper()
+        if not s:
+            return None
+        # Clean multiline cells and comma lists
+        s = s.split("\n")[0].split(",")[0].strip()
+        # Strip leading dollar sign
+        if s.startswith("$"):
+            s = s[1:].strip()
+        # Strip exchange prefix (e.g., NASDAQ:AAPL -> AAPL)
+        if ":" in s:
+            s = s.split(":")[-1].strip()
+        # Strip exchange dot suffix (e.g., BIIB.TO -> BIIB)
+        if "." in s and not s.endswith(".WS"):
+            s = s.split(".")[0].strip()
+        return s if s else None
 
     @staticmethod
     def normalize_timestamp(value):

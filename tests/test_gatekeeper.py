@@ -47,6 +47,12 @@ class TestGatekeeperStaticHelpers:
         assert GatekeeperService.normalize_ticker("aapl") == "AAPL"
         assert GatekeeperService.normalize_ticker("  nvda  ") == "NVDA"
         assert GatekeeperService.normalize_ticker(None) is None
+        assert GatekeeperService.normalize_ticker("") is None
+        assert GatekeeperService.normalize_ticker("  $TSLA  ") == "TSLA"
+        assert GatekeeperService.normalize_ticker("NASDAQ:AAPL") == "AAPL"
+        assert GatekeeperService.normalize_ticker("NVDA\nNvidia Corp") == "NVDA"
+        assert GatekeeperService.normalize_ticker("BIIB.TO") == "BIIB"
+
 
     def test_first_from_values(self):
         assert GatekeeperService.first_from_values(None, None, 5) == 5
