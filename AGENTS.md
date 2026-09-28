@@ -138,7 +138,7 @@ Exposes read-optimized endpoints and streaming for the frontend:
 - **Signals**: `GET /signals` (with `catalyst_type`, `min_conviction`, `is_trap`, `ticker`, and `date_range`), `GET /signals/{id}`, `GET /signals/stats` (KPI aggregations), `GET /signals/export/csv`.
 - **Orders & Executions**: `GET /orders` (with lateral join to Alpaca paper executions), `GET /orders/export/csv`, `GET /executions`.
 - **Market**: `GET /market/search?q={query}` (auto-complete), `GET /market/quote/{ticker}`, `GET /market/history/{ticker}`, `GET /market/overview`.
-- **Health & Telemetry**: `GET /health` (API & DB pool), `GET /health/pipeline` (Aggregate status: API + TimescaleDB + Java Engine), `GET /metrics` (Prometheus gauge metrics for API uptime and DB pool connections).
+- **Health & Telemetry**: `GET /health` (API & DB pool), `GET /health/pipeline` (Aggregate status: API + TimescaleDB + Redis + Java Engine), `GET /metrics` (Prometheus gauge metrics for API uptime, DB pool connections, and Redis status `catalyst_redis_up`).
 - **Testing & Diagnostics**: `POST /testing/inject` (Developer synthetic catalyst signal injection into `raw-events`).
 - **Settings**: `POST /settings/alpaca/validate` (credential pre-flight testing).
 - **Security Middleware**: Enforces `nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`, and `Referrer-Policy`.
@@ -152,13 +152,14 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
   - `/settings`: Alpaca API key validation form and hunter cadence preferences.
 - **Components**:
   - `LiveStreamBanner`: Real-time SSE alert banner with connection status, auto-refresh toggle, and Web Audio API synthesized alert chime.
+  - `PipelineStatus`: Live status indicator in navbar reflecting API, DB, Redis, and Java Engine health with interactive tooltip diagnostics.
   - `TickerSearchInput`: Keyboard-navigable ticker auto-complete dropdown.
   - `PriceChart`: TradingView Lightweight Charts component with live vs. synthetic history indicator.
   - `SignalFilterBar`: Interactive catalyst, conviction, trap, and date range pills (`7D`, `30D`, `90D`, `All Time`).
 
 ---
 
-## 4. Platform Upgrades & Evolution (Phases 1–26)
+## 4. Platform Upgrades & Evolution (Phases 1–27)
 
 | Phase | Core Deliverable | Key Details |
 |---|---|---|
@@ -188,6 +189,7 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
 | **Phase 24** | Gatekeeper ticker normalization | Strips `$`, exchange prefixes (`NASDAQ:`), newlines, and foreign suffixes (`.TO`) (191 tests). |
 | **Phase 25** | Utility scripts & full diagnostics suite | Added `confluence_watcher.py`, `inject_synthetic_signals.py`, React 19 hook purity fixes, and 4 agent skills (197 tests). |
 | **Phase 26** | Execution parity, Prometheus metrics & date filters | Order executions lateral join, signals date range filtering (`7d`/`30d`/`90d`), `POST /testing/inject`, `GET /metrics`, Next.js 16 `proxy.ts` (203 tests). |
+| **Phase 27** | Redis health telemetry, schedule parity & verification probe | Redis async health check in API (`ping_redis()`), aggregate `/health/pipeline` (`api`, `database`, `redis`, `engine`, `ready`), Prometheus `catalyst_redis_up` gauge, EventBridge shutdown alignment (16:10 ET / 20:10 UTC), and automated `scripts/verify_pipeline_health.py` CLI probe (211 tests). |
 
 ---
 
@@ -199,7 +201,7 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
   ```bash
   .venv/bin/pytest
   ```
-  *Current status: 203 passing tests.*
+  *Current status: 211 passing tests.*
 - **Linting & Code Style**:
   ```bash
   .venv/bin/ruff check .

@@ -165,14 +165,14 @@ class CatalystStack(Stack):
         )
         start_rule.add_target(targets.LambdaFunction(startup_fn))
 
-        # 4:00 PM ET ≈ 20:00 UTC (EDT) / 21:00 UTC (EST). Adjust seasonally if needed.
+        # 4:10 PM ET ≈ 20:10 UTC (EDT) / 21:10 UTC (EST). Adjust seasonally if needed.
         stop_rule = events.Rule(
             self,
             "CatalystStopDaily",
             rule_name="catalyst-stop-daily",
             description="Stop Catalyst EC2 after market window (disabled until activation)",
             schedule=events.Schedule.cron(
-                minute="0",
+                minute="10",
                 hour="20",
                 week_day="MON-FRI",
             ),

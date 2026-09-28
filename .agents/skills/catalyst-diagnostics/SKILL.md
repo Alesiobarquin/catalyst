@@ -14,7 +14,7 @@ Use this runbook to run tests, format checks, linting, and health verifications 
 Run the entire test suite using the project virtual environment:
 
 ```bash
-# Full test suite (all 197+ tests)
+# Full test suite (all 211+ tests)
 .venv/bin/pytest
 
 # Run tests with verbose output
@@ -76,16 +76,34 @@ npm --prefix frontend run build
 
 ---
 
-## 4. Live Health Telemetry
+## 4. Live Health Telemetry & Automated Verification
 
+### Automated Pipeline Verification Script
+Run the automated diagnostics probe to check FastAPI, TimescaleDB, Redis, and Java Engine in one command:
+
+```bash
+# Formatted terminal dashboard
+python scripts/verify_pipeline_health.py
+
+# Machine-readable JSON output
+python scripts/verify_pipeline_health.py --json
+
+# API and database only (skips Java engine if not running)
+python scripts/verify_pipeline_health.py --ignore-engine
+```
+
+### Manual Service Health Checks
 When services are running locally via Docker Compose or standalone:
 
 ```bash
 # FastAPI health check and DB pool metrics
 curl -s http://localhost:8000/health | jq .
 
-# End-to-end pipeline health (API + TimescaleDB + Java Engine)
+# End-to-end pipeline health (API + TimescaleDB + Redis + Java Engine)
 curl -s http://localhost:8000/health/pipeline | jq .
+
+# Prometheus-compatible telemetry gauges
+curl -s http://localhost:8000/metrics
 
 # Java Spring Boot Strategy Engine Actuator health
 curl -s http://localhost:8081/actuator/health | jq .

@@ -52,11 +52,11 @@ export function PipelineStatus() {
       ? "API unreachable"
       : ready
         ? "Pipeline ready"
-        : `DB ${data?.database ?? "?"} · Engine ${data?.engine ?? "?"}`;
+        : `DB ${data?.database ?? "?"} · Redis ${data?.redis ?? "?"} · Engine ${data?.engine ?? "?"}`;
 
   return (
     <div
-      title={data ? `DB: ${data.database} · Engine: ${data.engine}` : sub}
+      title={data ? `DB: ${data.database} · Redis: ${data.redis ?? "?"} · Engine: ${data.engine}` : sub}
       style={{
         display: "flex",
         alignItems: "center",

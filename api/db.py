@@ -64,6 +64,28 @@ async def ping_database() -> str:
         return "error"
 
 
+async def ping_redis() -> str:
+    """Return ok | error for /health/pipeline and telemetry."""
+    try:
+        import redis.asyncio as aioredis
+
+        client = aioredis.Redis(
+            host=settings.redis_host,
+            port=settings.redis_port,
+            password=settings.redis_password or None,
+            db=settings.redis_db,
+            socket_timeout=1.5,
+            socket_connect_timeout=1.5,
+        )
+        try:
+            pong = await client.ping()
+            return "ok" if pong else "error"
+        finally:
+            await client.aclose()
+    except Exception:
+        return "error"
+
+
 def get_pool_stats() -> dict[str, int]:
     """Return live connection pool metrics for health monitoring."""
     if _pool is None:

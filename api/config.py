@@ -10,6 +10,12 @@ class Settings(BaseSettings):
     # Java engine actuator (Docker service name). Override on host: http://127.0.0.1:8081/actuator/health
     engine_health_url: str = "http://engine:8081/actuator/health"
 
+    # Redis configuration for cache & confluence verification
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_password: str = ""
+    redis_db: int = 0
+
     # Clerk (JWT verification for /settings and /executions). JWKS URL is typically
     # {issuer}/.well-known/jwks.json — see Clerk dashboard → API keys.
     clerk_issuer: str = ""

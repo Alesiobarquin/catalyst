@@ -1,6 +1,6 @@
 """
 Lambda: catalyst-shutdown
-Triggered by EventBridge at 4:00 PM ET to stop the Catalyst EC2 instance.
+Triggered by EventBridge at 4:10 PM ET to stop the Catalyst EC2 instance.
 Set EC2_INSTANCE_ID via Lambda environment variables.
 """
 import logging

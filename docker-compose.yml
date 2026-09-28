@@ -294,10 +294,14 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-catalyst_user}:${POSTGRES_PASSWORD:-password123}@timescaledb:5432/${POSTGRES_DB:-catalyst_db}
       - CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
       - ENGINE_HEALTH_URL=http://engine:8081/actuator/health
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - CLERK_ISSUER=${CLERK_ISSUER:-}
       - CLERK_JWKS_URL=${CLERK_JWKS_URL:-}
     depends_on:
       timescaledb:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]

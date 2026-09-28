@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncGenerator
 
+import pytest
 from fastapi.testclient import TestClient
 
 import api.db as db
@@ -78,10 +79,12 @@ def test_health_pipeline():
     from unittest.mock import AsyncMock, patch
 
     with (
-        patch("api.main.ping_database", new_callable=AsyncMock) as mock_ping,
+        patch("api.main.ping_database", new_callable=AsyncMock) as mock_db_ping,
+        patch("api.main.ping_redis", new_callable=AsyncMock) as mock_redis_ping,
         patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_http,
     ):
-        mock_ping.return_value = "ok"
+        mock_db_ping.return_value = "ok"
+        mock_redis_ping.return_value = "ok"
         mock_resp = AsyncMock()
         mock_resp.status_code = 200
         from unittest.mock import MagicMock
@@ -95,8 +98,34 @@ def test_health_pipeline():
         data = res.json()
         assert data["api"] == "ok"
         assert data["database"] == "ok"
+        assert data["redis"] == "ok"
         assert data["engine"] == "UP"
         assert data["ready"] is True
+
+
+def test_health_pipeline_redis_down():
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    with (
+        patch("api.main.ping_database", new_callable=AsyncMock) as mock_db_ping,
+        patch("api.main.ping_redis", new_callable=AsyncMock) as mock_redis_ping,
+        patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_http,
+    ):
+        mock_db_ping.return_value = "ok"
+        mock_redis_ping.return_value = "error"
+        mock_resp = AsyncMock()
+        mock_resp.status_code = 200
+        mock_resp.json = MagicMock(return_value={"status": "UP"})
+        mock_http.return_value = mock_resp
+
+        with make_test_client() as client:
+            res = client.get("/health/pipeline")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["database"] == "ok"
+        assert data["redis"] == "error"
+        assert data["engine"] == "UP"
+        assert data["ready"] is False
 
 
 def test_signals_list_and_by_ticker():
@@ -570,6 +599,7 @@ def test_metrics_endpoint():
     assert "catalyst_api_uptime_seconds" in res.text
     assert "catalyst_api_db_connections_total" in res.text
     assert "catalyst_api_db_connections_active" in res.text
+    assert "catalyst_redis_up" in res.text
 
 
 def test_inject_synthetic_signals_endpoint_confluence():
@@ -613,4 +643,30 @@ def test_inject_synthetic_signals_endpoint_drop():
     assert data["events_injected"] == 1
 
 
+@pytest.mark.asyncio
+async def test_ping_redis_success():
+    from unittest.mock import AsyncMock, patch
 
+    mock_client = AsyncMock()
+    mock_client.ping.return_value = True
+    mock_client.aclose = AsyncMock()
+
+    with patch("redis.asyncio.Redis", return_value=mock_client):
+        res = await db.ping_redis()
+        assert res == "ok"
+        mock_client.ping.assert_awaited_once()
+        mock_client.aclose.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_ping_redis_failure():
+    from unittest.mock import AsyncMock, patch
+
+    mock_client = AsyncMock()
+    mock_client.ping.side_effect = ConnectionError("Connection refused")
+    mock_client.aclose = AsyncMock()
+
+    with patch("redis.asyncio.Redis", return_value=mock_client):
+        res = await db.ping_redis()
+        assert res == "error"
+        mock_client.aclose.assert_awaited_once()

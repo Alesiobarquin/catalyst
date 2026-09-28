@@ -7,7 +7,7 @@ from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import settings
-from api.db import get_pool_stats, lifespan, ping_database
+from api.db import get_pool_stats, lifespan, ping_database, ping_redis
 from api.routers import execution, market, orders, performance, signals, testing
 from api.routers import settings as settings_router
 
@@ -60,6 +60,8 @@ def create_app() -> FastAPI:
         """Prometheus-compatible plain text metrics endpoint."""
         uptime = round(time.time() - START_TIME, 2)
         pool = get_pool_stats()
+        redis_status = await ping_redis()
+        redis_val = 1.0 if redis_status == "ok" else 0.0
         lines = [
             "# HELP catalyst_api_uptime_seconds Process uptime in seconds.",
             "# TYPE catalyst_api_uptime_seconds gauge",
@@ -73,6 +75,9 @@ def create_app() -> FastAPI:
             "# HELP catalyst_api_db_connections_active Active database pool connections.",
             "# TYPE catalyst_api_db_connections_active gauge",
             f"catalyst_api_db_connections_active {pool.get('active', 0)}",
+            "# HELP catalyst_redis_up Redis connection status (1 = up, 0 = down).",
+            "# TYPE catalyst_redis_up gauge",
+            f"catalyst_redis_up {redis_val}",
         ]
         return Response(content="\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
@@ -90,8 +95,15 @@ def create_app() -> FastAPI:
 
     @app.get("/health/pipeline", tags=["health"])
     async def health_pipeline():
-        """Aggregate status for the Next.js navbar: API + DB + Java engine."""
-        out: dict = {"api": "ok", "database": await ping_database(), "engine": "unknown"}
+        """Aggregate status for the Next.js navbar: API + DB + Redis + Java engine."""
+        db_status = await ping_database()
+        redis_status = await ping_redis()
+        out: dict = {
+            "api": "ok",
+            "database": db_status,
+            "redis": redis_status,
+            "engine": "unknown",
+        }
 
         try:
             async with httpx.AsyncClient(timeout=3.0) as client:
@@ -105,7 +117,11 @@ def create_app() -> FastAPI:
         except Exception:
             out["engine"] = "DOWN"
 
-        ok = out["database"] == "ok" and out["engine"] in ("UP", "OK", "ok")
+        ok = (
+            out["database"] == "ok"
+            and out["redis"] == "ok"
+            and out["engine"] in ("UP", "OK", "ok")
+        )
         out["ready"] = ok
         return out
 

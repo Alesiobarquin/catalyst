@@ -37,6 +37,10 @@ docker compose up -d --build
 
 echo "==> Health checks"
 sleep 10
-curl -sf http://localhost:8000/health && echo " API OK" || echo " API not ready yet"
-curl -sf http://localhost:8081/actuator/health && echo " Engine OK" || echo " Engine not ready yet"
+if command -v python3 >/dev/null 2>&1; then
+  python3 scripts/verify_pipeline_health.py || true
+else
+  curl -sf http://localhost:8000/health/pipeline && echo " Pipeline OK" || echo " Pipeline not ready yet"
+  curl -sf http://localhost:8081/actuator/health && echo " Engine OK" || echo " Engine not ready yet"
+fi
 docker compose ps

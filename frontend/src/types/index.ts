@@ -33,6 +33,7 @@ export interface ExecutionSummary {
 export interface PipelineHealth {
   api: string;
   database: string;
+  redis?: string;
   engine: string;
   ready?: boolean;
 }
