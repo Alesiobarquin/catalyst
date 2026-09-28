@@ -309,3 +309,49 @@ def test_market_search_tickers():
     assert len(data) == 2
     assert data[0]["ticker"] == "NVDA"
     assert data[1]["ticker"] == "NVO"
+
+
+def test_market_history_empty_returns_404():
+    from unittest.mock import patch
+
+    import pandas as pd
+
+    with (
+        patch("api.routers.market._fetch_history", return_value=pd.DataFrame()),
+        make_test_client() as client,
+    ):
+        res = client.get("/market/NVDA/history?from=2026-03-01T00:00:00Z")
+
+    assert res.status_code == 404
+    assert "No price data found" in res.json()["detail"]
+
+
+def test_market_history_success():
+    from unittest.mock import patch
+
+    import pandas as pd
+
+    df = pd.DataFrame(
+        {
+            "Open": [120.0],
+            "High": [125.0],
+            "Low": [119.0],
+            "Close": [124.0],
+            "Volume": [10000000],
+        },
+        index=[pd.Timestamp("2026-03-01 00:00:00+0000", tz="UTC")],
+    )
+
+    with (
+        patch("api.routers.market._fetch_history", return_value=df),
+        make_test_client() as client,
+    ):
+        res = client.get("/market/NVDA/history?from=2026-03-01T00:00:00Z")
+
+    assert res.status_code == 200
+    bars = res.json()
+    assert len(bars) == 1
+    assert bars[0]["open"] == 120.0
+    assert bars[0]["high"] == 125.0
+    assert bars[0]["close"] == 124.0
+
