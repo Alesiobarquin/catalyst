@@ -19,6 +19,16 @@ export interface TradeExecution {
   error_message?: string | null;
 }
 
+/** GET /executions/summary — aggregate paper execution stats */
+export interface ExecutionSummary {
+  total_executions: number;
+  filled_count: number;
+  failed_count: number;
+  pending_count: number;
+  fill_rate_percent: number;
+  total_volume_usd: number;
+}
+
 /** GET /health/pipeline — FastAPI aggregate check for navbar */
 export interface PipelineHealth {
   api: string;
@@ -61,8 +71,9 @@ export interface ValidatedSignal {
   rationale: string;
   is_trap: boolean;
   confluence_sources: string[];
-  suggested_stop?: number;
+  suggested_stop?: string | number;
   suggested_target?: number;
+  suggested_entry_zone?: string;
   key_risks: string[];
 }
 
@@ -94,13 +105,32 @@ export interface OrderStats {
   catalyst_breakdown: Record<CatalystType, number>;
   daily_volume: Array<{ date: string; count: number }>;
   conviction_distribution: Array<{ bucket: string; count: number }>;
+  win_rate_percent?: number;
+  total_recommended_volume_usd?: number;
 }
 
+// Aggregate stats for validated signals (GET /signals/stats)
 export interface SignalStats {
   total_signals: number;
   avg_conviction: number;
   trap_count: number;
-  catalyst_breakdown: Record<CatalystType, number>;
+  clean_count: number;
+  trap_rate_percent: number;
+  high_conviction_count: number;
+  catalyst_breakdown: Record<string, number>;
+}
+
+export interface MarketQuote {
+  ticker: string;
+  price?: number | null;
+  change?: number | null;
+  change_percent?: number | null;
+  day_high?: number | null;
+  day_low?: number | null;
+  volume?: number | null;
+  fifty_two_week_high?: number | null;
+  fifty_two_week_low?: number | null;
+  market_cap?: number | null;
 }
 
 // Response shape from GET /performance/batch

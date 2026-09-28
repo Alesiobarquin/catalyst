@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getOrderStats } from "@/lib/api";
+import { formatCompact } from "@/lib/utils";
 import {
   StrategyBreakdown,
   ConvictionHistogram,
@@ -25,10 +26,18 @@ const CATALYST_COLORS: Record<string, string> = {
 export default async function AnalyticsPage() {
   const stats = await getOrderStats();
 
+  const closedTotal = stats.hit_target_count + stats.hit_stop_count;
+  const winRate =
+    stats.win_rate_percent !== undefined
+      ? `${stats.win_rate_percent}%`
+      : closedTotal > 0
+        ? `${((stats.hit_target_count / closedTotal) * 100).toFixed(0)}%`
+        : "—";
+
   return (
     <>
       {/* ── Page header ─────────────────────────────── */}
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 24 }}>
         <h1
           style={{
             fontSize: 24,
@@ -44,6 +53,64 @@ export default async function AnalyticsPage() {
         <p style={{ fontSize: 13, color: "#CBD5E1", margin: 0 }}>
           Pipeline performance · Signal quality · Strategy distribution
         </p>
+      </div>
+
+      {/* ── Executive KPI summary strip ──────────────── */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 12,
+          marginBottom: 20,
+        }}
+      >
+        <div className="stat-card" style={{ padding: "16px 18px" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Total Pipeline Orders
+          </span>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "#F8FAFC", margin: "6px 0 2px" }}>
+            {stats.total_orders}
+          </p>
+          <span style={{ fontSize: 11, color: "#64748B" }}>
+            {stats.active_count} active in queue
+          </span>
+        </div>
+
+        <div className="stat-card" style={{ padding: "16px 18px" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Recommended Volume
+          </span>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "#F8FAFC", margin: "6px 0 2px" }}>
+            {stats.total_recommended_volume_usd ? `$${formatCompact(stats.total_recommended_volume_usd)}` : "—"}
+          </p>
+          <span style={{ fontSize: 11, color: "#64748B" }}>
+            Half-Kelly portfolio sizing
+          </span>
+        </div>
+
+        <div className="stat-card" style={{ padding: "16px 18px" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Historical Win Rate
+          </span>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "#10B981", margin: "6px 0 2px" }}>
+            {winRate}
+          </p>
+          <span style={{ fontSize: 11, color: "#64748B" }}>
+            {stats.hit_target_count} targets attained
+          </span>
+        </div>
+
+        <div className="stat-card" style={{ padding: "16px 18px" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Average Conviction
+          </span>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "#38BDF8", margin: "6px 0 2px" }}>
+            {stats.avg_conviction.toFixed(0)}/100
+          </p>
+          <span style={{ fontSize: 11, color: "#64748B" }}>
+            Multi-source gatekeeper validated
+          </span>
+        </div>
       </div>
 
       {/* ── 2×2 analytics grid ──────────────────────── */}

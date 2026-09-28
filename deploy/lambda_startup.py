@@ -3,9 +3,10 @@ Lambda: catalyst-startup
 Triggered by EventBridge at 6:50 AM ET to start the Catalyst EC2 instance.
 Set EC2_INSTANCE_ID via Lambda environment variables.
 """
-import boto3
 import logging
 import os
+
+import boto3
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)

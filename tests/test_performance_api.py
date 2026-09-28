@@ -1,0 +1,207 @@
+"""Unit tests for the performance router (/performance)."""
+
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pandas as pd
+from fastapi.testclient import TestClient
+
+import api.db as db
+from api.main import create_app
+from api.routers.performance import _compute_ticker_performance
+
+
+def make_test_client(mock_conn: AsyncMock | None = None) -> TestClient:
+    conn = mock_conn or AsyncMock()
+
+    async def _mock_conn_generator():
+        yield conn
+
+    app = create_app()
+    app.dependency_overrides[db.get_conn] = _mock_conn_generator
+    return TestClient(app)
+
+
+
+class TestBatchPerformanceEndpoint:
+    def test_batch_non_numeric_ids_returns_422(self):
+        client = make_test_client()
+        res = client.get("/performance/batch?ids=1,abc,3")
+        assert res.status_code == 422
+        assert "comma-separated integers" in res.json()["detail"]
+
+    def test_batch_exceeds_max_ids_returns_422(self):
+        client = make_test_client()
+        ids = ",".join(str(i) for i in range(1, 23))  # 22 IDs
+        res = client.get(f"/performance/batch?ids={ids}")
+        assert res.status_code == 422
+        assert "Maximum 20 IDs" in res.json()["detail"]
+
+    @patch("api.routers.performance._compute_ticker_performance")
+    def test_batch_success(self, mock_compute):
+        mock_compute.return_value = {
+            "order_id": 10,
+            "ticker": "AAPL",
+            "current_price": 175.50,
+            "pnl_pct": 3.24,
+            "status": "ACTIVE",
+            "days_held": 2,
+        }
+
+        mock_conn = AsyncMock()
+        mock_conn.fetch.return_value = [
+            {
+                "id": 10,
+                "ticker": "AAPL",
+                "timestamp_utc": datetime.now(timezone.utc),
+                "limit_price": 170.0,
+                "stop_loss": 160.0,
+                "target_price": 190.0,
+                "status": "ACTIVE",
+            }
+        ]
+
+        client = make_test_client(mock_conn)
+        res = client.get("/performance/batch?ids=10")
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data) == 1
+        assert data[0]["order_id"] == 10
+        assert data[0]["ticker"] == "AAPL"
+        assert data[0]["pnl_pct"] == 3.24
+
+
+class TestSingleOrderPerformanceEndpoint:
+    def test_order_not_found_returns_404(self):
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = None
+
+        client = make_test_client(mock_conn)
+        res = client.get("/performance/99999")
+        assert res.status_code == 404
+        assert "Order 99999 not found" in res.json()["detail"]
+
+    @patch("api.routers.performance._compute_ticker_performance")
+    def test_order_success_with_db_status(self, mock_compute):
+        now = datetime.now(timezone.utc)
+        mock_compute.return_value = {
+            "order_id": 42,
+            "ticker": "NVDA",
+            "current_price": 130.0,
+            "pnl_pct": 8.33,
+            "status": "HIT_TARGET",
+            "days_held": 5,
+        }
+
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = {
+            "id": 42,
+            "ticker": "NVDA",
+            "timestamp_utc": now,
+            "limit_price": 120.0,
+            "stop_loss": 110.0,
+            "target_price": 130.0,
+            "status": "HIT_TARGET",
+        }
+
+        client = make_test_client(mock_conn)
+        res = client.get("/performance/42")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["order_id"] == 42
+        assert data["ticker"] == "NVDA"
+        assert data["entry_price"] == 120.0
+        assert data["status"] == "HIT_TARGET"
+        assert data["status_source"] == "db"
+
+
+class TestComputeTickerPerformanceHelper:
+    @patch("api.routers.performance.yf.Ticker")
+    def test_hit_target(self, mock_ticker_cls):
+        df = pd.DataFrame(
+            {
+                "Close": [105.0, 115.0],
+                "Low": [98.0, 102.0],
+                "High": [106.0, 122.0],  # exceeds target 120.0
+            }
+        )
+        mock_ticker = MagicMock()
+        mock_ticker.history.return_value = df
+        mock_ticker_cls.return_value = mock_ticker
+
+        dt = datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 3, 5, 10, 0, tzinfo=timezone.utc)
+
+        result = _compute_ticker_performance(
+            order_id=1,
+            ticker="XYZ",
+            signal_dt=dt,
+            entry_price=100.0,
+            stop_loss=90.0,
+            target_price=120.0,
+            db_status="ACTIVE",
+            now=now,
+        )
+
+        assert result["status"] == "HIT_TARGET"
+        assert result["current_price"] == 115.0
+        assert result["pnl_pct"] == 15.0
+        assert result["days_held"] == 4
+
+    @patch("api.routers.performance.yf.Ticker")
+    def test_hit_stop_loss(self, mock_ticker_cls):
+        df = pd.DataFrame(
+            {
+                "Close": [95.0, 88.0],
+                "Low": [94.0, 85.0],  # breaches stop_loss 89.0
+                "High": [101.0, 96.0],
+            }
+        )
+        mock_ticker = MagicMock()
+        mock_ticker.history.return_value = df
+        mock_ticker_cls.return_value = mock_ticker
+
+        dt = datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 3, 3, 10, 0, tzinfo=timezone.utc)
+
+        result = _compute_ticker_performance(
+            order_id=2,
+            ticker="ABC",
+            signal_dt=dt,
+            entry_price=100.0,
+            stop_loss=89.0,
+            target_price=125.0,
+            db_status="ACTIVE",
+            now=now,
+        )
+
+        assert result["status"] == "HIT_STOP"
+        assert result["current_price"] == 88.0
+        assert result["pnl_pct"] == -12.0
+
+    @patch("api.routers.performance.yf.Ticker")
+    def test_fallback_fast_info_when_history_empty(self, mock_ticker_cls):
+        mock_ticker = MagicMock()
+        mock_ticker.history.return_value = pd.DataFrame()
+        mock_fast_info = MagicMock()
+        mock_fast_info.last_price = 55.25
+        mock_ticker.fast_info = mock_fast_info
+        mock_ticker_cls.return_value = mock_ticker
+
+        dt = datetime(2026, 3, 27, 10, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 3, 27, 12, 0, tzinfo=timezone.utc)
+
+        result = _compute_ticker_performance(
+            order_id=3,
+            ticker="NEWCO",
+            signal_dt=dt,
+            entry_price=50.0,
+            stop_loss=45.0,
+            target_price=65.0,
+            db_status="ACTIVE",
+            now=now,
+        )
+
+        assert result["current_price"] == 55.25
+        assert result["pnl_pct"] == 10.5
+        assert result["status"] == "ACTIVE"

@@ -2,7 +2,7 @@
 
 **Purpose:** Canonical ordered backlog for **what to build next** — operational reliability first, then signal volume, then UI. Use this doc when planning sprints, agent tasks, or weekly check-ins. Update checkboxes and the “Last updated” line as work completes.
 
-**Last updated:** April 2026 (pre-AWS evidence narrative aligned with validation report; organic confluence called out as stretch)
+**Last updated:** June 2026 (Tracks 1–3 complete; Tracks 4–7 added for AWS, polish, housekeeping, auth/execution)
 
 **See also:** [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) (older phased estimates and recruiting context), [TESTING.md](TESTING.md) (how to verify the stack), [DEPLOYMENT.md](DEPLOYMENT.md) (AWS / scheduling ideas).
 
@@ -10,7 +10,7 @@
 
 ## How to use this document
 
-1. Work **tracks in order** (Track 1 → 2 → 3). Do not skip Track 1 if the goal is a system that runs without babysitting.
+1. Work **tracks in order** (Track 1 → 2 → 3 → 4 → …). Tracks 1–3 are **complete**; start at **Track 4** unless fixing a regression.
 2. After completing a checkbox, mark it `[x]` in this file in the same PR as the code change.
 3. If scope changes, edit the checklist here — this file is the source of truth for **priority order**, not individual tickets elsewhere.
 
@@ -22,6 +22,8 @@
 - **Track 1 (recurrence):** squeeze and biotech run continuous loops with configurable intervals. **Accepted local proof** is an **accelerated-interval multi-cycle soak** (multiple “next sweep” log lines), then restore default intervals—documented in the validation report. A **literal 24h wall-clock** run at default intervals is optional hardening (archive `docker logs` if you do it); do not claim it without logs.
 - **Track 2 (confluence):** **Gatekeeper confluence ≥ 2** is **proven** with **controlled** `raw-events` injection plus Redis `gk:sources:{TICKER}` (and full-stack **NVDA** in the same report). **Organic** overlap (two distinct live hunters hitting the same ticker inside the rolling window without injection) is **sparse by design** and is a **stretch** validation—longer runs, market hours, and AWS-like retention help; it is not required to call Track 2 “implemented.”
 - **Drifter** and **whale** are implemented and wired in Compose; **shadow** was dropped (Tradytics paywall, no viable free data source).
+- **Tracks 1–3 and pre-AWS gates are complete.** Next milestone is **AWS deployment** (Track 4), then polish/housekeeping (Tracks 5–6), then **Clerk + Alpaca wiring** (Track 7) when go-live gates are met.
+- **Clerk + Alpaca code exists** (API auth, executor, settings routes) but is **not operationally enabled** — frontend Clerk is disabled; env vars and smoke tests remain.
 
 ---
 
@@ -97,22 +99,86 @@ Rationale: captures the highest signal-density windows without pretending to be 
 | [x] | **Price chart:** Surface when history is **synthetic** vs real (avoid silent mock fallback confusing users). |
 | [x] | **Pagination:** Wire `page` / `per_page` for `/orders` and `/signals` in the UI. |
 | [x] | **Empty states:** Signals table — copy when zero rows; orders list already partially handled. |
+| [x] | **Detail panel chart:** Wire `SignalDetailPanel` price action to `PriceChart` (live/synthetic, same as trade cards). |
 
 ---
 
-## Explicitly defer (do not start until Tracks 1–2 are healthy)
+## Track 4 — AWS deployment & activation (current priority)
+
+**Goal:** Run the same Compose stack on EC2 with Lambda start/stop and weekday EventBridge cadence.
+
+| Status | Task |
+|--------|------|
+| [ ] | **AWS access:** CLI installed; `aws sts get-caller-identity` succeeds. |
+| [ ] | **EC2:** Provision `t3.micro`, tag `Name=catalyst`, security group + SSH. |
+| [ ] | **Instance setup:** Docker + Compose; clone repo; configure `.env` (Gemini, optional FMP). |
+| [ ] | **On-instance smoke:** `docker compose up -d --build`; API + engine health OK. |
+| [ ] | **Lambda + EventBridge:** Deploy `catalyst-startup` / `catalyst-shutdown`; set `EC2_INSTANCE_ID`; create rules **disabled**. |
+| [ ] | **Activation:** Follow [AUGUST_ACTIVATION_CHECKLIST.md](AUGUST_ACTIVATION_CHECKLIST.md) — enable schedules, same-day + next-morning verification. |
+
+**Done when:** EC2 runs the pipeline on the chosen weekday cadence without manual babysitting; activation checklist sections B–D are checked.
+
+**Runbook:** [AWS_DEPLOY_RUNBOOK.md](AWS_DEPLOY_RUNBOOK.md) · [DEPLOYMENT.md](DEPLOYMENT.md)
+
+---
+
+## Track 5 — Frontend & product polish (parallel to Track 4)
+
+**Goal:** Close remaining UI gaps called out in April changelog.
+
+| Status | Task |
+|--------|------|
+| [x] | **Detail panel chart:** Replace “Integration pending” placeholder with `PriceChart` + live/synthetic labeling. |
+| [ ] | **Execution status in UI:** Surface Alpaca filled / pending / rejected on trade cards when executor is live (depends on Track 7). |
+
+---
+
+## Track 6 — Housekeeping & optional hardening
+
+**Goal:** Recruiting narrative stays honest; CI/repo hygiene.
+
+| Status | Task |
+|--------|------|
+| [ ] | **Doc sync:** Update [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) “current state” (many items shipped); archive or mark [DOCS_DRAFT.md](DOCS_DRAFT.md) superseded. |
+| [ ] | **Ruff cleanup:** Fix pre-existing violations outside CI scope (see [VALIDATION_REPORT_2026-04-21.md](VALIDATION_REPORT_2026-04-21.md)). |
+| [ ] | **Optional:** Literal 24h soak at default hunter intervals (archive `docker logs`). |
+| [ ] | **Optional:** Confluence watcher script for organic `gk:sources:*` with `SCARD >= 2`. |
+
+---
+
+## Track 7 — Clerk + Alpaca (after Track 4 go-live)
+
+**Goal:** Multi-user auth and paper execution. Code is scaffolded; operational wiring remains.
+
+| Status | Task |
+|--------|------|
+| [ ] | **Clerk project:** Create app; set `CLERK_ISSUER`, `CLERK_JWKS_URL`, publishable/secret keys. |
+| [ ] | **Frontend auth:** Re-enable `ClerkProvider`; protect dashboard routes via middleware. |
+| [ ] | **Settings flow:** Sign in → Settings → save Alpaca paper keys (`user_alpaca_keys`). |
+| [ ] | **Executor smoke:** `catalyst_executor` places paper orders; `GET /executions/me` returns rows. |
+| [ ] | **UI:** Show execution status on trade cards (filled / pending / rejected). |
+
+**Checklist:** [BOOKMARK_CLERK_ALPACA.md](BOOKMARK_CLERK_ALPACA.md)
+
+**Go/no-go (must all be true before starting Track 7):**
+
+- Track 4 activation checklist complete for your chosen schedule.
+- Tracks 1–2 evidence still valid (or re-validated after AWS deploy).
+
+---
+
+## Explicitly defer (do not start until Track 4 is healthy)
 
 | Item | Why defer |
 |------|-----------|
 | **Alpaca live / paper execution** | Prove signal quality and stability first; execution adds risk and ops burden. |
 | **Full observability stack** (Prometheus, Grafana, etc.) | Optional later; a simple alert (webhook / email on new `trade_orders` row) may suffice first. |
-| **Auth / multi-user (e.g. Clerk)** | Not needed until the core loop runs daily and reliably. |
-
-**Go/no-go gate for Clerk + Alpaca linking (must all be true):**
-
-- Track 1 smoke-test checkbox is complete with **documented recurrence evidence** (accelerated multi-cycle soak **or** archived literal 24h logs at default intervals).
-- Track 2 confluence checkbox is complete with Redis proof (`gk:sources:{TICKER}` for multi-source cases), per [VALIDATION_REPORT_2026-04-21.md](VALIDATION_REPORT_2026-04-21.md).
-- Deployment checklist in [DEPLOYMENT.md](DEPLOYMENT.md) is closed for the selected schedule.
+| **Auth / multi-user (e.g. Clerk)** | Track 7 — after AWS go-live (see [BOOKMARK_CLERK_ALPACA.md](BOOKMARK_CLERK_ALPACA.md)). |
+| **Whale signal quality** | Ranking/scoring refinements — after core loop is stable on AWS. |
+| **OFI / micro-structure gate** | Described in [ARCHITECTURE.md](ARCHITECTURE.md); not in engine — needs separate data feed. |
+| **Production infra** (ECS/MSK/Terraform) | ~$200+/mo; student scope stays EC2 + Compose. |
+| **Full observability** (Prometheus/Grafana) | Optional; lightweight alert on new `trade_orders` row may suffice first. |
+| **WebSocket live feed** | After dashboard + AWS are stable. |
 
 **Go/no-go gate for AWS rollout (must all be true):**
 
@@ -144,3 +210,4 @@ Rationale: captures the highest signal-density windows without pretending to be 
 | 2026-04 | Track 1/2 smoke + confluence evidence captured in `docs/VALIDATION_REPORT_2026-04-21.md`; pre-AWS checklist closed in `docs/PRE_AWS_READINESS_CHECKLIST.md`. |
 | 2026-04 | “Current reality,” Track 2 **Done when**, and Clerk/Alpaca gate wording reconciled with validation evidence (accelerated recurrence soak; controlled injection + Redis + NVDA full stack; organic overlap as optional stretch). |
 | 2026-04 | Shadow hunter dropped; frontend refinement + doc/CI/test hardening prioritized before auth/execution work. |
+| 2026-06 | Tracks 1–3 marked complete; added Tracks 4–7 (AWS, polish, housekeeping, Clerk/Alpaca); detail panel chart wired to `PriceChart`. |

@@ -1,16 +1,106 @@
-"""Market data router — price history via yfinance for the chart overlay."""
-
+import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 
+import asyncpg
 import yfinance as yf
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from api.models import PriceBar
+from api.db import get_conn
+from api.models import MarketQuoteResponse, PriceBar
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/market", tags=["market"])
+
+
+def _fetch_quote(symbol: str) -> dict:
+    t = yf.Ticker(symbol.upper())
+    fast_info = getattr(t, "fast_info", None)
+
+    last_price = getattr(fast_info, "last_price", None) if fast_info else None
+    prev_close = getattr(fast_info, "previous_close", None) if fast_info else None
+    day_high = getattr(fast_info, "day_high", None) if fast_info else None
+    day_low = getattr(fast_info, "day_low", None) if fast_info else None
+    volume = getattr(fast_info, "last_volume", None) if fast_info else None
+    year_high = getattr(fast_info, "year_high", None) if fast_info else None
+    year_low = getattr(fast_info, "year_low", None) if fast_info else None
+    market_cap = getattr(fast_info, "market_cap", None) if fast_info else None
+
+    # Fallback to history(period="2d") if last_price is missing from fast_info
+    if last_price is None:
+        try:
+            hist = t.history(period="2d")
+            if not hist.empty:
+                last_price = float(hist["Close"].iloc[-1])
+                if day_high is None and "High" in hist:
+                    day_high = float(hist["High"].iloc[-1])
+                if day_low is None and "Low" in hist:
+                    day_low = float(hist["Low"].iloc[-1])
+                if volume is None and "Volume" in hist:
+                    volume = int(hist["Volume"].iloc[-1])
+                if prev_close is None and len(hist) > 1:
+                    prev_close = float(hist["Close"].iloc[-2])
+        except Exception as h_err:
+            logger.debug("History fallback failed for %s: %s", symbol, h_err)
+
+    change = round(last_price - prev_close, 4) if last_price and prev_close else None
+    pct_change = round((change / prev_close) * 100, 2) if change and prev_close else None
+
+    return {
+        "ticker": symbol.upper(),
+        "price": round(float(last_price), 4) if last_price else None,
+        "change": change,
+        "change_percent": pct_change,
+        "day_high": round(float(day_high), 4) if day_high else None,
+        "day_low": round(float(day_low), 4) if day_low else None,
+        "volume": int(volume) if volume else None,
+        "fifty_two_week_high": round(float(year_high), 4) if year_high else None,
+        "fifty_two_week_low": round(float(year_low), 4) if year_low else None,
+        "market_cap": int(market_cap) if market_cap else None,
+    }
+
+
+@router.get("/search")
+async def search_tickers(
+    q: str = Query(..., min_length=1, max_length=10),
+    conn: asyncpg.Connection = Depends(get_conn),
+):
+    """Search tracked tickers across active orders and validated signals matching prefix/query."""
+    pattern = f"{q.strip().upper()}%"
+    rows = await conn.fetch(
+        """
+        SELECT DISTINCT ticker FROM (
+            SELECT ticker FROM trade_orders WHERE ticker ILIKE $1
+            UNION
+            SELECT ticker FROM validated_signals WHERE ticker ILIKE $1
+        ) sub
+        ORDER BY ticker ASC
+        LIMIT 15
+        """,
+        pattern,
+    )
+    return [{"ticker": r["ticker"]} for r in rows]
+
+
+@router.get("/{ticker}/quote", response_model=MarketQuoteResponse)
+async def ticker_quote(ticker: str):
+    """Return latest quote metrics (price, day range, volume, 52w range) via yfinance fast_info."""
+    try:
+        quote = await asyncio.to_thread(_fetch_quote, ticker)
+        return MarketQuoteResponse(**quote)
+    except Exception as exc:
+        logger.error("Failed to fetch quote for %s: %s", ticker, exc)
+        raise HTTPException(status_code=502, detail=f"Failed to fetch quote: {exc}")
+
+
+def _fetch_history(symbol: str, start_date_str: str):
+    ticker_obj = yf.Ticker(symbol.upper())
+    return ticker_obj.history(
+        start=start_date_str,
+        interval="1d",
+        auto_adjust=True,
+    )
 
 
 @router.get("/{ticker}/history", response_model=list[PriceBar])
@@ -21,9 +111,9 @@ async def price_history(
     """Return daily OHLC from `from` timestamp to today for the price chart overlay.
 
     Why yfinance?
-      Free, no API key required, sufficient for historic daily bars.  It's synchronous
-      (not asyncio-native) so we run it in a thread pool executor to avoid blocking the
-      event loop — FastAPI's `run_in_executor` pattern.
+      Free, no API key required, sufficient for historic daily bars. It's synchronous
+      (not asyncio-native) so we run it in a worker thread via `asyncio.to_thread`
+      to avoid blocking the main event loop.
     """
     try:
         start_dt = datetime.fromisoformat(from_ts.replace("Z", "+00:00"))
@@ -31,12 +121,7 @@ async def price_history(
         raise HTTPException(status_code=422, detail="Invalid `from` timestamp. Use ISO 8601.")
 
     try:
-        ticker_obj = yf.Ticker(ticker.upper())
-        df = ticker_obj.history(
-            start=start_dt.strftime("%Y-%m-%d"),
-            interval="1d",
-            auto_adjust=True,
-        )
+        df = await asyncio.to_thread(_fetch_history, ticker, start_dt.strftime("%Y-%m-%d"))
     except Exception as exc:
         logger.error("yfinance fetch failed for %s: %s", ticker, exc)
         raise HTTPException(status_code=502, detail=f"Failed to fetch price data: {exc}")
@@ -51,9 +136,9 @@ async def price_history(
         bars.append(
             PriceBar(
                 time=unix_time,
-                open=round(float(row["Open"]),  4),
-                high=round(float(row["High"]),  4),
-                low=round(float(row["Low"]),   4),
+                open=round(float(row["Open"]), 4),
+                high=round(float(row["High"]), 4),
+                low=round(float(row["Low"]), 4),
                 close=round(float(row["Close"]), 4),
             )
         )

@@ -5,39 +5,22 @@ import time
 from google import genai
 from google.genai import types
 
+from ai_layer.ai_config import (
+    GEMINI_API_KEY,
+    GEMINI_FALLBACK_MODEL,
+    GEMINI_INITIAL_BACKOFF_SECONDS,
+    GEMINI_MAX_RETRIES,
+    GEMINI_MODEL,
+    GEMINI_TEMPERATURE,
+    KAFKA_AUTO_OFFSET_RESET,
+    KAFKA_BOOTSTRAP_SERVERS,
+    KAFKA_CONSUMER_GROUP,
+    MIN_CONVICTION_SCORE,
+    TRIAGE_PRIORITY_TOPIC,
+    VALIDATED_SIGNALS_TOPIC,
+)
+from ai_layer.prompt_builder import build_analysis_prompt
 from kafka import KafkaConsumer, KafkaProducer
-
-try:
-    from ai_layer.ai_config import (
-        GEMINI_API_KEY,
-        GEMINI_INITIAL_BACKOFF_SECONDS,
-        GEMINI_MAX_RETRIES,
-        GEMINI_MODEL,
-        GEMINI_TEMPERATURE,
-        KAFKA_AUTO_OFFSET_RESET,
-        KAFKA_BOOTSTRAP_SERVERS,
-        KAFKA_CONSUMER_GROUP,
-        MIN_CONVICTION_SCORE,
-        TRIAGE_PRIORITY_TOPIC,
-        VALIDATED_SIGNALS_TOPIC,
-    )
-    from ai_layer.prompt_builder import build_analysis_prompt
-except ImportError:
-    from ai_config import (
-        GEMINI_API_KEY,
-        GEMINI_INITIAL_BACKOFF_SECONDS,
-        GEMINI_MAX_RETRIES,
-        GEMINI_MODEL,
-        GEMINI_TEMPERATURE,
-        KAFKA_AUTO_OFFSET_RESET,
-        KAFKA_BOOTSTRAP_SERVERS,
-        KAFKA_CONSUMER_GROUP,
-        MIN_CONVICTION_SCORE,
-        TRIAGE_PRIORITY_TOPIC,
-        VALIDATED_SIGNALS_TOPIC,
-    )
-    from prompt_builder import build_analysis_prompt
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -49,12 +32,13 @@ logger = logging.getLogger("ai-layer")
 MODEL_ALIASES = {
     "gemini-flash": "gemini-2.0-flash",
     "gemini-2-flash": "gemini-2.0-flash",
-    "gemini-3-flash": "gemini-2.0-flash",
-    "gemini-3.1-flash-lite": "gemini-3.1-flash-lite-preview",
-    "gemini-2-pro": "gemini-1.5-pro",
-    "gemini-3-pro": "gemini-1.5-pro",
-    "gemini-3.1-pro": "gemini-1.5-pro",
-    "gemini-3.1-pro-preview": "gemini-1.5-pro",
+    "gemini-3-flash": "gemini-2.5-flash",
+    "gemini-3.0-flash-preview": "gemini-2.5-flash",
+    "gemini-3.1-flash-lite": "gemini-2.0-flash-lite",
+    "gemini-2-pro": "gemini-2.5-pro",
+    "gemini-3-pro": "gemini-2.5-pro",
+    "gemini-3.1-pro": "gemini-2.5-pro",
+    "gemini-3.1-pro-preview": "gemini-2.5-pro",
 }
 
 
@@ -64,6 +48,11 @@ class AIAnalysisService:
             raise ValueError("GEMINI_API_KEY is required")
 
         model_name = self.resolve_model_name(GEMINI_MODEL)
+        fallback_model = (
+            self.resolve_model_name(GEMINI_FALLBACK_MODEL)
+            if GEMINI_FALLBACK_MODEL
+            else None
+        )
         self.client = genai.Client(api_key=GEMINI_API_KEY)
         tools = [types.Tool(google_search=types.GoogleSearch())]
         self.generation_config = types.GenerateContentConfig(
@@ -71,7 +60,8 @@ class AIAnalysisService:
             tools=tools,
         )
         self.model_name = model_name
-        logger.info("Using Gemini model %s", model_name)
+        self.fallback_model = fallback_model
+        logger.info("Using Gemini model %s (fallback: %s)", model_name, fallback_model)
 
         # Kafka connections with basic retry to handle transient bootstrap issues.
         kafka_backoff = 1
@@ -112,7 +102,16 @@ class AIAnalysisService:
             VALIDATED_SIGNALS_TOPIC,
         )
         for message in self.consumer:
-            self.process_event(message.value)
+            try:
+                self.process_event(message.value)
+            except Exception as exc:
+                logger.error("Unhandled error processing triage message: %s", exc, exc_info=True)
+
+    def close(self):
+        if hasattr(self, "consumer"):
+            self.consumer.close()
+        if hasattr(self, "producer"):
+            self.producer.close()
 
     def process_event(self, triage_payload):
         prompt = build_analysis_prompt(triage_payload)
@@ -153,26 +152,37 @@ class AIAnalysisService:
     def analyze_with_retry(self, prompt):
         backoff_seconds = GEMINI_INITIAL_BACKOFF_SECONDS
         last_error = None
+        current_model = self.model_name
+        fallback_model = getattr(self, "fallback_model", None)
 
         for attempt in range(1, GEMINI_MAX_RETRIES + 1):
+            if attempt > 1 and fallback_model and current_model != fallback_model:
+                logger.info(
+                    "Switching to fallback Gemini model %s for attempt %s/%s",
+                    fallback_model,
+                    attempt,
+                    GEMINI_MAX_RETRIES,
+                )
+                current_model = fallback_model
+
             try:
                 response = self.client.models.generate_content(
-                    model=self.model_name,
+                    model=current_model,
                     contents=prompt,
                     config=self.generation_config,
                 )
                 raw_text = getattr(response, "text", "")
-                cleaned_text = self.strip_code_fences(raw_text)
-                parsed = json.loads(cleaned_text)
+                parsed = self.extract_json_object(raw_text)
                 return self.normalize_analysis(parsed)
             except Exception as exc:
                 last_error = exc
                 if attempt == GEMINI_MAX_RETRIES:
                     break
                 logger.warning(
-                    "Gemini attempt %s/%s failed: %s. Retrying in %ss",
+                    "Gemini attempt %s/%s with model %s failed: %s. Retrying in %ss",
                     attempt,
                     GEMINI_MAX_RETRIES,
+                    current_model,
                     exc,
                     backoff_seconds,
                 )
@@ -195,9 +205,40 @@ class AIAnalysisService:
             **analysis,
         }
 
+    @classmethod
+    def extract_json_object(cls, text):
+        """Robustly extracts and parses a JSON object from model output."""
+        if not text:
+            raise ValueError("Empty model response")
+
+        cleaned = cls.strip_code_fences(text)
+        try:
+            return json.loads(cleaned)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+        first_brace = text.find("{")
+        last_brace = text.rfind("}")
+        if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+            candidate = text[first_brace : last_brace + 1]
+            try:
+                return json.loads(candidate)
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        return json.loads(text)
+
     @staticmethod
     def strip_code_fences(text):
         cleaned = (text or "").strip()
+        if "```json" in cleaned:
+            parts = cleaned.split("```json", 1)[1]
+            if "```" in parts:
+                return parts.split("```", 1)[0].strip()
+        if "```" in cleaned:
+            parts = cleaned.split("```", 1)[1]
+            if "```" in parts:
+                return parts.split("```", 1)[0].strip()
         if cleaned.startswith("```"):
             lines = cleaned.splitlines()
             if lines:

@@ -21,6 +21,26 @@ If either check fails, you are blocked on **AWS CLI install and/or account crede
 - Lambda start/stop
 - EventBridge schedules
 
+## Option A: Infrastructure as Code (recommended)
+
+If AWS CLI credentials work locally, provision Lambda + IAM + EventBridge from the repo:
+
+```bash
+cd infra
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+npx aws-cdk bootstrap
+npx cdk deploy --context existingInstanceId=i-0xxxxxxxx --require-approval never
+```
+
+Use your EC2 instance ID (or `--context createEc2=true` to create a new instance). See [infra/README.md](../infra/README.md).
+
+**Already deployed (account `151646410265`):** `CatalystStack` wires `catalyst-startup` / `catalyst-shutdown` to instance `i-0194d6c0b8f0e191a`. EventBridge rules exist but are **disabled**.
+
+## Option B: AWS Console (manual)
+
+Follow the step-by-step sections in [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Implementation order
 
 1. Create EC2 + security group + SSH access (see [DEPLOYMENT.md](DEPLOYMENT.md) Part 1).

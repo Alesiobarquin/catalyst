@@ -12,3 +12,8 @@ TIMESCALE_PASSWORD = os.getenv("TIMESCALE_PASSWORD", "password123")
 TIMESCALE_DB = os.getenv("TIMESCALE_DB", "catalyst_db")
 
 ALPACA_PAPER_BASE = os.getenv("ALPACA_PAPER_BASE", "https://paper-api.alpaca.markets")
+
+MAX_ORDER_SIZE_USD = float(os.getenv("MAX_ORDER_SIZE_USD", "100000.0"))
+MAX_RETRIES_429 = int(os.getenv("MAX_RETRIES_429", "3"))
+CIRCUIT_BREAKER_FAILURES = int(os.getenv("CIRCUIT_BREAKER_FAILURES", "3"))
+CIRCUIT_BREAKER_COOLDOWN_SEC = float(os.getenv("CIRCUIT_BREAKER_COOLDOWN_SEC", "300.0"))

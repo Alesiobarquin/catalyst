@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import type { SignalDetail } from "@/types";
+import type { PriceBar, SignalDetail, TradeOrder } from "@/types";
+import { getPriceHistory } from "@/lib/api";
+import { PriceChart } from "@/components/charts/PriceChart";
 import { formatPrice, formatPnL, safe } from "@/lib/signalDetailUtils";
 
 // ── Shared style constants ────────────────────────────────────────
@@ -50,6 +52,8 @@ interface SignalDetailPanelProps {
   signal: SignalDetail;
   isOpen: boolean;
   onClose: () => void;
+  /** Trade order used for price history chart (entry/stop/target overlays). */
+  order?: TradeOrder;
   /** True while the server's /orders/{id}/detail fetch is in-flight.
    *  Thesis and confluence sections show skeleton placeholders. */
   isLoading?: boolean;
@@ -61,9 +65,14 @@ export function SignalDetailPanel({
   signal,
   isOpen,
   onClose,
+  order,
   isLoading = false,
 }: SignalDetailPanelProps) {
   const [rawFactorsOpen, setRawFactorsOpen] = useState(false);
+  const [bars, setBars] = useState<PriceBar[]>([]);
+  const [historyStatus, setHistoryStatus] = useState<
+    "idle" | "loading" | "live" | "synthetic"
+  >("idle");
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -128,6 +137,30 @@ export function SignalDetailPanel({
     document.addEventListener("keydown", handleTab);
     return () => document.removeEventListener("keydown", handleTab);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !order) return;
+
+    let cancelled = false;
+    Promise.resolve().then(() => {
+      if (!cancelled) setHistoryStatus("loading");
+    });
+    getPriceHistory(order.ticker, order.timestamp_utc)
+      .then((data) => {
+        if (cancelled) return;
+        setBars(data.length > 0 ? data : []);
+        setHistoryStatus(data.length > 0 ? "live" : "synthetic");
+      })
+      .catch(() => {
+        if (!cancelled) setHistoryStatus("synthetic");
+      });
+
+    return () => {
+      cancelled = true;
+      setBars([]);
+      setHistoryStatus("idle");
+    };
+  }, [isOpen, order]);
 
   // Portal target is only available in a browser environment.
   if (typeof document === "undefined") return null;
@@ -478,7 +511,7 @@ export function SignalDetailPanel({
               )}
 
               {/* ════════════════════════════════════════════
-                  SECTION 2 — PRICE ACTION (placeholder)
+                  SECTION 2 — PRICE ACTION
               ════════════════════════════════════════════ */}
               <section
                 style={{
@@ -487,26 +520,48 @@ export function SignalDetailPanel({
                 }}
               >
                 <h2 style={SECTION_TITLE}>Price action</h2>
-                <div
-                  style={{
-                    height: 280,
-                    background: "#0F172A",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                    borderRadius: 3,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                  }}
-                >
-                  <span style={{ fontSize: 13, color: "#64748B" }}>
-                    Chart visualization area
-                  </span>
-                  <span style={{ fontSize: 12, color: "#475569" }}>
-                    Integration pending
-                  </span>
-                </div>
+                {order ? (
+                  historyStatus === "loading" ? (
+                    <div
+                      style={{
+                        height: 280,
+                        background: "#0F172A",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        borderRadius: 3,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <span style={{ fontSize: 13, color: "#64748B" }}>
+                        Loading price history…
+                      </span>
+                    </div>
+                  ) : (
+                    <PriceChart
+                      order={order}
+                      bars={bars}
+                      height={280}
+                      dataSource={historyStatus === "live" ? "live" : "synthetic"}
+                    />
+                  )
+                ) : (
+                  <div
+                    style={{
+                      height: 280,
+                      background: "#0F172A",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      borderRadius: 3,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <span style={{ fontSize: 13, color: "#64748B" }}>
+                      Price chart unavailable
+                    </span>
+                  </div>
+                )}
                 <div
                   style={{
                     display: "flex",

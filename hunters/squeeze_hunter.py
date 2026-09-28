@@ -1,5 +1,6 @@
 import asyncio
 import io
+import random
 from datetime import datetime
 
 import pandas as pd
@@ -92,9 +93,10 @@ def compute_relative_volume(redis_client, ticker, current_volume, avg_volume):
                 (1 - EMA_ALPHA) * float(baseline_volume)
             )
         if next_baseline > 0:
-            redis_client.set(baseline_key, next_baseline)
+            redis_client.set(baseline_key, next_baseline, ex=7 * 86400)
 
     return round(relative_volume, 4)
+
 
 
 async def fetch_squeeze_targets():
@@ -115,7 +117,7 @@ async def fetch_squeeze_targets():
 
         while len(all_results) < max_results:
             url = BASE_URL.format(start_index)
-            logger.info(f"   -> Navigating to Finviz (Start Index: {start_index})...")
+            logger.info("   -> Navigating to Finviz (Start Index: %s)...", start_index)
 
             try:
                 # 'domcontentloaded' is faster than 'networkidle'
@@ -131,7 +133,7 @@ async def fetch_squeeze_targets():
                 target_df = None
 
                 # Debugging: Log what we found
-                logger.info(f"   -> Found {len(dfs)} tables on page.")
+                logger.info("   -> Found %s tables on page.", len(dfs))
 
                 # Intelligent Table Selection
                 best_len = 0
@@ -150,7 +152,9 @@ async def fetch_squeeze_targets():
 
                     # Log candidate tables
                     if score >= 5:
-                        logger.debug(f"   Candidate Table {i}: Score {score}, Shape {df.shape}")
+                        logger.debug(
+                            "   Candidate Table %s: Score %s, Shape %s", i, score, df.shape
+                        )
                         if len(df) > best_len:
                             target_df = df
                             best_len = len(df)
@@ -300,26 +304,27 @@ async def fetch_squeeze_targets():
                         page_results.append(signal)
 
                 all_results.extend(page_results)
-                logger.info(f"   -> Scraped {len(page_results)} items from this page.")
+                logger.info("   -> Scraped %s items from this page.", len(page_results))
 
-                # If we got fewer than 20 results, it's likely the last page
-                if len(page_results) < 20:
+                # If Finviz returned fewer than 20 rows, we have reached the last page
+                if len(clean_df) < 20:
                     break
 
                 # Move to next page
                 start_index += 20
 
-                # Be nice to the server
-                await asyncio.sleep(1)
+                # Be polite to the server with randomized jitter delay (1.0s - 2.2s)
+                delay = 1.0 + random.uniform(0.2, 1.2)
+                await asyncio.sleep(delay)
 
             except Exception as e:
-                logger.error(f"   ❌ Error on index {start_index}: {e}")
+                logger.error("   ❌ Error on index %s: %s", start_index, e)
                 import traceback
 
                 logger.error(traceback.format_exc())
                 break
 
-    logger.info(f"   ✅ Success: Found total {len(all_results)} potential squeeze targets.")
+    logger.info("   ✅ Success: Found total %s potential squeeze targets.", len(all_results))
     return all_results
 
 

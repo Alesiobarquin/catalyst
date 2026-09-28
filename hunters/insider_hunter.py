@@ -5,6 +5,7 @@ from collections import deque
 import httpx
 
 from .common.config import SEC_RSS_URL
+from .common.http_retry import async_http_get_with_retry
 from .common.kafka_client import KafkaClient
 from .common.liquidity_lookup import fetch_liquidity_metrics
 from .common.logger import get_logger
@@ -59,9 +60,9 @@ async def fetch_filing_xml(client: httpx.AsyncClient, index_url: str, cik: str) 
 
         folder_url = f"https://www.sec.gov/Archives/edgar/data/{cik_stripped}/{accession_nodash}/"
 
-        resp = await client.get(folder_url)
+        resp = await async_http_get_with_retry(client, folder_url, custom_logger=logger)
         if resp.status_code != 200:
-            logger.warning(f"Could not fetch filing folder: {folder_url}")
+            logger.warning("Could not fetch filing folder: %s", folder_url)
             return None
 
         from html.parser import HTMLParser
@@ -89,7 +90,7 @@ async def fetch_filing_xml(client: httpx.AsyncClient, index_url: str, cik: str) 
         ]
 
         if not xml_files:
-            logger.warning(f"No XML file found in folder: {folder_url}")
+            logger.warning("No XML file found in folder: %s", folder_url)
             return None
 
         preferred = [
@@ -101,15 +102,17 @@ async def fetch_filing_xml(client: httpx.AsyncClient, index_url: str, cik: str) 
             f"https://www.sec.gov{chosen}" if chosen.startswith("/") else f"{folder_url}{chosen}"
         )
 
-        peek = await client.get(full_url, headers={"Range": "bytes=0-500"})
+        peek = await async_http_get_with_retry(
+            client, full_url, headers={"Range": "bytes=0-500"}, custom_logger=logger
+        )
         if "ownershipDocument" not in peek.text and "documentType" not in peek.text:
-            logger.warning(f"XML at {full_url} is not a Form 4 ownershipDocument, skipping.")
+            logger.warning("XML at %s is not a Form 4 ownershipDocument, skipping.", full_url)
             return None
 
         return full_url
 
     except Exception as e:
-        logger.error(f"Error fetching filing index for {index_url}: {e}")
+        logger.error("Error fetching filing index for %s: %s", index_url, e)
         return None
 
 
@@ -199,7 +202,7 @@ def parse_form4_xml(xml_content: bytes, cik: str, accession: str, filing_url: st
             )
 
     except Exception as e:
-        logger.error(f"Error parsing Form 4 XML for {accession}: {e}")
+        logger.error("Error parsing Form 4 XML for %s: %s", accession, e)
 
     return signals
 
@@ -241,9 +244,11 @@ async def run():
     async with httpx.AsyncClient(headers=HEADERS, timeout=15.0) as client:
         while True:
             try:
-                response = await client.get(SEC_RSS_URL)
-                logger.debug(f"SEC response status: {response.status_code}")
-                logger.debug(f"SEC response preview: {response.text[:300]}")
+                response = await async_http_get_with_retry(
+                    client, SEC_RSS_URL, custom_logger=logger
+                )
+                logger.debug("SEC response status: %s", response.status_code)
+                logger.debug("SEC response preview: %s", response.text[:300])
 
                 if response.status_code == 200:
                     root = ET.fromstring(response.content)
@@ -278,9 +283,11 @@ async def run():
                             processed_accessions_order.append(accession)
                             continue
 
-                        xml_resp = await client.get(xml_url)
+                        xml_resp = await async_http_get_with_retry(
+                            client, xml_url, custom_logger=logger
+                        )
                         if xml_resp.status_code != 200:
-                            logger.warning(f"Failed to fetch XML: {xml_url}")
+                            logger.warning("Failed to fetch XML: %s", xml_url)
                             processed_accessions.add(accession)
                             processed_accessions_order.append(accession)
                             continue
@@ -312,14 +319,19 @@ async def run():
                             )
 
                             logger.info(
-                                f"[{signal['signal_strength']}] {signal['ticker']} | "
-                                f"{signal['insider_name']} ({signal['insider_title'] or 'Unknown'}) | "
-                                f"{signal['transaction_code']} {shares_str} shares "
-                                f"@ {price_str} = {value_str}"
+                                "[%s] %s | %s (%s) | %s %s shares @ %s = %s",
+                                signal["signal_strength"],
+                                signal["ticker"],
+                                signal["insider_name"],
+                                signal["insider_title"] or "Unknown",
+                                signal["transaction_code"],
+                                shares_str,
+                                price_str,
+                                value_str,
                             )
 
                         if not signals:
-                            logger.debug(f"No actionable signals in {accession}")
+                            logger.debug("No actionable signals in %s", accession)
 
                         processed_accessions.add(accession)
                         processed_accessions_order.append(accession)
@@ -331,10 +343,10 @@ async def run():
                         await asyncio.sleep(0.5)
 
                 else:
-                    logger.error(f"SEC Feed Error: {response.status_code}")
+                    logger.error("SEC Feed Error: %s", response.status_code)
 
             except Exception as e:
-                logger.error(f"Error in RSS loop: {e}")
+                logger.error("Error in RSS loop: %s", e)
 
             logger.debug("Sleeping for 60 seconds...")
             await asyncio.sleep(60)

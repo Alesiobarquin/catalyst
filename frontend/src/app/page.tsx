@@ -1,12 +1,13 @@
 // Dashboard home — Server Component
 // Data is fetched server-side; client components handle interactivity.
 
-import { getOrders, getOrderStats } from "@/lib/api";
+import { getOrders, getOrderStats, getMarketBenchmarks } from "@/lib/api";
 import { StatsBar } from "@/components/dashboard/StatsBar";
 import { FilterBar } from "@/components/dashboard/FilterBar";
 import { TradeList } from "@/components/dashboard/TradeList";
 import { Pagination } from "@/components/ui/Pagination";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { MarketOverviewBar } from "@/components/dashboard/MarketOverviewBar";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,13 @@ type StrategyFilter = "Supernova" | "Scalper" | "Follower" | "Drifter" | "all";
 type DateRangeFilter = "7d" | "30d" | "90d" | "all";
 
 type PageProps = {
-  searchParams: Promise<{ page?: string; strategy?: string; date_range?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    strategy?: string;
+    date_range?: string;
+    status?: string;
+    ticker?: string;
+  }>;
 };
 
 export default async function DashboardPage({ searchParams }: PageProps) {
@@ -28,18 +35,42 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const dateRange = (["7d", "30d", "90d", "all"].includes(sp.date_range ?? "")
     ? sp.date_range
     : "30d") as DateRangeFilter;
-  const hasActiveFilters = strategy !== "all" || dateRange !== "all";
+  const status = (["ACTIVE", "HIT_TARGET", "HIT_STOP"].includes(sp.status ?? "")
+    ? sp.status
+    : undefined);
+  const ticker = sp.ticker?.trim() ? sp.ticker.trim() : undefined;
 
-  const [{ items: orders, total, page: curPage, per_page }, stats] = await Promise.all([
-    getOrders({ page, per_page: ORDERS_PER_PAGE, strategy, date_range: dateRange }),
-    getOrderStats(),
-  ]);
+  const hasActiveFilters =
+    strategy !== "all" ||
+    dateRange !== "30d" ||
+    Boolean(status) ||
+    Boolean(ticker);
+
+  const [{ items: orders, total, page: curPage, per_page }, stats, marketBenchmarks] =
+    await Promise.all([
+      getOrders({
+        page,
+        per_page: ORDERS_PER_PAGE,
+        strategy,
+        date_range: dateRange,
+        status,
+        ticker,
+      }),
+      getOrderStats(),
+      getMarketBenchmarks(),
+    ]);
 
   return (
     <>
       <DashboardHeader />
+      <MarketOverviewBar initialQuotes={marketBenchmarks} />
       <StatsBar stats={stats} />
-      <FilterBar initialStrategy={strategy} initialDateRange={dateRange} />
+      <FilterBar
+        initialStrategy={strategy}
+        initialDateRange={dateRange}
+        initialStatus={status ?? "all"}
+        initialTicker={ticker ?? ""}
+      />
       <TradeList orders={orders} hasActiveFilters={hasActiveFilters} />
       <Pagination
         page={curPage}
@@ -48,7 +79,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         basePath="/"
         query={{
           strategy: strategy !== "all" ? strategy : undefined,
-          date_range: dateRange !== "all" ? dateRange : undefined,
+          date_range: dateRange !== "all" && dateRange !== "30d" ? dateRange : undefined,
+          status: status,
+          ticker: ticker,
         }}
       />
     </>

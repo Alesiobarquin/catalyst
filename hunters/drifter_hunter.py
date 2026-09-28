@@ -19,6 +19,7 @@ from .common.config import (
     DRIFTER_MIN_SURPRISE_PERCENT,
     FMP_API_KEY,
 )
+from .common.http_retry import async_http_get_with_retry
 from .common.kafka_client import KafkaClient
 from .common.liquidity_lookup import fetch_liquidity_metrics
 from .common.logger import get_logger
@@ -48,7 +49,7 @@ def _eps_surprise_pct(eps: float | None, est: float | None) -> float | None:
         return None
     if abs(est) < 1e-9:
         return None
-    return ((eps - est) / abs(est)) * 100.0
+    return round(((eps - est) / abs(est)) * 100.0, 4)
 
 
 def _rev_surprise_pct(rev: float | None, est: float | None) -> float | None:
@@ -56,7 +57,7 @@ def _rev_surprise_pct(rev: float | None, est: float | None) -> float | None:
         return None
     if abs(est) < 1e-9:
         return None
-    return ((rev - est) / abs(est)) * 100.0
+    return round(((rev - est) / abs(est)) * 100.0, 4)
 
 
 def _num(v) -> float | None:
@@ -76,7 +77,13 @@ async def _fetch_calendar(client: httpx.AsyncClient) -> list[dict]:
         "to": today.isoformat(),
         "apikey": FMP_API_KEY,
     }
-    r = await client.get(FMP_CALENDAR_URL, params=params, timeout=30.0)
+    r = await async_http_get_with_retry(
+        client,
+        FMP_CALENDAR_URL,
+        params=params,
+        timeout=30.0,
+        custom_logger=logger,
+    )
     r.raise_for_status()
     data = r.json()
     if not isinstance(data, list):
@@ -113,8 +120,10 @@ async def _run_sweep(client: httpx.AsyncClient, kafka: KafkaClient) -> int:
             logger.debug("Skipping %s: liquidity lookup failed", symbol)
             continue
 
+        now_iso = datetime.now(timezone.utc).isoformat()
         payload = {
             "hunter": "drifter",
+            "source_hunter": "drifter",
             "ticker": symbol,
             "surprise_percent": round(surp, 4),
             "eps_estimate": eps_est,
@@ -122,11 +131,13 @@ async def _run_sweep(client: httpx.AsyncClient, kafka: KafkaClient) -> int:
             "revenue_estimate": rev_est,
             "revenue_actual": rev,
             "earnings_date": date_str,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": now_iso,
+            "timestamp_utc": now_iso,
             "price": liq["price"],
             "volume": liq["volume"],
             "relative_volume": liq["relative_volume"],
         }
+
         rev_surp = _rev_surprise_pct(rev, rev_est)
         if rev_surp is not None:
             payload["revenue_surprise_percent"] = round(rev_surp, 4)

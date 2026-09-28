@@ -20,9 +20,9 @@ class KafkaClient:
                     bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
                     value_serializer=lambda v: json.dumps(v).encode("utf-8"),
                 )
-                logger.info(f"Connected to Kafka at {KAFKA_BOOTSTRAP_SERVERS}")
+                logger.info("Connected to Kafka at %s", KAFKA_BOOTSTRAP_SERVERS)
             except Exception as e:
-                logger.error(f"Failed to connect to Kafka: {e}")
+                logger.error("Failed to connect to Kafka: %s", e)
                 # For dev/testing without Kafka locally, we might want to return a mock or handle gracefully
                 # For now, let's re-raise or return None to signal failure
                 return None
@@ -35,8 +35,8 @@ class KafkaClient:
             try:
                 producer.send(topic, data)
                 producer.flush()
-                logger.info(f"Sent message to topic '{topic}': {data.get('ticker', 'unknown')}")
+                logger.info("Sent message to topic '%s': %s", topic, data.get("ticker", "unknown"))
             except Exception as e:
-                logger.error(f"Failed to send message to '{topic}': {e}")
+                logger.error("Failed to send message to '%s': %s", topic, e)
         else:
-            logger.warning(f"Kafka producer not available. Skipping message: {data}")
+            logger.warning("Kafka producer not available. Skipping message: %s", data)

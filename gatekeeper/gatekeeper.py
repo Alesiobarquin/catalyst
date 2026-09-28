@@ -5,49 +5,26 @@ from datetime import datetime, timezone
 
 from redis import Redis
 
+from gatekeeper.config import (
+    CONFLUENCE_THRESHOLD,
+    KAFKA_AUTO_OFFSET_RESET,
+    KAFKA_BOOTSTRAP_SERVERS,
+    KAFKA_CONSUMER_GROUP,
+    MAX_PRICE,
+    MIN_PRICE,
+    MIN_RELATIVE_VOLUME,
+    MIN_VOLUME,
+    RAW_EVENTS_TOPIC,
+    REDIS_HOST,
+    REDIS_PORT,
+    REDIS_SENT_KEY,
+    REDIS_SIGNALS_KEY,
+    REDIS_SOURCES_KEY,
+    ROLLING_WINDOW_SECONDS,
+    TECHNICAL_SCORE_THRESHOLD,
+    TRIAGE_PRIORITY_TOPIC,
+)
 from kafka import KafkaConsumer, KafkaProducer
-
-try:
-    from gatekeeper.config import (
-        CONFLUENCE_THRESHOLD,
-        KAFKA_AUTO_OFFSET_RESET,
-        KAFKA_BOOTSTRAP_SERVERS,
-        KAFKA_CONSUMER_GROUP,
-        MAX_PRICE,
-        MIN_PRICE,
-        MIN_RELATIVE_VOLUME,
-        MIN_VOLUME,
-        RAW_EVENTS_TOPIC,
-        REDIS_HOST,
-        REDIS_PORT,
-        REDIS_SENT_KEY,
-        REDIS_SIGNALS_KEY,
-        REDIS_SOURCES_KEY,
-        ROLLING_WINDOW_SECONDS,
-        TECHNICAL_SCORE_THRESHOLD,
-        TRIAGE_PRIORITY_TOPIC,
-    )
-except ImportError:
-    from config import (
-        CONFLUENCE_THRESHOLD,
-        KAFKA_AUTO_OFFSET_RESET,
-        KAFKA_BOOTSTRAP_SERVERS,
-        KAFKA_CONSUMER_GROUP,
-        MAX_PRICE,
-        MIN_PRICE,
-        MIN_RELATIVE_VOLUME,
-        MIN_VOLUME,
-        RAW_EVENTS_TOPIC,
-        REDIS_HOST,
-        REDIS_PORT,
-        REDIS_SENT_KEY,
-        REDIS_SIGNALS_KEY,
-        REDIS_SOURCES_KEY,
-        ROLLING_WINDOW_SECONDS,
-        TECHNICAL_SCORE_THRESHOLD,
-        TRIAGE_PRIORITY_TOPIC,
-    )
-
 
 logging.basicConfig(
     level=logging.INFO,
@@ -110,7 +87,18 @@ class GatekeeperService:
             TRIAGE_PRIORITY_TOPIC,
         )
         for message in self.consumer:
-            self.process_event(message.value)
+            try:
+                self.process_event(message.value)
+            except Exception as exc:
+                logger.error("Unhandled error processing raw event: %s", exc, exc_info=True)
+
+    def close(self):
+        if hasattr(self, "consumer"):
+            self.consumer.close()
+        if hasattr(self, "producer"):
+            self.producer.close()
+        if hasattr(self, "redis"):
+            self.redis.close()
 
     def process_event(self, raw_event):
         normalized = self.normalize_event(raw_event)
@@ -159,10 +147,12 @@ class GatekeeperService:
         }
         self.producer.send(TRIAGE_PRIORITY_TOPIC, triage_payload)
         self.producer.flush()
-        try:
-            self.consumer.commit()
-        except Exception as exc:
-            logger.warning("Kafka commit failed after forwarding triage payload: %s", exc)
+        if hasattr(self, "consumer") and self.consumer:
+            try:
+                self.consumer.commit()
+            except Exception as exc:
+                logger.warning("Kafka commit failed after forwarding triage payload: %s", exc)
+
         self.mark_sent(ticker)
         logger.info(
             "Forwarded %s to %s (confluence=%s, technical_score=%s)",
@@ -459,7 +449,21 @@ class GatekeeperService:
     def normalize_ticker(value):
         if value is None:
             return None
-        return str(value).strip().upper()
+        s = str(value).strip().upper()
+        if not s:
+            return None
+        # Clean multiline cells and comma lists
+        s = s.split("\n")[0].split(",")[0].strip()
+        # Strip leading dollar sign
+        if s.startswith("$"):
+            s = s[1:].strip()
+        # Strip exchange prefix (e.g., NASDAQ:AAPL -> AAPL)
+        if ":" in s:
+            s = s.split(":")[-1].strip()
+        # Strip exchange dot suffix (e.g., BIIB.TO -> BIIB)
+        if "." in s and not s.endswith(".WS"):
+            s = s.split(".")[0].strip()
+        return s if s else None
 
     @staticmethod
     def normalize_timestamp(value):

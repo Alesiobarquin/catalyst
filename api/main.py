@@ -1,12 +1,17 @@
 """FastAPI application factory."""
 
+import time
+
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import settings
-from api.db import lifespan, ping_database
-from api.routers import execution, market, orders, performance, settings as settings_router, signals
+from api.db import get_pool_stats, lifespan, ping_database
+from api.routers import execution, market, orders, performance, signals
+from api.routers import settings as settings_router
+
+START_TIME = time.time()
 
 
 def create_app() -> FastAPI:
@@ -32,6 +37,15 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    @app.middleware("http")
+    async def add_security_headers(request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
     # Routers
     app.include_router(orders.router)
     app.include_router(signals.router)
@@ -42,7 +56,15 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["health"])
     async def health():
-        return {"status": "ok", "service": "catalyst-api"}
+        uptime = round(time.time() - START_TIME, 2)
+        return {
+            "status": "ok",
+            "service": "catalyst-api",
+            "version": "1.0.0",
+            "uptime_seconds": uptime,
+            "environment": settings.environment,
+            "pool": get_pool_stats(),
+        }
 
     @app.get("/health/pipeline", tags=["health"])
     async def health_pipeline():

@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
     api_host: str = "0.0.0.0"
     api_port: int = 8000
+    environment: str = "development"
     # Java engine actuator (Docker service name). Override on host: http://127.0.0.1:8081/actuator/health
     engine_health_url: str = "http://engine:8081/actuator/health"
 

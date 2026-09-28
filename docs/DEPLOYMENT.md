@@ -16,6 +16,8 @@ When recruiting season starts, use [AUGUST_ACTIVATION_CHECKLIST.md](AUGUST_ACTIV
 
 For an ordered “do this next” checklist while provisioning, see [AWS_DEPLOY_RUNBOOK.md](AWS_DEPLOY_RUNBOOK.md).
 
+**Infrastructure as code:** Lambda, IAM, and EventBridge can be deployed from [infra/README.md](../infra/README.md) via AWS CDK (`cdk deploy`). EC2 can be created by CDK or provisioned manually; app setup (clone repo, `.env`, `docker compose up`) still requires SSH.
+
 ---
 
 ## Cost Comparison

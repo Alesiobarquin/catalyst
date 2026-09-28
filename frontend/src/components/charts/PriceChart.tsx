@@ -139,7 +139,7 @@ export function PriceChart({ order, bars, height = 220, dataSource = "synthetic"
       ro.disconnect();
       chart.remove();
     };
-  }, [order.id, order.timestamp_utc, order.limit_price, order.stop_loss, order.target_price, bars, dataSource, height]);
+  }, [order, bars, dataSource, height]);
 
   return (
     <div>
