@@ -251,3 +251,46 @@ def test_export_orders_csv():
     assert "id,timestamp_utc,ticker,action" in csv_lines[0]
     assert "NVDA" in csv_lines[1]
     assert "Supernova" in csv_lines[1]
+
+
+def test_list_orders_with_execution_details():
+    now = datetime.now(timezone.utc)
+    mock_conn = AsyncMock()
+    mock_conn.fetchval.return_value = 1
+    mock_conn.fetch.return_value = [
+        {
+            "id": 1,
+            "ticker": "AAPL",
+            "timestamp_utc": now,
+            "action": "BUY",
+            "strategy_used": "Scalper",
+            "recommended_size_usd": 8000.0,
+            "limit_price": 175.0,
+            "stop_loss": 170.0,
+            "target_price": 185.0,
+            "rationale": "FDA binary breakout",
+            "conviction_score": 85,
+            "catalyst_type": "SCALPER",
+            "regime_vix": 15.0,
+            "spy_above_200sma": True,
+            "status": "ACTIVE",
+            "exec_id": 99,
+            "alpaca_order_id": "alp-12345",
+            "execution_status": "filled",
+            "filled_avg_price": 175.25,
+            "error_message": None,
+        }
+    ]
+
+    with make_orders_test_client(mock_conn) as client:
+        res = client.get("/orders?ticker=AAPL")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data["items"]) == 1
+    order = data["items"][0]
+    assert order["execution"] is not None
+    assert order["execution"]["id"] == 99
+    assert order["execution"]["alpaca_order_id"] == "alp-12345"
+    assert order["execution"]["execution_status"] == "filled"
+    assert order["execution"]["filled_avg_price"] == 175.25

@@ -3,12 +3,12 @@
 import time
 
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.config import settings
 from api.db import get_pool_stats, lifespan, ping_database
-from api.routers import execution, market, orders, performance, signals
+from api.routers import execution, market, orders, performance, signals, testing
 from api.routers import settings as settings_router
 
 START_TIME = time.time()
@@ -53,6 +53,28 @@ def create_app() -> FastAPI:
     app.include_router(performance.router)
     app.include_router(settings_router.router)
     app.include_router(execution.router)
+    app.include_router(testing.router)
+
+    @app.get("/metrics", tags=["telemetry"])
+    async def metrics():
+        """Prometheus-compatible plain text metrics endpoint."""
+        uptime = round(time.time() - START_TIME, 2)
+        pool = get_pool_stats()
+        lines = [
+            "# HELP catalyst_api_uptime_seconds Process uptime in seconds.",
+            "# TYPE catalyst_api_uptime_seconds gauge",
+            f"catalyst_api_uptime_seconds {uptime}",
+            "# HELP catalyst_api_db_connections_total Total database pool connections.",
+            "# TYPE catalyst_api_db_connections_total gauge",
+            f"catalyst_api_db_connections_total {pool.get('size', 0)}",
+            "# HELP catalyst_api_db_connections_idle Idle database pool connections.",
+            "# TYPE catalyst_api_db_connections_idle gauge",
+            f"catalyst_api_db_connections_idle {pool.get('idle', 0)}",
+            "# HELP catalyst_api_db_connections_active Active database pool connections.",
+            "# TYPE catalyst_api_db_connections_active gauge",
+            f"catalyst_api_db_connections_active {pool.get('active', 0)}",
+        ]
+        return Response(content="\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
 
     @app.get("/health", tags=["health"])
     async def health():

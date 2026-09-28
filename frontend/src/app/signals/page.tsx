@@ -34,6 +34,7 @@ type PageProps = {
     min_conviction?: string;
     is_trap?: string;
     ticker?: string;
+    date_range?: "7d" | "30d" | "90d" | "all";
   }>;
 };
 
@@ -44,12 +45,14 @@ export default async function SignalsPage({ searchParams }: PageProps) {
   const isTrap = sp.is_trap !== undefined ? sp.is_trap === "true" : undefined;
   const catalystType = sp.catalyst_type && sp.catalyst_type !== "all" ? sp.catalyst_type : undefined;
   const ticker = sp.ticker?.trim() ? sp.ticker.trim() : undefined;
+  const dateRange = sp.date_range && sp.date_range !== "all" ? sp.date_range : undefined;
 
   const hasActiveFilters = Boolean(
     catalystType ||
     minConviction !== undefined ||
     isTrap !== undefined ||
-    ticker
+    ticker ||
+    dateRange
   );
 
   const [
@@ -68,6 +71,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
       min_conviction: minConviction,
       is_trap: isTrap,
       ticker,
+      date_range: dateRange,
     }),
     getSignalStats(),
   ]);
@@ -77,6 +81,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
   if (sp.min_conviction) paginationQuery.min_conviction = sp.min_conviction;
   if (sp.is_trap) paginationQuery.is_trap = sp.is_trap;
   if (sp.ticker) paginationQuery.ticker = sp.ticker;
+  if (sp.date_range) paginationQuery.date_range = sp.date_range;
 
   return (
     <>
@@ -179,13 +184,13 @@ export default async function SignalsPage({ searchParams }: PageProps) {
 
       {/* ── Filter toolbar ──────────────────────────────── */}
       <SignalFilterBar
-
         initialCatalyst={sp.catalyst_type ?? "all"}
         initialMinConviction={sp.min_conviction ?? "all"}
         initialTrap={
           sp.is_trap === "true" ? "trap" : sp.is_trap === "false" ? "clean" : "all"
         }
         initialTicker={sp.ticker ?? ""}
+        initialDateRange={sp.date_range ?? "all"}
       />
 
       {/* ── Signals table ───────────────────────────────── */}

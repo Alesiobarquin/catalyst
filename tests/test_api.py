@@ -485,4 +485,132 @@ def test_get_signals_stats():
     assert data["catalyst_breakdown"]["SUPERNOVA"] == 22
 
 
+def test_list_signals_date_range_filter():
+    from datetime import datetime, timezone
+    from unittest.mock import AsyncMock
+
+    now = datetime.now(timezone.utc)
+    mock_conn = AsyncMock()
+    mock_conn.fetchval.return_value = 1
+    mock_conn.fetch.return_value = [
+        {
+            "id": 1,
+            "ticker": "AAPL",
+            "timestamp_utc": now,
+            "conviction_score": 88,
+            "catalyst_type": "SUPERNOVA",
+            "rationale": "High volume breakout",
+            "is_trap": False,
+            "confluence_sources": '["squeeze", "insider"]',
+            "key_risks": '["market broad selloff"]',
+            "suggested_entry_zone": "$170 - $172",
+            "suggested_stop": "$165",
+        }
+    ]
+
+    async def _mock_conn_generator():
+        yield mock_conn
+
+    app = create_app()
+    app.dependency_overrides[db.get_conn] = _mock_conn_generator
+
+    with TestClient(app) as client:
+        res = client.get("/signals?date_range=7d&ticker=AAPL")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total"] == 1
+    assert data["items"][0]["ticker"] == "AAPL"
+    assert data["items"][0]["confluence_sources"] == ["squeeze", "insider"]
+
+
+def test_export_signals_csv_date_range_filter():
+    from datetime import datetime, timezone
+    from unittest.mock import AsyncMock
+
+    now = datetime.now(timezone.utc)
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = [
+        {
+            "time": now,
+            "ticker": "NVDA",
+            "conviction_score": 92,
+            "catalyst_type": "SUPERNOVA",
+            "is_trap": False,
+            "trap_reason": None,
+            "rationale": "Strong short squeeze",
+            "confluence_count": 2,
+            "suggested_entry_zone": "$120 - $125",
+            "suggested_stop": "$115",
+            "risk_level": "MODERATE",
+            "suggested_timeframe": "SWING",
+        }
+    ]
+
+    async def _mock_conn_generator():
+        yield mock_conn
+
+    app = create_app()
+    app.dependency_overrides[db.get_conn] = _mock_conn_generator
+
+    with TestClient(app) as client:
+        res = client.get("/signals/export/csv?date_range=30d")
+
+    assert res.status_code == 200
+    assert "NVDA" in res.text
+
+
+def test_metrics_endpoint():
+    app = create_app()
+    with TestClient(app) as client:
+        res = client.get("/metrics")
+
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("text/plain")
+    assert "catalyst_api_uptime_seconds" in res.text
+    assert "catalyst_api_db_connections_total" in res.text
+    assert "catalyst_api_db_connections_active" in res.text
+
+
+def test_inject_synthetic_signals_endpoint_confluence():
+    app = create_app()
+    with TestClient(app) as client:
+        res = client.post(
+            "/testing/inject",
+            json={
+                "scenario": "confluence",
+                "ticker": "NVDA",
+                "price": 125.50,
+                "volume": 850000.0,
+                "relative_volume": 3.2,
+            },
+        )
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert data["scenario"] == "confluence"
+    assert data["ticker"] == "NVDA"
+    assert data["events_injected"] == 2
+
+
+def test_inject_synthetic_signals_endpoint_drop():
+    app = create_app()
+    with TestClient(app) as client:
+        res = client.post(
+            "/testing/inject",
+            json={
+                "scenario": "drop",
+                "ticker": "JUNK",
+            },
+        )
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert data["scenario"] == "drop"
+    assert data["ticker"] == "JUNK"
+    assert data["events_injected"] == 1
+
+
 

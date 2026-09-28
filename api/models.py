@@ -5,6 +5,18 @@ from pydantic import BaseModel
 # ── Trade Orders ──────────────────────────────────────────────────
 
 
+# ── Executions (Alpaca Paper Trading) ──────────────────────────────
+class TradeExecutionResponse(BaseModel):
+    id: int
+    trade_order_id: int
+    timestamp_utc: datetime
+    ticker: str
+    alpaca_order_id: str | None = None
+    execution_status: str
+    filled_avg_price: float | None = None
+    error_message: str | None = None
+
+
 class TradeOrderResponse(BaseModel):
     id: int
     ticker: str
@@ -21,6 +33,7 @@ class TradeOrderResponse(BaseModel):
     regime_vix: float | None = None
     spy_above_200sma: bool | None = None
     status: str = "ACTIVE"
+    execution: TradeExecutionResponse | None = None
 
 
 class DailyVolume(BaseModel):
@@ -100,19 +113,6 @@ class MarketQuoteResponse(BaseModel):
 
 
 # ── Executions (Alpaca Paper Trading) ──────────────────────────────
-
-
-class TradeExecutionResponse(BaseModel):
-    id: int
-    trade_order_id: int
-    timestamp_utc: datetime
-    ticker: str
-    alpaca_order_id: str | None = None
-    execution_status: str
-    filled_avg_price: float | None = None
-    error_message: str | None = None
-
-
 class ExecutionSummaryResponse(BaseModel):
     total_executions: int
     filled_count: int

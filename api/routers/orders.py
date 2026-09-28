@@ -28,6 +28,30 @@ from api.models import (
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 
+def _format_order_row(r: dict | asyncpg.Record) -> dict:
+    d = dict(r)
+    exec_status = d.pop("execution_status", None)
+    exec_id = d.pop("exec_id", None)
+    alpaca_order_id = d.pop("alpaca_order_id", None)
+    filled_avg_price = d.pop("filled_avg_price", None)
+    error_message = d.pop("error_message", None)
+
+    if exec_status is not None:
+        d["execution"] = {
+            "id": exec_id or 0,
+            "trade_order_id": d["id"],
+            "timestamp_utc": d["timestamp_utc"],
+            "ticker": d["ticker"],
+            "alpaca_order_id": alpaca_order_id,
+            "execution_status": exec_status,
+            "filled_avg_price": float(filled_avg_price) if filled_avg_price is not None else None,
+            "error_message": error_message,
+        }
+    elif "execution" not in d:
+        d["execution"] = None
+    return d
+
+
 @router.get("", response_model=PaginatedResponse[TradeOrderResponse])
 async def list_orders(
     strategy: str | None = Query(None),
@@ -65,29 +89,55 @@ async def list_orders(
             )
 
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    where_t = f"WHERE {' AND '.join(c.replace('status =', 't.status =').replace('ticker =', 't.ticker =').replace('strategy_used =', 't.strategy_used =').replace('timestamp_utc >=', 't.timestamp_utc >=') for c in clauses)}" if clauses else ""
 
     total = await conn.fetchval(f"SELECT COUNT(*) FROM trade_orders {where}", *args)
 
     data_args = [*args, per_page, offset]
     limit_param = f"${len(args) + 1}"
     offset_param = f"${len(args) + 2}"
-    rows = await conn.fetch(
-        f"""
-        SELECT id, ticker, timestamp_utc, action, strategy_used,
-               recommended_size_usd, limit_price, stop_loss, target_price,
-               rationale, conviction_score, catalyst_type,
-               regime_vix, spy_above_200sma, status
-        FROM trade_orders
-        {where}
-        ORDER BY timestamp_utc DESC
+
+    query_with_exec = f"""
+        SELECT t.id, t.ticker, t.timestamp_utc, t.action, t.strategy_used,
+               t.recommended_size_usd, t.limit_price, t.stop_loss, t.target_price,
+               t.rationale, t.conviction_score, t.catalyst_type,
+               t.regime_vix, t.spy_above_200sma, t.status,
+               e.id AS exec_id, e.alpaca_order_id, e.execution_status,
+               e.filled_avg_price, e.error_message
+        FROM trade_orders t
+        LEFT JOIN LATERAL (
+            SELECT id, alpaca_order_id, execution_status, filled_avg_price, error_message
+            FROM trade_order_executions
+            WHERE trade_order_id = t.id AND timestamp_utc = t.timestamp_utc
+            ORDER BY updated_at DESC
+            LIMIT 1
+        ) e ON true
+        {where_t}
+        ORDER BY t.timestamp_utc DESC
         LIMIT {limit_param}
         OFFSET {offset_param}
-        """,
-        *data_args,
-    )
+    """
+
+    try:
+        rows = await conn.fetch(query_with_exec, *data_args)
+    except asyncpg.UndefinedTableError:
+        rows = await conn.fetch(
+            f"""
+            SELECT id, ticker, timestamp_utc, action, strategy_used,
+                   recommended_size_usd, limit_price, stop_loss, target_price,
+                   rationale, conviction_score, catalyst_type,
+                   regime_vix, spy_above_200sma, status
+            FROM trade_orders
+            {where}
+            ORDER BY timestamp_utc DESC
+            LIMIT {limit_param}
+            OFFSET {offset_param}
+            """,
+            *data_args,
+        )
 
     return {
-        "items": [dict(r) for r in rows],
+        "items": [_format_order_row(r) for r in rows],
         "total": total,
         "page": page,
         "per_page": per_page,
@@ -544,16 +594,37 @@ async def orders_by_ticker(
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     """All orders for a specific ticker, newest first."""
-    rows = await conn.fetch(
-        """
-        SELECT id, ticker, timestamp_utc, action, strategy_used,
-               recommended_size_usd, limit_price, stop_loss, target_price,
-               rationale, conviction_score, catalyst_type,
-               regime_vix, spy_above_200sma, status
-        FROM trade_orders
-        WHERE ticker = $1
-        ORDER BY timestamp_utc DESC
-        """,
-        ticker.upper(),
-    )
-    return [dict(r) for r in rows]
+    query_with_exec = """
+        SELECT t.id, t.ticker, t.timestamp_utc, t.action, t.strategy_used,
+               t.recommended_size_usd, t.limit_price, t.stop_loss, t.target_price,
+               t.rationale, t.conviction_score, t.catalyst_type,
+               t.regime_vix, t.spy_above_200sma, t.status,
+               e.id AS exec_id, e.alpaca_order_id, e.execution_status,
+               e.filled_avg_price, e.error_message
+        FROM trade_orders t
+        LEFT JOIN LATERAL (
+            SELECT id, alpaca_order_id, execution_status, filled_avg_price, error_message
+            FROM trade_order_executions
+            WHERE trade_order_id = t.id AND timestamp_utc = t.timestamp_utc
+            ORDER BY updated_at DESC
+            LIMIT 1
+        ) e ON true
+        WHERE t.ticker = $1
+        ORDER BY t.timestamp_utc DESC
+    """
+    try:
+        rows = await conn.fetch(query_with_exec, ticker.upper())
+    except asyncpg.UndefinedTableError:
+        rows = await conn.fetch(
+            """
+            SELECT id, ticker, timestamp_utc, action, strategy_used,
+                   recommended_size_usd, limit_price, stop_loss, target_price,
+                   rationale, conviction_score, catalyst_type,
+                   regime_vix, spy_above_200sma, status
+            FROM trade_orders
+            WHERE ticker = $1
+            ORDER BY timestamp_utc DESC
+            """,
+            ticker.upper(),
+        )
+    return [_format_order_row(r) for r in rows]

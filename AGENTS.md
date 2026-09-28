@@ -135,10 +135,11 @@ Autonomous paper execution bridge:
 ### 3.7 FastAPI Read Layer (`api/`)
 Exposes read-optimized endpoints and streaming for the frontend:
 - **SSE Stream**: `GET /signals/stream` — Real-time Server-Sent Events broadcasting new validated signals to connected browser clients with keepalive pings.
-- **Signals**: `GET /signals`, `GET /signals/{id}`, `GET /signals/stats` (KPI aggregations), `GET /signals/export/csv`.
-- **Orders & Executions**: `GET /orders`, `GET /orders/export/csv`, `GET /executions`.
+- **Signals**: `GET /signals` (with `catalyst_type`, `min_conviction`, `is_trap`, `ticker`, and `date_range`), `GET /signals/{id}`, `GET /signals/stats` (KPI aggregations), `GET /signals/export/csv`.
+- **Orders & Executions**: `GET /orders` (with lateral join to Alpaca paper executions), `GET /orders/export/csv`, `GET /executions`.
 - **Market**: `GET /market/search?q={query}` (auto-complete), `GET /market/quote/{ticker}`, `GET /market/history/{ticker}`, `GET /market/overview`.
-- **Health**: `GET /health` (API & DB pool), `GET /health/pipeline` (Aggregate status: API + TimescaleDB + Java Engine).
+- **Health & Telemetry**: `GET /health` (API & DB pool), `GET /health/pipeline` (Aggregate status: API + TimescaleDB + Java Engine), `GET /metrics` (Prometheus gauge metrics for API uptime and DB pool connections).
+- **Testing & Diagnostics**: `POST /testing/inject` (Developer synthetic catalyst signal injection into `raw-events`).
 - **Settings**: `POST /settings/alpaca/validate` (credential pre-flight testing).
 - **Security Middleware**: Enforces `nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`, and `Referrer-Policy`.
 
@@ -146,17 +147,18 @@ Exposes read-optimized endpoints and streaming for the frontend:
 Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
 - **Pages**:
   - `/`: Executive KPI overview and recent activity.
-  - `/signals`: Interactive signals table, KPI ribbon (`/signals/stats`), CSV export, and signal detail drawer.
+  - `/signals`: Interactive signals table, KPI ribbon (`/signals/stats`), CSV export, date range filters, and signal detail drawer.
   - `/analytics`: Portfolio performance, win rate, equity curve, regime breakdown.
   - `/settings`: Alpaca API key validation form and hunter cadence preferences.
 - **Components**:
   - `LiveStreamBanner`: Real-time SSE alert banner with connection status, auto-refresh toggle, and Web Audio API synthesized alert chime.
   - `TickerSearchInput`: Keyboard-navigable ticker auto-complete dropdown.
   - `PriceChart`: TradingView Lightweight Charts component with live vs. synthetic history indicator.
+  - `SignalFilterBar`: Interactive catalyst, conviction, trap, and date range pills (`7D`, `30D`, `90D`, `All Time`).
 
 ---
 
-## 4. Platform Upgrades & Evolution (Phases 1–24)
+## 4. Platform Upgrades & Evolution (Phases 1–26)
 
 | Phase | Core Deliverable | Key Details |
 |---|---|---|
@@ -185,6 +187,7 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
 | **Phase 23** | Hunter orchestrator telemetry & timeouts | CLI orchestrator (`hunters/main.py`) with `--timeout` flag, duration tracking, and test suite (191 tests). |
 | **Phase 24** | Gatekeeper ticker normalization | Strips `$`, exchange prefixes (`NASDAQ:`), newlines, and foreign suffixes (`.TO`) (191 tests). |
 | **Phase 25** | Utility scripts & full diagnostics suite | Added `confluence_watcher.py`, `inject_synthetic_signals.py`, React 19 hook purity fixes, and 4 agent skills (197 tests). |
+| **Phase 26** | Execution parity, Prometheus metrics & date filters | Order executions lateral join, signals date range filtering (`7d`/`30d`/`90d`), `POST /testing/inject`, `GET /metrics`, Next.js 16 `proxy.ts` (203 tests). |
 
 ---
 
@@ -196,7 +199,7 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
   ```bash
   .venv/bin/pytest
   ```
-  *Current status: 197 passing tests.*
+  *Current status: 203 passing tests.*
 - **Linting & Code Style**:
   ```bash
   .venv/bin/ruff check .
@@ -220,6 +223,7 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
 - **React 19 & Next.js 16 Rules**:
   - Never mutate ref values (`ref.current = value`) during rendering. Use `useEffect` or lazy state initializers.
   - Never call `setState()` synchronously in the root of a `useEffect` hook.
+  - Use `src/proxy.ts` for route interception and proxying instead of deprecated `middleware.ts`.
 
 ### 5.3 Working with Docker Compose
 - Start infrastructure only:

@@ -37,11 +37,12 @@ async def list_signals(
     min_conviction: int | None = Query(None, ge=0, le=100),
     is_trap: bool | None = Query(None),
     ticker: str | None = Query(None),
+    date_range: str | None = Query(None, pattern="^(7d|30d|90d|all)$"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    """Return paginated Gemini-validated signals, newest first. Optional catalyst/conviction/trap/ticker filters."""
+    """Return paginated Gemini-validated signals, newest first. Optional catalyst/conviction/trap/ticker/date filters."""
     offset = (page - 1) * per_page
     clauses: list[str] = []
     args: list[object] = []
@@ -61,6 +62,15 @@ async def list_signals(
     if ticker:
         args.append(ticker.strip().upper())
         clauses.append(f"ticker = ${len(args)}")
+
+    if date_range and date_range != "all":
+        days_map = {"7d": 7, "30d": 30, "90d": 90}
+        days = days_map.get(date_range)
+        if days:
+            args.append(days)
+            clauses.append(
+                f"time >= (NOW() AT TIME ZONE 'UTC') - (${len(args)}::int * INTERVAL '1 day')"
+            )
 
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
 
@@ -135,6 +145,7 @@ async def export_signals_csv(
     min_conviction: int | None = Query(None, ge=0, le=100),
     is_trap: bool | None = Query(None),
     ticker: str | None = Query(None),
+    date_range: str | None = Query(None, pattern="^(7d|30d|90d|all)$"),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     """Export filtered signals to RFC 4180 CSV format."""
@@ -156,6 +167,15 @@ async def export_signals_csv(
     if ticker:
         args.append(ticker.strip().upper())
         clauses.append(f"ticker = ${len(args)}")
+
+    if date_range and date_range != "all":
+        days_map = {"7d": 7, "30d": 30, "90d": 90}
+        days = days_map.get(date_range)
+        if days:
+            args.append(days)
+            clauses.append(
+                f"time >= (NOW() AT TIME ZONE 'UTC') - (${len(args)}::int * INTERVAL '1 day')"
+            )
 
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
 

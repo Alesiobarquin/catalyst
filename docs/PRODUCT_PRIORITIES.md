@@ -129,7 +129,7 @@ Rationale: captures the highest signal-density windows without pretending to be 
 | Status | Task |
 |--------|------|
 | [x] | **Detail panel chart:** Replace “Integration pending” placeholder with `PriceChart` + live/synthetic labeling. |
-| [ ] | **Execution status in UI:** Surface Alpaca filled / pending / rejected on trade cards when executor is live (depends on Track 7). |
+| [x] | **Execution status in UI:** Surface Alpaca filled / pending / rejected on trade cards when executor is live (depends on Track 7). |
 
 ---
 

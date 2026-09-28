@@ -27,16 +27,25 @@ const TRAP_OPTIONS: Array<{ value: "all" | "clean" | "trap"; label: string }> = 
   { value: "trap", label: "Traps Only" },
 ];
 
+const DATE_RANGES: Array<{ value: "7d" | "30d" | "90d" | "all"; label: string }> = [
+  { value: "7d", label: "7D" },
+  { value: "30d", label: "30D" },
+  { value: "90d", label: "90D" },
+  { value: "all", label: "All Time" },
+];
+
 export function SignalFilterBar({
   initialCatalyst = "all",
   initialMinConviction = "all",
   initialTrap = "all",
   initialTicker = "",
+  initialDateRange = "all",
 }: {
   initialCatalyst?: string;
   initialMinConviction?: string | number;
   initialTrap?: string;
   initialTicker?: string;
+  initialDateRange?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -46,17 +55,20 @@ export function SignalFilterBar({
   const [minConviction, setMinConviction] = useState<string | number>(initialMinConviction);
   const [trapFilter, setTrapFilter] = useState<string>(initialTrap);
   const [tickerQuery, setTickerQuery] = useState<string>(initialTicker);
+  const [dateRange, setDateRange] = useState<string>(initialDateRange);
 
   function applyFilters(updates: {
     catalyst?: string;
     minConviction?: string | number;
     trap?: string;
     ticker?: string;
+    dateRange?: string;
   }) {
     const nextCat = updates.catalyst ?? catalyst;
     const nextConv = updates.minConviction ?? minConviction;
     const nextTrap = updates.trap ?? trapFilter;
     const nextTicker = updates.ticker ?? tickerQuery;
+    const nextDate = updates.dateRange ?? dateRange;
 
     const qs = new URLSearchParams(searchParams.toString());
     qs.delete("page");
@@ -87,6 +99,12 @@ export function SignalFilterBar({
       qs.delete("ticker");
     }
 
+    if (nextDate && nextDate !== "all") {
+      qs.set("date_range", nextDate);
+    } else {
+      qs.delete("date_range");
+    }
+
     const qStr = qs.toString();
     startTransition(() => {
       router.push(qStr ? `/signals?${qStr}` : "/signals");
@@ -98,6 +116,7 @@ export function SignalFilterBar({
     setMinConviction("all");
     setTrapFilter("all");
     setTickerQuery("");
+    setDateRange("all");
     startTransition(() => {
       router.push("/signals");
     });
@@ -269,6 +288,38 @@ export function SignalFilterBar({
           })}
         </div>
 
+        {/* Date range */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              color: "var(--color-text-muted)",
+              marginRight: 4,
+            }}
+          >
+            Range
+          </span>
+          {DATE_RANGES.map((opt) => {
+            const active = dateRange === opt.value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                style={pillStyle(active)}
+                onClick={() => {
+                  setDateRange(opt.value);
+                  applyFilters({ dateRange: opt.value });
+                }}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Action buttons: Reset & Export CSV */}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
           {hasActiveFilters && (
@@ -302,6 +353,7 @@ export function SignalFilterBar({
               if (trapFilter && trapFilter !== "all")
                 exportQs.set("is_trap", trapFilter === "clean" ? "false" : "true");
               if (tickerQuery) exportQs.set("ticker", tickerQuery);
+              if (dateRange && dateRange !== "all") exportQs.set("date_range", dateRange);
               const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
               const qStr = exportQs.toString();
               return `${apiBase}/signals/export/csv${qStr ? `?${qStr}` : ""}`;
@@ -326,7 +378,6 @@ export function SignalFilterBar({
             title="Export filtered signals to CSV"
           >
             <Download size={12} />
-            Export CSV
           </a>
         </div>
       </div>

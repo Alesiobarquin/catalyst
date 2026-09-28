@@ -83,6 +83,7 @@ export async function getSignals(params?: {
   min_conviction?: number;
   is_trap?: boolean;
   ticker?: string;
+  date_range?: "7d" | "30d" | "90d" | "all";
   page?: number;
   per_page?: number;
 }): Promise<PaginatedResponse<ValidatedSignal>> {
@@ -92,6 +93,7 @@ export async function getSignals(params?: {
   if (params?.min_conviction !== undefined) qs.set("min_conviction", String(params.min_conviction));
   if (params?.is_trap !== undefined) qs.set("is_trap", String(params.is_trap));
   if (params?.ticker) qs.set("ticker", params.ticker);
+  if (params?.date_range && params.date_range !== "all") qs.set("date_range", params.date_range);
   if (params?.page) qs.set("page", String(params.page));
   if (params?.per_page) qs.set("per_page", String(params.per_page));
   const res = await fetch(`${apiBaseUrl()}/signals?${qs}`, { next: { revalidate: 30 } });
