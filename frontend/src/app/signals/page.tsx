@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getSignals } from "@/lib/api";
 import { getCatalystLabel } from "@/lib/utils";
-import { AlertTriangle, Radio } from "lucide-react";
+import { AlertTriangle, Radio, RotateCcw } from "lucide-react";
 import { SignalRow } from "@/components/signals/SignalRow";
+import { SignalFilterBar } from "@/components/signals/SignalFilterBar";
 import { Pagination } from "@/components/ui/Pagination";
 
 export const dynamic = "force-dynamic";
@@ -24,23 +26,55 @@ const TABLE_COLS = [
   { label: "Sources",   width: "130px"           },
 ];
 
-type PageProps = { searchParams: Promise<{ page?: string }> };
+type PageProps = {
+  searchParams: Promise<{
+    page?: string;
+    catalyst_type?: string;
+    min_conviction?: string;
+    is_trap?: string;
+    ticker?: string;
+  }>;
+};
 
 export default async function SignalsPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const page = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
+  const minConviction = sp.min_conviction ? parseInt(sp.min_conviction, 10) : undefined;
+  const isTrap = sp.is_trap !== undefined ? sp.is_trap === "true" : undefined;
+  const catalystType = sp.catalyst_type && sp.catalyst_type !== "all" ? sp.catalyst_type : undefined;
+  const ticker = sp.ticker?.trim() ? sp.ticker.trim() : undefined;
+
+  const hasActiveFilters = Boolean(
+    catalystType ||
+    minConviction !== undefined ||
+    isTrap !== undefined ||
+    ticker
+  );
 
   const {
     items: signals,
     total,
     page: curPage,
     per_page,
-  } = await getSignals({ page, per_page: SIGNALS_PER_PAGE });
+  } = await getSignals({
+    page,
+    per_page: SIGNALS_PER_PAGE,
+    catalyst_type: catalystType,
+    min_conviction: minConviction,
+    is_trap: isTrap,
+    ticker,
+  });
+
+  const paginationQuery: Record<string, string | number | undefined> = {};
+  if (sp.catalyst_type) paginationQuery.catalyst_type = sp.catalyst_type;
+  if (sp.min_conviction) paginationQuery.min_conviction = sp.min_conviction;
+  if (sp.is_trap) paginationQuery.is_trap = sp.is_trap;
+  if (sp.ticker) paginationQuery.ticker = sp.ticker;
 
   return (
     <>
       {/* ── Page header ─────────────────────────────────── */}
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 20 }}>
         <h1
           style={{
             fontSize: 24,
@@ -71,9 +105,19 @@ export default async function SignalsPage({ searchParams }: PageProps) {
           Kafka topic
         </p>
         <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>
-          Showing {SIGNALS_PER_PAGE} per page
+          {total} total signals {hasActiveFilters && "(filtered)"}
         </p>
       </div>
+
+      {/* ── Filter toolbar ──────────────────────────────── */}
+      <SignalFilterBar
+        initialCatalyst={sp.catalyst_type ?? "all"}
+        initialMinConviction={sp.min_conviction ?? "all"}
+        initialTrap={
+          sp.is_trap === "true" ? "trap" : sp.is_trap === "false" ? "clean" : "all"
+        }
+        initialTicker={sp.ticker ?? ""}
+      />
 
       {/* ── Signals table ───────────────────────────────── */}
       {signals.length === 0 ? (
@@ -101,7 +145,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
               marginBottom: 8,
             }}
           >
-            No validated signals yet
+            {hasActiveFilters ? "No matching signals found" : "No validated signals yet"}
           </h2>
           <p
             style={{
@@ -112,10 +156,33 @@ export default async function SignalsPage({ searchParams }: PageProps) {
               margin: "0 auto",
             }}
           >
-            When the gatekeeper accepts events and the pipeline writes to the
-            database, rows appear here. Check that hunters, Kafka, and the
-            gatekeeper are running if you expect traffic.
+            {hasActiveFilters
+              ? "No validated signals match your current filter parameters. Try broadening your criteria or reset the filters."
+              : "When the gatekeeper accepts events and the pipeline writes to the database, rows appear here. Check that hunters, Kafka, and the gatekeeper are running if you expect traffic."}
           </p>
+          {hasActiveFilters && (
+            <div style={{ marginTop: 16 }}>
+              <Link
+                href="/signals"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 14px",
+                  borderRadius: 4,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  background: "#1E293B",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "#38BDF8",
+                  textDecoration: "none",
+                }}
+              >
+                <RotateCcw size={12} />
+                Reset all filters
+              </Link>
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -164,6 +231,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
             total={total}
             perPage={per_page}
             basePath="/signals"
+            query={paginationQuery}
           />
         </>
       )}

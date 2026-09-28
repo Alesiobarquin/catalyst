@@ -19,6 +19,7 @@ from .common.config import (
     DRIFTER_MIN_SURPRISE_PERCENT,
     FMP_API_KEY,
 )
+from .common.http_retry import async_http_get_with_retry
 from .common.kafka_client import KafkaClient
 from .common.liquidity_lookup import fetch_liquidity_metrics
 from .common.logger import get_logger
@@ -76,7 +77,13 @@ async def _fetch_calendar(client: httpx.AsyncClient) -> list[dict]:
         "to": today.isoformat(),
         "apikey": FMP_API_KEY,
     }
-    r = await client.get(FMP_CALENDAR_URL, params=params, timeout=30.0)
+    r = await async_http_get_with_retry(
+        client,
+        FMP_CALENDAR_URL,
+        params=params,
+        timeout=30.0,
+        custom_logger=logger,
+    )
     r.raise_for_status()
     data = r.json()
     if not isinstance(data, list):

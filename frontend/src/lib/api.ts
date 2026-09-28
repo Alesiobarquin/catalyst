@@ -1,6 +1,7 @@
 import type {
   TradeOrder,
   TradeExecution,
+  ExecutionSummary,
   ValidatedSignal,
   OrderStats,
   PriceBar,
@@ -143,12 +144,36 @@ export async function fetchSignalDetail(orderId: number): Promise<SignalDetail> 
 }
 
 /** GET /executions/me — requires Clerk session token */
-export async function getMyExecutions(token: string): Promise<TradeExecution[]> {
-  const res = await fetch(`${apiBaseUrl()}/executions/me`, {
+export async function getMyExecutions(
+  token: string,
+  params?: {
+    status?: string;
+    ticker?: string;
+    limit?: number;
+  }
+): Promise<TradeExecution[]> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.ticker) qs.set("ticker", params.ticker);
+  if (params?.limit) qs.set("limit", String(params.limit));
+  const query = qs.toString();
+  const url = `${apiBaseUrl()}/executions/me${query ? `?${query}` : ""}`;
+
+  const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
   if (!res.ok) return [];
+  return res.json();
+}
+
+/** GET /executions/summary — aggregate paper execution stats */
+export async function getMyExecutionSummary(token: string): Promise<ExecutionSummary | null> {
+  const res = await fetch(`${apiBaseUrl()}/executions/summary`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
   return res.json();
 }
 

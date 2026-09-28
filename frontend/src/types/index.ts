@@ -19,6 +19,16 @@ export interface TradeExecution {
   error_message?: string | null;
 }
 
+/** GET /executions/summary — aggregate paper execution stats */
+export interface ExecutionSummary {
+  total_executions: number;
+  filled_count: number;
+  failed_count: number;
+  pending_count: number;
+  fill_rate_percent: number;
+  total_volume_usd: number;
+}
+
 /** GET /health/pipeline — FastAPI aggregate check for navbar */
 export interface PipelineHealth {
   api: string;
@@ -61,8 +71,9 @@ export interface ValidatedSignal {
   rationale: string;
   is_trap: boolean;
   confluence_sources: string[];
-  suggested_stop?: number;
+  suggested_stop?: string | number;
   suggested_target?: number;
+  suggested_entry_zone?: string;
   key_risks: string[];
 }
 

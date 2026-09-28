@@ -67,7 +67,8 @@ async def list_signals(
         SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
                ticker, time AS timestamp_utc, conviction_score,
                catalyst_type, rationale, is_trap,
-               confluence_sources, key_risks
+               confluence_sources, key_risks,
+               suggested_entry_zone, suggested_stop
         FROM validated_signals
         {where}
         ORDER BY time DESC
@@ -90,7 +91,8 @@ async def signals_by_ticker(
         SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
                ticker, time AS timestamp_utc, conviction_score,
                catalyst_type, rationale, is_trap,
-               confluence_sources, key_risks
+               confluence_sources, key_risks,
+               suggested_entry_zone, suggested_stop
         FROM validated_signals
         WHERE ticker = $1
         ORDER BY time DESC

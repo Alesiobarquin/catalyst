@@ -58,6 +58,8 @@ class ValidatedSignalResponse(BaseModel):
     is_trap: bool = False
     confluence_sources: list[str] = []
     key_risks: list[str] = []
+    suggested_entry_zone: str | None = None
+    suggested_stop: str | None = None
 
 
 # ── Price History ─────────────────────────────────────────────────
@@ -82,6 +84,29 @@ class MarketQuoteResponse(BaseModel):
     fifty_two_week_high: float | None = None
     fifty_two_week_low: float | None = None
     market_cap: int | None = None
+
+
+# ── Executions (Alpaca Paper Trading) ──────────────────────────────
+
+
+class TradeExecutionResponse(BaseModel):
+    id: int
+    trade_order_id: int
+    timestamp_utc: datetime
+    ticker: str
+    alpaca_order_id: str | None = None
+    execution_status: str
+    filled_avg_price: float | None = None
+    error_message: str | None = None
+
+
+class ExecutionSummaryResponse(BaseModel):
+    total_executions: int
+    filled_count: int
+    failed_count: int
+    pending_count: int
+    fill_rate_percent: float
+    total_volume_usd: float
 
 
 # ── Generic pagination ────────────────────────────────────────────

@@ -166,3 +166,122 @@ class TestInsiderHunterHelpers:
         assert sig["signal_strength"] == "STRONG_BUY"
         assert sig["is_buy"] is True
         assert sig["is_sell"] is False
+
+
+class TestHttpRetryHelpers:
+    def test_parse_retry_after_none_or_empty(self):
+        from hunters.common.http_retry import parse_retry_after
+
+        assert parse_retry_after(None, default_delay=2.5) == 2.5
+        assert parse_retry_after("", default_delay=3.0) == 3.0
+
+    def test_parse_retry_after_seconds_string(self):
+        from hunters.common.http_retry import parse_retry_after
+
+        assert parse_retry_after("15") == 15.0
+        assert parse_retry_after(" 5.5 ") == 5.5
+
+    def test_parse_retry_after_clamping(self):
+        from hunters.common.http_retry import parse_retry_after
+
+        assert parse_retry_after("100", max_delay=30.0) == 30.0
+        assert parse_retry_after("-5", default_delay=2.0) == 0.1
+
+    def test_parse_retry_after_http_date(self):
+        from datetime import datetime, timedelta, timezone
+        from email.utils import format_datetime
+
+        from hunters.common.http_retry import parse_retry_after
+
+        future_dt = datetime.now(timezone.utc) + timedelta(seconds=10)
+        date_str = format_datetime(future_dt)
+        parsed = parse_retry_after(date_str, max_delay=30.0)
+        assert 5.0 <= parsed <= 15.0
+
+
+class TestAsyncHttpGetWithRetry:
+    import pytest
+
+    @pytest.mark.asyncio
+    async def test_successful_first_try(self):
+        from unittest.mock import AsyncMock, MagicMock
+
+        import httpx
+
+        from hunters.common.http_retry import async_http_get_with_retry
+
+        client = AsyncMock(spec=httpx.AsyncClient)
+        mock_resp = MagicMock(spec=httpx.Response)
+        mock_resp.status_code = 200
+        client.get.return_value = mock_resp
+
+        resp = await async_http_get_with_retry(client, "https://api.example.com/data")
+        assert resp.status_code == 200
+        assert client.get.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_retry_on_429_then_succeed(self):
+        from unittest.mock import AsyncMock, MagicMock
+
+        import httpx
+
+        from hunters.common.http_retry import async_http_get_with_retry
+
+        client = AsyncMock(spec=httpx.AsyncClient)
+        resp_429 = MagicMock(spec=httpx.Response)
+        resp_429.status_code = 429
+        resp_429.headers = {"Retry-After": "0.01"}
+
+        resp_200 = MagicMock(spec=httpx.Response)
+        resp_200.status_code = 200
+
+        client.get.side_effect = [resp_429, resp_200]
+
+        resp = await async_http_get_with_retry(
+            client, "https://api.example.com/rate-limited", base_delay=0.01
+        )
+        assert resp.status_code == 200
+        assert client.get.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_retry_on_503_exhaust_retries(self):
+        from unittest.mock import AsyncMock, MagicMock
+
+        import httpx
+
+        from hunters.common.http_retry import async_http_get_with_retry
+
+        client = AsyncMock(spec=httpx.AsyncClient)
+        resp_503 = MagicMock(spec=httpx.Response)
+        resp_503.status_code = 503
+
+        client.get.return_value = resp_503
+
+        resp = await async_http_get_with_retry(
+            client, "https://api.example.com/unavail", max_retries=2, base_delay=0.01
+        )
+        assert resp.status_code == 503
+        assert client.get.call_count == 3  # initial + 2 retries
+
+    @pytest.mark.asyncio
+    async def test_retry_on_transport_error(self):
+        from unittest.mock import AsyncMock, MagicMock
+
+        import httpx
+
+        from hunters.common.http_retry import async_http_get_with_retry
+
+        client = AsyncMock(spec=httpx.AsyncClient)
+        resp_200 = MagicMock(spec=httpx.Response)
+        resp_200.status_code = 200
+
+        client.get.side_effect = [
+            httpx.ConnectError("Connection reset"),
+            resp_200,
+        ]
+
+        resp = await async_http_get_with_retry(
+            client, "https://api.example.com/flaky", base_delay=0.01
+        )
+        assert resp.status_code == 200
+        assert client.get.call_count == 2
