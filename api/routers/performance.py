@@ -57,8 +57,17 @@ def _compute_ticker_performance(
                         break
                 if computed_status == "ACTIVE" and days_held > 90:
                     computed_status = "EXPIRED"
+        else:
+            try:
+                t = yf.Ticker(ticker)
+                last_p = getattr(t.fast_info, "last_price", None)
+                if last_p is not None and not (isinstance(last_p, float) and (last_p != last_p)):
+                    current_price = round(float(last_p), 4)
+            except Exception as fast_exc:
+                logger.debug("Fast info fallback failed for %s: %s", ticker, fast_exc)
     except Exception as exc:
         logger.warning("Performance lookup failed for %s: %s", ticker, exc)
+
 
     pnl_pct = None
     if current_price is not None and entry_price > 0:
