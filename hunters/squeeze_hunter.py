@@ -93,9 +93,10 @@ def compute_relative_volume(redis_client, ticker, current_volume, avg_volume):
                 (1 - EMA_ALPHA) * float(baseline_volume)
             )
         if next_baseline > 0:
-            redis_client.set(baseline_key, next_baseline)
+            redis_client.set(baseline_key, next_baseline, ex=7 * 86400)
 
     return round(relative_volume, 4)
+
 
 
 async def fetch_squeeze_targets():

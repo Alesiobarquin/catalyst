@@ -66,6 +66,7 @@ class TestComputeRelativeVolume:
         redis.set.assert_called_once()
         stored_val = redis.set.call_args[0][1]
         assert abs(float(stored_val) - 100_000) < 1
+        assert redis.set.call_args[1].get("ex") == 7 * 86400
 
     def test_redis_ema_updates_baseline(self):
         redis = MagicMock()
@@ -75,6 +76,8 @@ class TestComputeRelativeVolume:
         redis.set.assert_called_once()
         stored_val = float(redis.set.call_args[0][1])
         assert abs(stored_val - 120_000) < 1
+        assert redis.set.call_args[1].get("ex") == 7 * 86400
+
 
 
 class TestSqueezeHunterRedisClient:
