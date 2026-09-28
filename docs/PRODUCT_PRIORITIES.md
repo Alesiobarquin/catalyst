@@ -139,7 +139,7 @@ Rationale: captures the highest signal-density windows without pretending to be 
 
 | Status | Task |
 |--------|------|
-| [ ] | **Doc sync:** Update [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) “current state” (many items shipped); archive or mark [DOCS_DRAFT.md](DOCS_DRAFT.md) superseded. |
+| [x] | **Doc sync:** Update [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) “current state” (many items shipped); archive or mark [DOCS_DRAFT.md](DOCS_DRAFT.md) superseded. |
 | [x] | **Ruff cleanup:** Fix pre-existing violations outside CI scope (see [VALIDATION_REPORT_2026-04-21.md](VALIDATION_REPORT_2026-04-21.md)). |
 | [ ] | **Optional:** Literal 24h soak at default hunter intervals (archive `docker logs`). |
 | [x] | **Optional:** Confluence watcher script for organic `gk:sources:*` with `SCARD >= 2`. |

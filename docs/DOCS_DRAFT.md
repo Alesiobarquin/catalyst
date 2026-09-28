@@ -1,6 +1,15 @@
-# Documentation Draft — Strategic Positioning for Recruiting
+# ⚠️ SUPERSEDED DOCUMENTATION DRAFT
 
-*Reference document for interview prep and further doc edits. Used to create README and DEPLOYMENT.md.*
+> **STATUS: HISTORICAL / SUPERSEDED**
+> This draft has been superseded by canonical documentation:
+> - Architecture & Operating Manual: [AGENTS.md](../AGENTS.md)
+> - Product Priorities & Roadmap: [PRODUCT_PRIORITIES.md](PRODUCT_PRIORITIES.md)
+> - End-to-End Pipeline Guide: [PIPELINE_EXPLAINED.md](PIPELINE_EXPLAINED.md)
+> - High-Level Overview: [README.md](../README.md)
+>
+> *Preserved for historical context and initial recruiting reference only.*
+
+---
 
 ## 1. OPENING PARAGRAPH (2-3 sentences)
 

@@ -36,33 +36,27 @@
 | Component | Status | Notes |
 |-----------|--------|-------|
 | Squeeze Hunter | ✅ Fully working | Finviz scrape → Kafka. Pre-emission filters (price, volume, short float). |
-| Gatekeeper | ✅ Fully working | Redis 5-min window, confluence ≥ 2, hard filters (volume, price). |
-| AI Layer | ✅ Fully working | Gemini + Search grounding, structured JSON, conviction threshold. |
-| End-to-end pipeline | ✅ Verified | Squeeze → Gatekeeper → AI → validated-signals. Tested with synthetic events. |
-| Docker Compose | ✅ Working | Kafka, Redis, TimescaleDB, Gatekeeper, AI Layer, hunters, **engine**, Kafka UI, RedisInsight. |
-| Deployment docs | ✅ Complete | DEPLOYMENT.md: EC2 + Lambda scheduling, ~$15/mo. |
-| Java Strategy Engine | ✅ Implemented | `engine/`: consumes `validated-signals`, regime + Half-Kelly, `trade-orders` + `trade_orders` DB. See [ENGINE.md](ENGINE.md). |
+| Biotech Hunter | ✅ Fully working | BioPharmCatalyst scrape → Kafka. Ticker cleaning & clinical milestone parsing. |
+| Insider Hunter | ✅ Fully working | SEC EDGAR Form 4 filings → Kafka. Custom User-Agent & open-market purchases. |
+| Whale Hunter | ✅ Fully working | Barchart options sweep scraper → Kafka. Playwright headless Chromium. |
+| Drifter Hunter | ✅ Fully working | FMP earnings calendar API → Kafka. $\ge 5\%$ EPS beat filter & in-memory dedupe. |
+| Gatekeeper | ✅ Fully working | Redis 5-min window, confluence ≥ 2 or technical score ≥ 4, hard filters, ticker normalization. |
+| AI Layer | ✅ Fully working | Gemini 2.5 + Search grounding, fallback model, resilient JSON parsing, conviction threshold. |
+| End-to-end pipeline | ✅ Verified | Hunters → Gatekeeper → AI → validated-signals → Engine → trade-orders. |
+| Docker Compose | ✅ Working | Kafka, Redis, TimescaleDB, Gatekeeper, AI Layer, hunters, Engine, Persistence, Executor, API, UI. |
+| Java Strategy Engine | ✅ Implemented | `engine/`: consumes `validated-signals`, regime + Half-Kelly, `trade-orders` + `trade_orders` DB. |
+| Persistence Service | ✅ Implemented | Consumes `validated-signals` → TimescaleDB `validated_signals` table with indexing. |
+| Paper Executor | ✅ Implemented | Consumes `trade-orders`, executes via Alpaca Markets API with rate limiting & circuit breaker. |
+| FastAPI Read Layer | ✅ Implemented | 7 routers: `/signals`, `/orders`, `/executions`, `/market`, `/performance`, `/settings`, `/testing`, plus `/metrics` and `/health/pipeline`. |
+| Next.js Dashboard | ✅ Implemented | Next.js 16 App Router, React 19, Tailwind CSS 4, SSE LiveStreamBanner with chime, Lightweight Charts. |
+| Automated Test Suite | ✅ Implemented | Comprehensive suite: 203 passing pytest tests, ruff clean, tsc clean, eslint clean. |
 
-### What's Broken or Partial
+### Current Development Focus (Post-Phase 26)
 
-| Component | Issue | Impact |
-|-----------|-------|--------|
-| Data quality visibility | Live P&L fetch failures were silently swallowed in API | Dashboard can hide degraded state |
-| Frontend filtering | Filters were page-local client filters | Misleading UX vs full dataset |
-| Signals table UX | Fixed-width rationale and no expand affordance | Readability issues on small viewports |
-| Legacy docs drift | README/roadmap claims lagged code reality | Onboarding confusion |
-
-### What Doesn't Exist Yet
-
-| Component | Status |
-|-----------|--------|
-| Automated tests | Few or no unit/integration tests across Python + Java |
-| CI | Python ruff + pytest live; frontend/engine coverage pending |
-| Read API for trade history | ✅ Built — FastAPI, 4 routers: `/orders`, `/signals`, `/market`, `/performance` |
-| Dashboard | ✅ Built — Next.js 16, wired to real API; live P&L via `/performance/batch` |
-| Alpaca integration | Not built (Phase 3) |
-| Auth (Clerk) | Not built (Phase 3) |
-| OFI / micro-structure gate | Described in ARCHITECTURE.md; **not** in engine (see [ENGINE.md](ENGINE.md)) |
+| Milestone | Status | Notes |
+|-----------|--------|-------|
+| AWS Deployment (Track 4) | In Progress | CDK stack (`infra/catalyst_stack.py`) and bootstrap script ready; scheduled via EventBridge. |
+| Clerk Authentication (Track 7) | Scaffolded | JWT validation in FastAPI backend (`api/auth.py`); operational enablement pending AWS go-live. |
 
 ---
 
