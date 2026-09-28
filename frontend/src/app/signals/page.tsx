@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getSignals } from "@/lib/api";
+import { getSignals, getSignalStats } from "@/lib/api";
 import { getCatalystLabel } from "@/lib/utils";
 import { AlertTriangle, Radio, RotateCcw } from "lucide-react";
 import { SignalRow } from "@/components/signals/SignalRow";
@@ -52,19 +52,25 @@ export default async function SignalsPage({ searchParams }: PageProps) {
     ticker
   );
 
-  const {
-    items: signals,
-    total,
-    page: curPage,
-    per_page,
-  } = await getSignals({
-    page,
-    per_page: SIGNALS_PER_PAGE,
-    catalyst_type: catalystType,
-    min_conviction: minConviction,
-    is_trap: isTrap,
-    ticker,
-  });
+  const [
+    {
+      items: signals,
+      total,
+      page: curPage,
+      per_page,
+    },
+    stats,
+  ] = await Promise.all([
+    getSignals({
+      page,
+      per_page: SIGNALS_PER_PAGE,
+      catalyst_type: catalystType,
+      min_conviction: minConviction,
+      is_trap: isTrap,
+      ticker,
+    }),
+    getSignalStats(),
+  ]);
 
   const paginationQuery: Record<string, string | number | undefined> = {};
   if (sp.catalyst_type) paginationQuery.catalyst_type = sp.catalyst_type;
@@ -112,6 +118,64 @@ export default async function SignalsPage({ searchParams }: PageProps) {
 
       {/* ── Live real-time stream status ─────────────────── */}
       <LiveStreamBanner />
+
+      {/* ── Signal Stats KPI Ribbon ──────────────────────── */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 12,
+          marginBottom: 20,
+        }}
+      >
+        <div className="stat-card" style={{ padding: "14px 16px" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Total Pipeline Signals
+          </span>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "#F8FAFC", margin: "4px 0 2px" }}>
+            {stats.total_signals}
+          </p>
+          <span style={{ fontSize: 11, color: "#64748B" }}>
+            {stats.clean_count} actionable
+          </span>
+        </div>
+
+        <div className="stat-card" style={{ padding: "14px 16px" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Average Conviction
+          </span>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "#38BDF8", margin: "4px 0 2px" }}>
+            {stats.avg_conviction}/100
+          </p>
+          <span style={{ fontSize: 11, color: "#64748B" }}>
+            Gemini multi-factor
+          </span>
+        </div>
+
+        <div className="stat-card" style={{ padding: "14px 16px" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            High Conviction (≥80)
+          </span>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "#10B981", margin: "4px 0 2px" }}>
+            {stats.high_conviction_count}
+          </p>
+          <span style={{ fontSize: 11, color: "#64748B" }}>
+            Eligible for execution
+          </span>
+        </div>
+
+        <div className="stat-card" style={{ padding: "14px 16px" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Trap Protection
+          </span>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "#F59E0B", margin: "4px 0 2px" }}>
+            {stats.trap_count}
+          </p>
+          <span style={{ fontSize: 11, color: "#64748B" }}>
+            {stats.trap_rate_percent}% rejected
+          </span>
+        </div>
+      </div>
 
       {/* ── Filter toolbar ──────────────────────────────── */}
       <SignalFilterBar

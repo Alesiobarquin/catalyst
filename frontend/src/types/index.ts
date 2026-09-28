@@ -109,11 +109,15 @@ export interface OrderStats {
   total_recommended_volume_usd?: number;
 }
 
+// Aggregate stats for validated signals (GET /signals/stats)
 export interface SignalStats {
   total_signals: number;
   avg_conviction: number;
   trap_count: number;
-  catalyst_breakdown: Record<CatalystType, number>;
+  clean_count: number;
+  trap_rate_percent: number;
+  high_conviction_count: number;
+  catalyst_breakdown: Record<string, number>;
 }
 
 export interface MarketQuote {

@@ -4,6 +4,7 @@ import type {
   ExecutionSummary,
   ValidatedSignal,
   OrderStats,
+  SignalStats,
   PriceBar,
   PaginatedResponse,
   BatchPerformance,
@@ -96,6 +97,27 @@ export async function getSignals(params?: {
   const res = await fetch(`${apiBaseUrl()}/signals?${qs}`, { next: { revalidate: 30 } });
   if (!res.ok) throw new Error("Failed to fetch signals");
   return res.json();
+}
+
+/** GET /signals/stats — aggregate statistics across validated signals */
+export async function getSignalStats(): Promise<SignalStats> {
+  const defaultStats: SignalStats = {
+    total_signals: 0,
+    avg_conviction: 0,
+    trap_count: 0,
+    clean_count: 0,
+    trap_rate_percent: 0,
+    high_conviction_count: 0,
+    catalyst_breakdown: {},
+  };
+  if (USE_MOCK) return defaultStats;
+  try {
+    const res = await fetch(`${apiBaseUrl()}/signals/stats`, { next: { revalidate: 30 } });
+    if (!res.ok) return defaultStats;
+    return res.json();
+  } catch {
+    return defaultStats;
+  }
 }
 
 // ── Price History ─────────────────────────────────────────────────

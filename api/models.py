@@ -64,6 +64,17 @@ class ValidatedSignalResponse(BaseModel):
     suggested_stop: str | None = None
 
 
+class SignalStatsResponse(BaseModel):
+    total_signals: int
+    avg_conviction: float
+    trap_count: int
+    clean_count: int
+    trap_rate_percent: float
+    high_conviction_count: int
+    catalyst_breakdown: dict[str, int]
+
+
+
 # ── Price History ─────────────────────────────────────────────────
 
 

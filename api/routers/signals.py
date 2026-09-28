@@ -11,9 +11,10 @@ from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 
 from api.db import get_conn
-from api.models import PaginatedResponse, ValidatedSignalResponse
+from api.models import PaginatedResponse, SignalStatsResponse, ValidatedSignalResponse
 
 router = APIRouter(prefix="/signals", tags=["signals"])
+
 
 
 def _format_signal_row(row: asyncpg.Record | dict) -> dict:
@@ -84,6 +85,48 @@ async def list_signals(
 
     items = [_format_signal_row(r) for r in rows]
     return {"items": items, "total": total or 0, "page": page, "per_page": per_page}
+
+
+@router.get("/stats", response_model=SignalStatsResponse)
+async def get_signal_stats(conn: asyncpg.Connection = Depends(get_conn)):
+    """Return aggregate statistics across all Gemini-validated signals."""
+    row = await conn.fetchrow(
+        """
+        SELECT COUNT(*) AS total,
+               COALESCE(AVG(conviction_score), 0) AS avg_conviction,
+               COUNT(*) FILTER (WHERE is_trap = TRUE) AS trap_count,
+               COUNT(*) FILTER (WHERE is_trap = FALSE OR is_trap IS NULL) AS clean_count,
+               COUNT(*) FILTER (WHERE conviction_score >= 80) AS high_conviction_count
+        FROM validated_signals
+        """
+    )
+    catalyst_rows = await conn.fetch(
+        """
+        SELECT catalyst_type, COUNT(*) AS count
+        FROM validated_signals
+        WHERE catalyst_type IS NOT NULL
+        GROUP BY catalyst_type
+        ORDER BY count DESC
+        """
+    )
+    total = row["total"] or 0
+    avg_conv = float(round(float(row["avg_conviction"] or 0.0), 1))
+    trap_count = int(row["trap_count"] or 0)
+    clean_count = int(row["clean_count"] or 0)
+    high_conv = int(row["high_conviction_count"] or 0)
+    trap_rate = round((trap_count / total * 100), 1) if total > 0 else 0.0
+
+    breakdown = {str(r["catalyst_type"]): int(r["count"]) for r in catalyst_rows}
+
+    return SignalStatsResponse(
+        total_signals=total,
+        avg_conviction=avg_conv,
+        trap_count=trap_count,
+        clean_count=clean_count,
+        trap_rate_percent=trap_rate,
+        high_conviction_count=high_conv,
+        catalyst_breakdown=breakdown,
+    )
 
 
 @router.get("/export/csv")

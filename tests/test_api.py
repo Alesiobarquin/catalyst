@@ -448,3 +448,41 @@ def test_save_alpaca_keys_skip_validation():
     mock_conn.execute.assert_called_once()
 
 
+def test_get_signals_stats():
+    from unittest.mock import AsyncMock
+
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow.return_value = {
+        "total": 42,
+        "avg_conviction": 84.5,
+        "trap_count": 4,
+        "clean_count": 38,
+        "high_conviction_count": 28,
+    }
+    mock_conn.fetch.return_value = [
+        {"catalyst_type": "SUPERNOVA", "count": 22},
+        {"catalyst_type": "DRIFTER", "count": 14},
+        {"catalyst_type": "BIO_CATALYST", "count": 6},
+    ]
+
+    async def _mock_conn_generator():
+        yield mock_conn
+
+    app = create_app()
+    app.dependency_overrides[db.get_conn] = _mock_conn_generator
+
+    with TestClient(app) as client:
+        res = client.get("/signals/stats")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["total_signals"] == 42
+    assert data["avg_conviction"] == 84.5
+    assert data["trap_count"] == 4
+    assert data["clean_count"] == 38
+    assert data["trap_rate_percent"] == 9.5
+    assert data["high_conviction_count"] == 28
+    assert data["catalyst_breakdown"]["SUPERNOVA"] == 22
+
+
+
