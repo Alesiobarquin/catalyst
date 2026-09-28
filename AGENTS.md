@@ -149,7 +149,7 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
   - `/`: Executive KPI overview and recent activity.
   - `/signals`: Interactive signals table, KPI ribbon (`/signals/stats`), CSV export, date range filters, and signal detail drawer.
   - `/analytics`: Portfolio performance, win rate, equity curve, regime breakdown.
-  - `/settings`: Alpaca API key validation form and hunter cadence preferences.
+  - `/settings`: Alpaca API key validation form, real-time pipeline telemetry card (`/health/pipeline`), and developer synthetic signal injection test panel.
 - **Components**:
   - `LiveStreamBanner`: Real-time SSE alert banner with connection status, auto-refresh toggle, and Web Audio API synthesized alert chime.
   - `PipelineStatus`: Live status indicator in navbar reflecting API, DB, Redis, and Java Engine health with interactive tooltip diagnostics.

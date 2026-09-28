@@ -130,6 +130,7 @@ Rationale: captures the highest signal-density windows without pretending to be 
 |--------|------|
 | [x] | **Detail panel chart:** Replace “Integration pending” placeholder with `PriceChart` + live/synthetic labeling. |
 | [x] | **Execution status in UI:** Surface Alpaca filled / pending / rejected on trade cards when executor is live (depends on Track 7). |
+| [x] | **Settings telemetry & testing:** Real-time pipeline health card (`/health/pipeline`) and developer synthetic signal injection tool in Settings UI. |
 
 ---
 

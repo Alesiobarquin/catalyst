@@ -10,6 +10,7 @@ import type {
   BatchPerformance,
   SignalDetail,
   MarketQuote,
+  PipelineHealth,
 } from "@/types";
 import { MOCK_ORDERS, MOCK_SIGNALS, MOCK_STATS } from "./mock-data";
 
@@ -288,6 +289,37 @@ export async function searchTickers(query: string): Promise<Array<{ ticker: stri
     return res.json();
   } catch {
     return [];
+  }
+}
+
+/** GET /health/pipeline — fetch end-to-end pipeline health */
+export async function getPipelineHealth(): Promise<PipelineHealth | null> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/health/pipeline`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return (await res.json()) as PipelineHealth;
+  } catch {
+    return null;
+  }
+}
+
+/** POST /testing/inject — developer injection of synthetic catalyst signals */
+export async function injectSyntheticSignal(params: {
+  scenario: "confluence" | "single_tech" | "drop";
+  ticker: string;
+  price?: number;
+  volume?: number;
+  relative_volume?: number;
+}): Promise<{ success: boolean; detail?: string; events_injected?: number }> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/testing/inject`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+    return await res.json();
+  } catch (err: unknown) {
+    return { success: false, detail: err instanceof Error ? err.message : "Network error" };
   }
 }
 

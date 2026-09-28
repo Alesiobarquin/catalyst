@@ -1,9 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, CheckCircle2, ExternalLink, Key, Lock, ShieldCheck, Trash2 } from "lucide-react";
-import { deleteAlpacaKeys, saveAlpacaKeys } from "@/lib/api";
+import {
+  Activity,
+  AlertCircle,
+  CheckCircle2,
+  ExternalLink,
+  Key,
+  Lock,
+  RefreshCw,
+  Send,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
+import {
+  deleteAlpacaKeys,
+  getPipelineHealth,
+  injectSyntheticSignal,
+  saveAlpacaKeys,
+} from "@/lib/api";
+import type { PipelineHealth } from "@/types";
 
 export default function SettingsPage() {
   const [apiKey, setApiKey] = useState("");
@@ -13,6 +30,73 @@ export default function SettingsPage() {
   const [disconnecting, setDisconnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const [pipelineHealth, setPipelineHealth] = useState<PipelineHealth | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [injectTicker, setInjectTicker] = useState("NVDA");
+  const [injectScenario, setInjectScenario] = useState<"confluence" | "single_tech" | "drop">("confluence");
+  const [injectPrice, setInjectPrice] = useState("125.50");
+  const [injectVolume, setInjectVolume] = useState("850000");
+  const [injectRvol, setInjectRvol] = useState("3.2");
+  const [injecting, setInjecting] = useState(false);
+  const [injectFeedback, setInjectFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadHealth() {
+      setHealthLoading(true);
+      const res = await getPipelineHealth();
+      if (!cancelled) {
+        setPipelineHealth(res);
+        setHealthLoading(false);
+      }
+    }
+    loadHealth();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleRefreshHealth() {
+    setHealthLoading(true);
+    const res = await getPipelineHealth();
+    setPipelineHealth(res);
+    setHealthLoading(false);
+  }
+
+  async function handleInject(e: React.FormEvent) {
+    e.preventDefault();
+    if (!injectTicker.trim()) return;
+    setInjecting(true);
+    setInjectFeedback(null);
+    try {
+      const res = await injectSyntheticSignal({
+        scenario: injectScenario,
+        ticker: injectTicker.trim().toUpperCase(),
+        price: parseFloat(injectPrice) || 100.0,
+        volume: parseFloat(injectVolume) || 500000,
+        relative_volume: parseFloat(injectRvol) || 2.0,
+      });
+      if (res.success) {
+        setInjectFeedback({
+          type: "success",
+          message: `Injected ${res.events_injected ?? 1} events for ${injectTicker.trim().toUpperCase()} (${injectScenario}). Check Kafka & Gatekeeper logs!`,
+        });
+      } else {
+        setInjectFeedback({
+          type: "error",
+          message: res.detail || "Injection failed",
+        });
+      }
+    } catch {
+      setInjectFeedback({
+        type: "error",
+        message: "Failed to communicate with testing endpoint",
+      });
+    } finally {
+      setInjecting(false);
+    }
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -409,6 +493,264 @@ export default function SettingsPage() {
             </button>
           )}
         </div>
+      </div>
+
+      {/* ── Pipeline & Subsystem Telemetry Card ───────────── */}
+      <div
+        className="glass-card"
+        style={{
+          padding: 24,
+          marginBottom: 24,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 16,
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 8,
+                background: "rgba(56,189,248,0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#38BDF8",
+              }}
+            >
+              <Activity size={18} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: 16, fontWeight: 600, color: "#F8FAFC", margin: "0 0 2px" }}>
+                Pipeline Telemetry & Subsystems
+              </h2>
+              <span style={{ fontSize: 12, color: "#64748B" }}>
+                FastAPI · TimescaleDB · Redis Confluence · Java Engine
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleRefreshHealth}
+            disabled={healthLoading}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "5px 12px",
+              borderRadius: 4,
+              fontSize: 12,
+              fontWeight: 500,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              color: "#F8FAFC",
+              cursor: healthLoading ? "wait" : "pointer",
+            }}
+          >
+            <RefreshCw size={12} className={healthLoading ? "animate-spin" : ""} />
+            {healthLoading ? "Checking..." : "Refresh Status"}
+          </button>
+        </div>
+
+        <p style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.6, marginBottom: 16 }}>
+          Operational status verified via real-time probe (<code style={{ color: "#38BDF8" }}>GET /health/pipeline</code>). All core layers must be operational for automated Half-Kelly trade sizing.
+        </p>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 10,
+            marginBottom: 16,
+          }}
+        >
+          <div style={{ padding: "10px 12px", background: "#0B1121", borderRadius: 4, border: "1px solid rgba(255,255,255,0.06)" }}>
+            <span style={{ fontSize: 10, color: "#64748B", display: "block", marginBottom: 2 }}>API LAYER</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: pipelineHealth?.api === "ok" ? "#10B981" : "#EF4444" }}>
+              {pipelineHealth?.api ? pipelineHealth.api.toUpperCase() : "..."}
+            </span>
+          </div>
+          <div style={{ padding: "10px 12px", background: "#0B1121", borderRadius: 4, border: "1px solid rgba(255,255,255,0.06)" }}>
+            <span style={{ fontSize: 10, color: "#64748B", display: "block", marginBottom: 2 }}>DATABASE</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: pipelineHealth?.database === "ok" ? "#10B981" : "#EF4444" }}>
+              {pipelineHealth?.database ? pipelineHealth.database.toUpperCase() : "..."}
+            </span>
+          </div>
+          <div style={{ padding: "10px 12px", background: "#0B1121", borderRadius: 4, border: "1px solid rgba(255,255,255,0.06)" }}>
+            <span style={{ fontSize: 10, color: "#64748B", display: "block", marginBottom: 2 }}>REDIS CACHE</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: pipelineHealth?.redis === "ok" ? "#10B981" : "#EF4444" }}>
+              {pipelineHealth?.redis ? pipelineHealth.redis.toUpperCase() : "..."}
+            </span>
+          </div>
+          <div style={{ padding: "10px 12px", background: "#0B1121", borderRadius: 4, border: "1px solid rgba(255,255,255,0.06)" }}>
+            <span style={{ fontSize: 10, color: "#64748B", display: "block", marginBottom: 2 }}>STRATEGY ENGINE</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: pipelineHealth?.engine === "UP" ? "#10B981" : "#F59E0B" }}>
+              {pipelineHealth?.engine ? pipelineHealth.engine.toUpperCase() : "..."}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Developer Synthetic Signal Injection Card ─────────── */}
+      <div
+        className="glass-card"
+        style={{
+          padding: 24,
+          marginBottom: 24,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              background: "rgba(168,85,247,0.15)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#A855F7",
+            }}
+          >
+            <Send size={18} />
+          </div>
+          <div>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: "#F8FAFC", margin: "0 0 2px" }}>
+              Developer Signal Injection & Confluence Test
+            </h2>
+            <span style={{ fontSize: 12, color: "#64748B" }}>
+              Inject synthetic hunter events into Kafka <code style={{ color: "#A855F7" }}>raw-events</code>
+            </span>
+          </div>
+        </div>
+
+        <p style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.6, marginBottom: 16 }}>
+          Inject deterministic multi-source signals to verify Gatekeeper confluence rules (<code style={{ color: "#A855F7" }}>SCARD ≥ 2</code>) and end-to-end pipeline flow. Real tickers (e.g., NVDA, AAPL) are sized by the engine.
+        </p>
+
+        {injectFeedback && (
+          <div
+            style={{
+              padding: "10px 14px",
+              borderRadius: 4,
+              marginBottom: 16,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: injectFeedback.type === "success" ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)",
+              border: `1px solid ${injectFeedback.type === "success" ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)"}`,
+              color: injectFeedback.type === "success" ? "#34D399" : "#F87171",
+              fontSize: 12,
+            }}
+          >
+            {injectFeedback.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+            <span>{injectFeedback.message}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleInject}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div>
+              <label style={{ display: "block", fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>
+                Ticker Symbol
+              </label>
+              <input
+                type="text"
+                value={injectTicker}
+                onChange={(e) => setInjectTicker(e.target.value.toUpperCase())}
+                placeholder="NVDA"
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  fontSize: 12,
+                  fontFamily: "var(--font-mono)",
+                  background: "#080D1A",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 4,
+                  color: "#F8FAFC",
+                  outline: "none",
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>
+                Scenario
+              </label>
+              <select
+                value={injectScenario}
+                onChange={(e) => setInjectScenario(e.target.value as "confluence" | "single_tech" | "drop")}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  fontSize: 12,
+                  background: "#080D1A",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 4,
+                  color: "#F8FAFC",
+                  outline: "none",
+                }}
+              >
+                <option value="confluence">Confluence (Squeeze + Insider)</option>
+                <option value="single_tech">Single Technical Score ≥ 4</option>
+                <option value="drop">Drop Filter (Low Volume/Price)</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>
+                Reference Price ($)
+              </label>
+              <input
+                type="text"
+                value={injectPrice}
+                onChange={(e) => setInjectPrice(e.target.value)}
+                placeholder="125.50"
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  fontSize: 12,
+                  fontFamily: "var(--font-mono)",
+                  background: "#080D1A",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 4,
+                  color: "#F8FAFC",
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="submit"
+              disabled={injecting || !injectTicker.trim()}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 16px",
+                borderRadius: 4,
+                fontSize: 12,
+                fontWeight: 600,
+                background: injecting ? "rgba(168,85,247,0.2)" : "#7C3AED",
+                border: "1px solid #A855F7",
+                color: "#FFFFFF",
+                cursor: injecting ? "wait" : "pointer",
+              }}
+            >
+              <Send size={12} />
+              {injecting ? "Injecting..." : "Inject Test Events"}
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* ── Security & Architecture Note ─────────────────── */}
