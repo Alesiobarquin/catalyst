@@ -310,3 +310,66 @@ class TestBiotechHunterHelpers:
         assert _clean_ticker(None) is None
         assert _clean_ticker("   ") is None
         assert _clean_ticker("TOOLONGTICKERNAME") is None
+
+
+class TestHunterOrchestrator:
+    import pytest
+
+    @pytest.mark.asyncio
+    async def test_run_hunter_unknown(self):
+        from hunters.main import run_hunter
+
+        res = await run_hunter("phantom_hunter")
+        assert res["hunter"] == "phantom_hunter"
+        assert res["success"] is False
+        assert "Unknown hunter" in res["error"]
+        assert res["duration_sec"] == 0.0
+
+    @pytest.mark.asyncio
+    async def test_run_hunter_success(self):
+        from unittest.mock import AsyncMock, patch
+
+        from hunters.main import run_hunter
+
+        with patch("hunters.squeeze_hunter.run", new_callable=AsyncMock) as mock_run:
+            res = await run_hunter("squeeze")
+
+        assert res["hunter"] == "squeeze"
+        assert res["success"] is True
+        assert res["error"] is None
+        assert res["duration_sec"] >= 0.0
+        mock_run.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_run_hunter_exception(self):
+        from unittest.mock import AsyncMock, patch
+
+        from hunters.main import run_hunter
+
+        with patch("hunters.insider_hunter.run", new_callable=AsyncMock) as mock_run:
+            mock_run.side_effect = RuntimeError("SEC EDGAR parse timeout")
+            res = await run_hunter("insider")
+
+        assert res["hunter"] == "insider"
+        assert res["success"] is False
+        assert "SEC EDGAR parse timeout" in res["error"]
+        assert res["duration_sec"] >= 0.0
+
+    @pytest.mark.asyncio
+    async def test_run_hunter_timeout(self):
+        import asyncio
+        from unittest.mock import patch
+
+        from hunters.main import run_hunter
+
+        async def _slow_run():
+            await asyncio.sleep(0.1)
+
+        with patch("hunters.whale_hunter.run", side_effect=_slow_run):
+            res = await run_hunter("whale", timeout_sec=0.01)
+
+        assert res["hunter"] == "whale"
+        assert res["success"] is False
+        assert "Timed out after 0.01s" in res["error"]
+        assert res["duration_sec"] >= 0.01
+
