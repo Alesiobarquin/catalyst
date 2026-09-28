@@ -355,3 +355,96 @@ def test_market_history_success():
     assert bars[0]["high"] == 125.0
     assert bars[0]["close"] == 124.0
 
+
+def test_save_alpaca_keys_requires_auth():
+    with make_test_client() as client:
+        res = client.post("/settings/alpaca", json={"api_key": "PKTEST123456", "secret_key": "SKTEST123456"})
+    assert res.status_code == 401
+    assert "Bearer token required" in res.json()["detail"]
+
+
+def test_save_alpaca_keys_invalid_credentials_returns_400():
+    from unittest.mock import AsyncMock, patch
+
+    from api.auth import require_clerk_user
+
+    mock_conn = AsyncMock()
+
+    async def _mock_conn_generator():
+        yield mock_conn
+
+    app = create_app()
+    app.dependency_overrides[db.get_conn] = _mock_conn_generator
+    app.dependency_overrides[require_clerk_user] = lambda: {"sub": "user_12345"}
+
+    with (
+        patch("api.routers.settings.verify_alpaca_credentials", return_value=(False, "Invalid Alpaca API Key ID or Secret Key (authentication failed)")),
+        TestClient(app) as client,
+    ):
+        res = client.post(
+            "/settings/alpaca",
+            json={"api_key": "PKINVALIDKEY", "secret_key": "SKINVALIDSECRET", "validate_credentials": True},
+        )
+
+    assert res.status_code == 400
+    assert "Invalid Alpaca API Key" in res.json()["detail"]
+    mock_conn.execute.assert_not_called()
+
+
+def test_save_alpaca_keys_valid_credentials_succeeds():
+    from unittest.mock import AsyncMock, patch
+
+    from api.auth import require_clerk_user
+
+    mock_conn = AsyncMock()
+
+    async def _mock_conn_generator():
+        yield mock_conn
+
+    app = create_app()
+    app.dependency_overrides[db.get_conn] = _mock_conn_generator
+    app.dependency_overrides[require_clerk_user] = lambda: {"sub": "user_12345"}
+
+    with (
+        patch("api.routers.settings.verify_alpaca_credentials", return_value=(True, None)),
+        TestClient(app) as client,
+    ):
+        res = client.post(
+            "/settings/alpaca",
+            json={"api_key": "PKVALIDKEY123", "secret_key": "SKVALIDSECRET456", "validate_credentials": True},
+        )
+
+    assert res.status_code == 200
+    assert res.json() == {"ok": True, "validated": True}
+    mock_conn.execute.assert_called_once()
+
+
+def test_save_alpaca_keys_skip_validation():
+    from unittest.mock import AsyncMock, patch
+
+    from api.auth import require_clerk_user
+
+    mock_conn = AsyncMock()
+
+    async def _mock_conn_generator():
+        yield mock_conn
+
+    app = create_app()
+    app.dependency_overrides[db.get_conn] = _mock_conn_generator
+    app.dependency_overrides[require_clerk_user] = lambda: {"sub": "user_12345"}
+
+    with (
+        patch("api.routers.settings.verify_alpaca_credentials") as mock_verify,
+        TestClient(app) as client,
+    ):
+        res = client.post(
+            "/settings/alpaca",
+            json={"api_key": "PKVALIDKEY123", "secret_key": "SKVALIDSECRET456", "validate_credentials": False},
+        )
+
+    assert res.status_code == 200
+    assert res.json() == {"ok": True, "validated": False}
+    mock_verify.assert_not_called()
+    mock_conn.execute.assert_called_once()
+
+

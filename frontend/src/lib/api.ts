@@ -203,6 +203,49 @@ export async function getMarketBenchmarks(): Promise<MarketQuote[]> {
   return quotes;
 }
 
+/** GET /settings/alpaca — check if user has active keys stored */
+export async function getAlpacaStatus(token: string): Promise<{ has_keys: boolean }> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/settings/alpaca`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return { has_keys: false };
+    return res.json();
+  } catch {
+    return { has_keys: false };
+  }
+}
+
+/** POST /settings/alpaca — save and validate Alpaca API keys */
+export async function saveAlpacaKeys(
+  token: string,
+  apiKey: string,
+  secretKey: string,
+  validateCredentials = true
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/settings/alpaca`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        api_key: apiKey,
+        secret_key: secretKey,
+        validate_credentials: validateCredentials,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: "Failed to save Alpaca credentials" }));
+      return { ok: false, error: err.detail || `Server returned ${res.status}` };
+    }
+    return { ok: true };
+  } catch (err: unknown) {
+    return { ok: false, error: err instanceof Error ? err.message : "Network error" };
+  }
+}
+
 /** DELETE /settings/alpaca — disconnect Alpaca API keys */
 export async function deleteAlpacaKeys(token: string): Promise<boolean> {
   const res = await fetch(`${apiBaseUrl()}/settings/alpaca`, {
