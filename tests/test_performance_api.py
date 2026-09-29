@@ -70,6 +70,40 @@ class TestBatchPerformanceEndpoint:
         assert data[0]["ticker"] == "AAPL"
         assert data[0]["pnl_pct"] == 3.24
 
+    @patch("api.routers.performance._compute_ticker_performance")
+    def test_batch_with_resolved_columns(self, mock_compute):
+        mock_compute.return_value = {
+            "order_id": 11,
+            "ticker": "TSLA",
+            "current_price": 260.0,
+            "pnl_pct": 12.5,
+            "status": "RESOLVED_WIN",
+            "days_held": 4,
+        }
+
+        mock_conn = AsyncMock()
+        mock_conn.fetch.return_value = [
+            {
+                "id": 11,
+                "ticker": "TSLA",
+                "timestamp_utc": datetime.now(timezone.utc),
+                "limit_price": 230.0,
+                "stop_loss": 215.0,
+                "target_price": 260.0,
+                "status": "RESOLVED_WIN",
+                "resolved_price": 260.0,
+                "pnl_percent": 12.5,
+            }
+        ]
+
+        client = make_test_client(mock_conn)
+        res = client.get("/performance/batch?ids=11")
+        assert res.status_code == 200
+        data = res.json()
+        assert len(data) == 1
+        assert data[0]["status"] == "RESOLVED_WIN"
+        assert data[0]["pnl_pct"] == 12.5
+
 
 class TestSingleOrderPerformanceEndpoint:
     def test_order_not_found_returns_404(self):
@@ -112,6 +146,75 @@ class TestSingleOrderPerformanceEndpoint:
         assert data["ticker"] == "NVDA"
         assert data["entry_price"] == 120.0
         assert data["status"] == "HIT_TARGET"
+        assert data["status_source"] == "db"
+
+    @patch("api.routers.performance._compute_ticker_performance")
+    def test_order_success_with_resolved_win(self, mock_compute):
+        now = datetime.now(timezone.utc)
+        mock_compute.return_value = {
+            "order_id": 43,
+            "ticker": "TSLA",
+            "current_price": 260.0,
+            "pnl_pct": 8.33,
+            "status": "RESOLVED_WIN",
+            "days_held": 3,
+        }
+
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = {
+            "id": 43,
+            "ticker": "TSLA",
+            "timestamp_utc": now,
+            "limit_price": 240.0,
+            "stop_loss": 225.0,
+            "target_price": 260.0,
+            "status": "RESOLVED_WIN",
+            "resolved_price": 260.0,
+            "pnl_percent": 8.33,
+        }
+
+        client = make_test_client(mock_conn)
+        res = client.get("/performance/43")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["order_id"] == 43
+        assert data["ticker"] == "TSLA"
+        assert data["status"] == "RESOLVED_WIN"
+        assert data["status_source"] == "db"
+        assert data["current_price"] == 260.0
+        assert data["pnl_pct"] == 8.33
+
+    @patch("api.routers.performance._compute_ticker_performance")
+    def test_order_success_with_resolved_loss(self, mock_compute):
+        now = datetime.now(timezone.utc)
+        mock_compute.return_value = {
+            "order_id": 44,
+            "ticker": "AAPL",
+            "current_price": 170.0,
+            "pnl_pct": -5.56,
+            "status": "RESOLVED_LOSS",
+            "days_held": 2,
+        }
+
+        mock_conn = AsyncMock()
+        mock_conn.fetchrow.return_value = {
+            "id": 44,
+            "ticker": "AAPL",
+            "timestamp_utc": now,
+            "limit_price": 180.0,
+            "stop_loss": 170.0,
+            "target_price": 200.0,
+            "status": "RESOLVED_LOSS",
+            "resolved_price": 170.0,
+            "pnl_percent": -5.56,
+        }
+
+        client = make_test_client(mock_conn)
+        res = client.get("/performance/44")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["order_id"] == 44
+        assert data["status"] == "RESOLVED_LOSS"
         assert data["status_source"] == "db"
 
 
@@ -205,3 +308,29 @@ class TestComputeTickerPerformanceHelper:
         assert result["current_price"] == 55.25
         assert result["pnl_pct"] == 10.5
         assert result["status"] == "ACTIVE"
+
+    @patch("api.routers.performance.yf.Ticker")
+    def test_resolved_win_fastpath_skips_yfinance(self, mock_ticker_cls):
+        dt = datetime(2026, 3, 20, 10, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 3, 25, 10, 0, tzinfo=timezone.utc)
+
+        result = _compute_ticker_performance(
+            order_id=5,
+            ticker="NVDA",
+            signal_dt=dt,
+            entry_price=120.0,
+            stop_loss=110.0,
+            target_price=140.0,
+            db_status="RESOLVED_WIN",
+            now=now,
+            resolved_price=140.0,
+            pnl_percent=16.67,
+        )
+
+        mock_ticker_cls.assert_not_called()
+        assert result["order_id"] == 5
+        assert result["ticker"] == "NVDA"
+        assert result["current_price"] == 140.0
+        assert result["pnl_pct"] == 16.67
+        assert result["status"] == "RESOLVED_WIN"
+        assert result["days_held"] == 5

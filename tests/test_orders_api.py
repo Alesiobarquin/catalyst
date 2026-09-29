@@ -294,3 +294,83 @@ def test_list_orders_with_execution_details():
     assert order["execution"]["alpaca_order_id"] == "alp-12345"
     assert order["execution"]["execution_status"] == "filled"
     assert order["execution"]["filled_avg_price"] == 175.25
+
+
+def test_list_orders_with_resolution_details():
+    now = datetime.now(timezone.utc)
+    mock_conn = AsyncMock()
+    mock_conn.fetchval.return_value = 1
+    mock_conn.fetch.return_value = [
+        {
+            "id": 10,
+            "ticker": "NVDA",
+            "timestamp_utc": now,
+            "action": "BUY",
+            "strategy_used": "Supernova",
+            "recommended_size_usd": 10000.0,
+            "limit_price": 120.0,
+            "stop_loss": 110.0,
+            "target_price": 140.0,
+            "rationale": "High short interest breakout",
+            "conviction_score": 90,
+            "catalyst_type": "SUPERNOVA",
+            "regime_vix": 16.5,
+            "spy_above_200sma": True,
+            "status": "RESOLVED_WIN",
+            "resolved_at": now,
+            "resolved_price": 140.0,
+            "pnl_percent": 16.67,
+            "realized_pnl_usd": 1667.0,
+        }
+    ]
+
+    with make_orders_test_client(mock_conn) as client:
+        res = client.get("/orders?status=RESOLVED_WIN")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data["items"]) == 1
+    order = data["items"][0]
+    assert order["status"] == "RESOLVED_WIN"
+    assert order["resolved_price"] == 140.0
+    assert order["pnl_percent"] == 16.67
+    assert order["realized_pnl_usd"] == 1667.0
+
+
+def test_export_orders_csv_with_resolution_columns():
+    now = datetime.now(timezone.utc)
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = [
+        {
+            "id": 15,
+            "ticker": "TSLA",
+            "timestamp_utc": now,
+            "action": "BUY",
+            "strategy_used": "Supernova",
+            "recommended_size_usd": 12000.0,
+            "limit_price": 240.0,
+            "stop_loss": 225.0,
+            "target_price": 280.0,
+            "rationale": "High short interest squeeze",
+            "conviction_score": 88,
+            "catalyst_type": "SUPERNOVA",
+            "regime_vix": 17.0,
+            "spy_above_200sma": True,
+            "status": "RESOLVED_WIN",
+            "resolved_at": now,
+            "resolved_price": 280.0,
+            "pnl_percent": 16.67,
+            "realized_pnl_usd": 2000.4,
+        }
+    ]
+
+    with make_orders_test_client(mock_conn) as client:
+        res = client.get("/orders/export/csv?status=RESOLVED_WIN")
+
+    assert res.status_code == 200
+    lines = res.text.strip().splitlines()
+    assert "resolved_at,resolved_price,pnl_percent,realized_pnl_usd" in lines[0]
+    assert "TSLA" in lines[1]
+    assert "280.0" in lines[1]
+    assert "2000.4" in lines[1]
+

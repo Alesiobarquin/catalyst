@@ -37,8 +37,26 @@ def _compute_ticker_performance(
     target_price: float,
     db_status: str,
     now: datetime,
+    resolved_price: float | None = None,
+    pnl_percent: float | None = None,
 ) -> dict:
     days_held = max(0, (now - signal_dt).days)
+
+    # Terminal resolved state fast-path: if order is closed and resolved in DB,
+    # return the recorded resolution metrics without making redundant external market queries.
+    if db_status in ("HIT_TARGET", "HIT_STOP", "EXPIRED", "RESOLVED_WIN", "RESOLVED_LOSS") and resolved_price is not None:
+        pnl_val = pnl_percent
+        if pnl_val is None and entry_price > 0:
+            pnl_val = round(((resolved_price - entry_price) / entry_price) * 100, 2)
+        return {
+            "order_id": order_id,
+            "ticker": ticker,
+            "current_price": resolved_price,
+            "pnl_pct": pnl_val,
+            "status": db_status,
+            "days_held": days_held,
+        }
+
     current_price: float | None = None
     computed_status = db_status
 
@@ -68,9 +86,8 @@ def _compute_ticker_performance(
     except Exception as exc:
         logger.warning("Performance lookup failed for %s: %s", ticker, exc)
 
-
-    pnl_pct = None
-    if current_price is not None and entry_price > 0:
+    pnl_pct = pnl_percent
+    if pnl_pct is None and current_price is not None and entry_price > 0:
         pnl_pct = round(((current_price - entry_price) / entry_price) * 100, 2)
 
     return {
@@ -105,27 +122,41 @@ async def get_batch_performance(
     if len(id_list) > 20:
         raise HTTPException(status_code=422, detail="Maximum 20 IDs per batch request")
 
-    rows = await conn.fetch(
-        "SELECT id, ticker, timestamp_utc, limit_price, stop_loss, target_price, status "
-        "FROM trade_orders WHERE id = ANY($1::bigint[])",
-        id_list,
-    )
+    try:
+        rows = await conn.fetch(
+            "SELECT id, ticker, timestamp_utc, limit_price, stop_loss, target_price, status, "
+            "resolved_price, pnl_percent "
+            "FROM trade_orders WHERE id = ANY($1::bigint[])",
+            id_list,
+        )
+    except (asyncpg.UndefinedColumnError, asyncpg.UndefinedTableError):
+        rows = await conn.fetch(
+            "SELECT id, ticker, timestamp_utc, limit_price, stop_loss, target_price, status "
+            "FROM trade_orders WHERE id = ANY($1::bigint[])",
+            id_list,
+        )
 
     now = datetime.now(timezone.utc)
-    tasks = [
-        asyncio.to_thread(
-            _compute_ticker_performance,
-            row["id"],
-            row["ticker"],
-            row["timestamp_utc"],
-            float(row["limit_price"]),
-            float(row["stop_loss"]),
-            float(row["target_price"]),
-            row["status"],
-            now,
+    tasks = []
+    for row in rows:
+        row_dict = dict(row)
+        res_price = float(row_dict["resolved_price"]) if row_dict.get("resolved_price") is not None else None
+        pnl_val = float(row_dict["pnl_percent"]) if row_dict.get("pnl_percent") is not None else None
+        tasks.append(
+            asyncio.to_thread(
+                _compute_ticker_performance,
+                row_dict["id"],
+                row_dict["ticker"],
+                row_dict["timestamp_utc"],
+                float(row_dict["limit_price"]),
+                float(row_dict["stop_loss"]),
+                float(row_dict["target_price"]),
+                row_dict["status"],
+                now,
+                res_price,
+                pnl_val,
+            )
         )
-        for row in rows
-    ]
 
     return await asyncio.gather(*tasks)
 
@@ -141,22 +172,35 @@ async def get_order_performance(
     """
     Returns live performance data for a single trade order.
     """
-    row = await conn.fetchrow(
-        "SELECT id, ticker, timestamp_utc, limit_price, stop_loss, target_price, status "
-        "FROM trade_orders WHERE id = $1",
-        order_id,
-    )
+    try:
+        row = await conn.fetchrow(
+            "SELECT id, ticker, timestamp_utc, limit_price, stop_loss, target_price, status, "
+            "resolved_price, pnl_percent "
+            "FROM trade_orders WHERE id = $1",
+            order_id,
+        )
+    except (asyncpg.UndefinedColumnError, asyncpg.UndefinedTableError):
+        row = await conn.fetchrow(
+            "SELECT id, ticker, timestamp_utc, limit_price, stop_loss, target_price, status "
+            "FROM trade_orders WHERE id = $1",
+            order_id,
+        )
+
     if row is None:
         raise HTTPException(status_code=404, detail=f"Order {order_id} not found")
 
-    ticker = row["ticker"]
-    entry_price = float(row["limit_price"])
-    stop_loss = float(row["stop_loss"])
-    target_price = float(row["target_price"])
-    signal_dt = row["timestamp_utc"]
-    db_status = row["status"]
+    row_dict = dict(row)
+    ticker = row_dict["ticker"]
+    entry_price = float(row_dict["limit_price"])
+    stop_loss = float(row_dict["stop_loss"])
+    target_price = float(row_dict["target_price"])
+    signal_dt = row_dict["timestamp_utc"]
+    db_status = row_dict["status"]
+    resolved_price = float(row_dict["resolved_price"]) if row_dict.get("resolved_price") is not None else None
+    pnl_percent = float(row_dict["pnl_percent"]) if row_dict.get("pnl_percent") is not None else None
+
     now = datetime.now(timezone.utc)
-    resolved_in_db = db_status in ("HIT_TARGET", "HIT_STOP", "EXPIRED")
+    resolved_in_db = db_status in ("HIT_TARGET", "HIT_STOP", "EXPIRED", "RESOLVED_WIN", "RESOLVED_LOSS")
 
     perf = await asyncio.to_thread(
         _compute_ticker_performance,
@@ -168,6 +212,8 @@ async def get_order_performance(
         target_price,
         db_status,
         now,
+        resolved_price,
+        pnl_percent,
     )
 
     return {
