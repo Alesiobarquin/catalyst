@@ -4,6 +4,7 @@ import time
 
 from google import genai
 from google.genai import types
+from kafka.errors import KafkaError
 
 from ai_layer.ai_config import (
     GEMINI_API_KEY,
@@ -81,7 +82,7 @@ class AIAnalysisService:
                     value_serializer=lambda value: json.dumps(value).encode("utf-8"),
                 )
                 break
-            except Exception as exc:
+            except (KafkaError, ValueError, OSError) as exc:
                 last_error = exc
                 logger.warning(
                     "Kafka connection attempt %s/3 failed: %s. Retrying in %ss",
@@ -107,10 +108,14 @@ class AIAnalysisService:
             except Exception as exc:
                 logger.error("Unhandled error processing triage message: %s", exc, exc_info=True)
             finally:
-                if hasattr(self, "consumer") and self.consumer:
+                if (
+                    hasattr(self, "consumer")
+                    and hasattr(self.consumer, "commit")
+                    and callable(self.consumer.commit)
+                ):
                     try:
                         self.consumer.commit()
-                    except Exception as exc:
+                    except (KafkaError, OSError) as exc:
                         logger.warning("Kafka commit failed: %s", exc)
 
     def close(self):
@@ -123,7 +128,7 @@ class AIAnalysisService:
         prompt = build_analysis_prompt(triage_payload)
         try:
             analysis = self.analyze_with_retry(prompt)
-        except Exception as exc:
+        except (RuntimeError, ValueError, TypeError, KeyError) as exc:
             logger.error(
                 "Gemini analysis failed for %s: %s",
                 triage_payload.get("ticker", "unknown"),
@@ -144,10 +149,14 @@ class AIAnalysisService:
         validated_signal = self.merge_payload(triage_payload, analysis)
         self.producer.send(VALIDATED_SIGNALS_TOPIC, validated_signal)
         self.producer.flush()
-        if hasattr(self, "consumer") and self.consumer:
+        if (
+            hasattr(self, "consumer")
+            and hasattr(self.consumer, "commit")
+            and callable(self.consumer.commit)
+        ):
             try:
                 self.consumer.commit()
-            except Exception as exc:
+            except (KafkaError, OSError) as exc:
                 logger.warning("Kafka commit failed after publishing validated signal: %s", exc)
         logger.info(
             "Published validated signal for %s with conviction %s",

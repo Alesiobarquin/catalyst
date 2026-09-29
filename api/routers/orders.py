@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timezone
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi.responses import StreamingResponse
 
 from api.db import get_conn
@@ -56,7 +56,7 @@ def _format_order_row(r: dict | asyncpg.Record) -> dict:
 async def list_orders(
     strategy: str | None = Query(None),
     status: str | None = Query(None),
-    ticker: str | None = Query(None),
+    ticker: str | None = Query(None, min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-]+$"),
     date_range: str | None = Query(None, pattern="^(7d|30d|90d|all)$"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -148,7 +148,7 @@ async def list_orders(
 async def export_orders_csv(
     strategy: str | None = Query(None),
     status: str | None = Query(None),
-    ticker: str | None = Query(None),
+    ticker: str | None = Query(None, min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-]+$"),
     date_range: str | None = Query(None, pattern="^(7d|30d|90d|all)$"),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
@@ -362,7 +362,7 @@ def _conviction_label(score: int) -> str:
 
 @router.get("/{order_id}/detail", response_model=SignalDetailResponse)
 async def get_order_detail(
-    order_id: int,
+    order_id: int = Path(..., ge=1),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     """Return comprehensive signal analysis matching frontend SignalDetail schema."""
@@ -386,12 +386,27 @@ async def get_order_detail(
         SELECT *
         FROM validated_signals
         WHERE ticker = $1
+          AND time >= $2 - INTERVAL '2 hours'
+          AND time <= $2 + INTERVAL '2 hours'
         ORDER BY ABS(EXTRACT(EPOCH FROM (time - $2))) ASC
         LIMIT 1
         """,
         ticker,
         order_row["timestamp_utc"],
     )
+    if not sig_row:
+        # Fallback to nearest signal if outside 2-hour window
+        sig_row = await conn.fetchrow(
+            """
+            SELECT *
+            FROM validated_signals
+            WHERE ticker = $1
+            ORDER BY ABS(EXTRACT(EPOCH FROM (time - $2))) ASC
+            LIMIT 1
+            """,
+            ticker,
+            order_row["timestamp_utc"],
+        )
 
     limit_price = float(order_row["limit_price"])
     stop_loss = float(order_row["stop_loss"])

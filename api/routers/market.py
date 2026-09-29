@@ -4,7 +4,7 @@ from datetime import datetime
 
 import asyncpg
 import yfinance as yf
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 
 from api.db import get_conn
 from api.models import MarketQuoteResponse, PriceBar
@@ -84,7 +84,9 @@ async def search_tickers(
 
 
 @router.get("/{ticker}/quote", response_model=MarketQuoteResponse)
-async def ticker_quote(ticker: str):
+async def ticker_quote(
+    ticker: str = Path(..., min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-\=\^]+$")
+):
     """Return latest quote metrics (price, day range, volume, 52w range) via yfinance fast_info."""
     try:
         quote = await asyncio.to_thread(_fetch_quote, ticker)
@@ -105,7 +107,7 @@ def _fetch_history(symbol: str, start_date_str: str):
 
 @router.get("/{ticker}/history", response_model=list[PriceBar])
 async def price_history(
-    ticker: str,
+    ticker: str = Path(..., min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-\=\^]+$"),
     from_ts: str = Query(..., alias="from", description="ISO 8601 timestamp — start of range"),
 ):
     """Return daily OHLC from `from` timestamp to today for the price chart overlay.

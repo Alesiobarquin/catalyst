@@ -114,7 +114,7 @@ def create_app() -> FastAPI:
                     out["engine"] = str(st).upper() if st else "ok"
                 else:
                     out["engine"] = "DOWN"
-        except Exception:
+        except (httpx.HTTPError, httpx.TimeoutException, OSError, ValueError):
             out["engine"] = "DOWN"
 
         ok = (

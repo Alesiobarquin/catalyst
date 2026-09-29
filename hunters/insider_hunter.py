@@ -1,4 +1,5 @@
 import asyncio
+import json
 import xml.etree.ElementTree as ET
 from collections import deque
 
@@ -111,7 +112,7 @@ async def fetch_filing_xml(client: httpx.AsyncClient, index_url: str, cik: str) 
 
         return full_url
 
-    except Exception as e:
+    except (httpx.HTTPError, json.JSONDecodeError, KeyError, IndexError, ValueError) as e:
         logger.error("Error fetching filing index for %s: %s", index_url, e)
         return None
 
@@ -201,7 +202,7 @@ def parse_form4_xml(xml_content: bytes, cik: str, accession: str, filing_url: st
                 }
             )
 
-    except Exception as e:
+    except (ET.ParseError, ValueError, KeyError, IndexError, AttributeError) as e:
         logger.error("Error parsing Form 4 XML for %s: %s", accession, e)
 
     return signals
@@ -238,8 +239,16 @@ def classify_signal(txn_code: str, total_value: float | None, roles: list[str]) 
 
 async def run():
     logger.info("Insider Hunter starting...")
-    processed_accessions_order = deque(maxlen=500)
-    processed_accessions = set()
+    processed_accessions_order: deque[str] = deque()
+    processed_accessions: set[str] = set()
+
+    def mark_accession_processed(acc: str) -> None:
+        if acc not in processed_accessions:
+            processed_accessions.add(acc)
+            processed_accessions_order.append(acc)
+            while len(processed_accessions_order) > 500:
+                oldest = processed_accessions_order.popleft()
+                processed_accessions.discard(oldest)
 
     async with httpx.AsyncClient(headers=HEADERS, timeout=15.0) as client:
         while True:
@@ -279,8 +288,7 @@ async def run():
 
                         xml_url = await fetch_filing_xml(client, link, cik)
                         if not xml_url:
-                            processed_accessions.add(accession)
-                            processed_accessions_order.append(accession)
+                            mark_accession_processed(accession)
                             continue
 
                         xml_resp = await async_http_get_with_retry(
@@ -288,8 +296,7 @@ async def run():
                         )
                         if xml_resp.status_code != 200:
                             logger.warning("Failed to fetch XML: %s", xml_url)
-                            processed_accessions.add(accession)
-                            processed_accessions_order.append(accession)
+                            mark_accession_processed(accession)
                             continue
 
                         signals = parse_form4_xml(xml_resp.content, cik, accession, xml_url)
@@ -333,19 +340,13 @@ async def run():
                         if not signals:
                             logger.debug("No actionable signals in %s", accession)
 
-                        processed_accessions.add(accession)
-                        processed_accessions_order.append(accession)
-
-                        if len(processed_accessions) > 500:
-                            oldest = processed_accessions_order[0]
-                            processed_accessions.discard(oldest)
-
+                        mark_accession_processed(accession)
                         await asyncio.sleep(0.5)
 
                 else:
                     logger.error("SEC Feed Error: %s", response.status_code)
 
-            except Exception as e:
+            except (httpx.HTTPError, ET.ParseError, OSError) as e:
                 logger.error("Error in RSS loop: %s", e)
 
             logger.debug("Sleeping for 60 seconds...")

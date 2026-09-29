@@ -24,6 +24,7 @@ class SyntheticInjectRequest(BaseModel):
     volume: float = Field(default=850000.0, gt=0)
     relative_volume: float = Field(default=3.2, gt=0)
     short_float: float = Field(default=28.5, ge=0)
+    dry_run: bool = False
 
 
 class SyntheticInjectResponse(BaseModel):
@@ -122,11 +123,22 @@ async def inject_synthetic_signal(req: SyntheticInjectRequest):
 
     events = _create_synthetic_events(req)
 
+    if req.dry_run:
+        return SyntheticInjectResponse(
+            success=True,
+            scenario=req.scenario,
+            ticker=req.ticker.upper(),
+            events_injected=len(events),
+            message=f"Dry run: Generated {len(events)} synthetic event(s) for {req.ticker.upper()} (no Kafka publish).",
+        )
+
     # Attempt publishing to Kafka
     kafka_servers = getattr(settings, "kafka_bootstrap_servers", "localhost:9092")
     raw_topic = getattr(settings, "raw_events_topic", "raw-events")
 
     try:
+        from kafka.errors import KafkaError
+
         from kafka import KafkaProducer
 
         producer = KafkaProducer(
@@ -138,18 +150,22 @@ async def inject_synthetic_signal(req: SyntheticInjectRequest):
             producer.send(raw_topic, value=ev)
         producer.flush(timeout=3)
         producer.close(timeout=1)
-        msg = f"Successfully injected {len(events)} event(s) for {req.ticker.upper()} into {raw_topic}."
-    except Exception as exc:
-        logger.warning("Kafka injection failed or offline (%s): %s", kafka_servers, exc)
-        msg = (
-            f"Generated {len(events)} synthetic event(s) for {req.ticker.upper()} "
-            f"(Kafka offline: {exc})."
+        return SyntheticInjectResponse(
+            success=True,
+            scenario=req.scenario,
+            ticker=req.ticker.upper(),
+            events_injected=len(events),
+            message=f"Successfully injected {len(events)} event(s) for {req.ticker.upper()} into {raw_topic}.",
         )
-
-    return SyntheticInjectResponse(
-        success=True,
-        scenario=req.scenario,
-        ticker=req.ticker.upper(),
-        events_injected=len(events),
-        message=msg,
-    )
+    except (KafkaError, OSError, TimeoutError) as exc:
+        logger.warning("Kafka injection failed or offline (%s): %s", kafka_servers, exc)
+        raise HTTPException(
+            status_code=503,
+            detail=f"Kafka broker offline or unavailable ({kafka_servers}): {exc}",
+        )
+    except Exception as exc:
+        logger.error("Unexpected error injecting events: %s", exc)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected error injecting events: {exc}",
+        )

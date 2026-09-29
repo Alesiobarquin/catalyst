@@ -39,7 +39,7 @@ async def list_signals(
     catalyst_type: str | None = Query(None),
     min_conviction: int | None = Query(None, ge=0, le=100),
     is_trap: bool | None = Query(None),
-    ticker: str | None = Query(None),
+    ticker: str | None = Query(None, min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-]+$"),
     date_range: str | None = Query(None, pattern="^(7d|30d|90d|all)$"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
@@ -147,7 +147,7 @@ async def export_signals_csv(
     catalyst_type: str | None = Query(None),
     min_conviction: int | None = Query(None, ge=0, le=100),
     is_trap: bool | None = Query(None),
-    ticker: str | None = Query(None),
+    ticker: str | None = Query(None, min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-]+$"),
     date_range: str | None = Query(None, pattern="^(7d|30d|90d|all)$"),
     conn: asyncpg.Connection = Depends(get_conn),
 ):

@@ -605,8 +605,11 @@ def test_metrics_endpoint():
 
 
 def test_inject_synthetic_signals_endpoint_confluence():
+    from unittest.mock import MagicMock, patch
+
+    mock_producer = MagicMock()
     app = create_app()
-    with TestClient(app) as client:
+    with patch("kafka.KafkaProducer", return_value=mock_producer), TestClient(app) as client:
         res = client.post(
             "/testing/inject",
             json={
@@ -624,11 +627,15 @@ def test_inject_synthetic_signals_endpoint_confluence():
     assert data["scenario"] == "confluence"
     assert data["ticker"] == "NVDA"
     assert data["events_injected"] == 2
+    assert mock_producer.send.call_count == 2
 
 
 def test_inject_synthetic_signals_endpoint_drop():
+    from unittest.mock import MagicMock, patch
+
+    mock_producer = MagicMock()
     app = create_app()
-    with TestClient(app) as client:
+    with patch("kafka.KafkaProducer", return_value=mock_producer), TestClient(app) as client:
         res = client.post(
             "/testing/inject",
             json={
@@ -643,6 +650,49 @@ def test_inject_synthetic_signals_endpoint_drop():
     assert data["scenario"] == "drop"
     assert data["ticker"] == "JUNK"
     assert data["events_injected"] == 1
+    assert mock_producer.send.call_count == 1
+
+
+def test_inject_synthetic_signals_dry_run():
+    app = create_app()
+    with TestClient(app) as client:
+        res = client.post(
+            "/testing/inject",
+            json={
+                "scenario": "confluence",
+                "ticker": "AAPL",
+                "dry_run": True,
+            },
+        )
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["success"] is True
+    assert data["scenario"] == "confluence"
+    assert data["ticker"] == "AAPL"
+    assert "Dry run" in data["message"]
+
+
+def test_inject_synthetic_signals_kafka_offline():
+    from unittest.mock import patch
+
+    from kafka.errors import NoBrokersAvailable
+
+    app = create_app()
+    with (
+        patch("kafka.KafkaProducer", side_effect=NoBrokersAvailable("No brokers")),
+        TestClient(app) as client,
+    ):
+        res = client.post(
+            "/testing/inject",
+            json={
+                "scenario": "confluence",
+                "ticker": "NVDA",
+            },
+        )
+
+    assert res.status_code == 503
+    assert "Kafka broker offline" in res.json()["detail"]
 
 
 @pytest.mark.asyncio
@@ -672,3 +722,29 @@ async def test_ping_redis_failure():
         res = await db.ping_redis()
         assert res == "error"
         mock_client.aclose.assert_awaited_once()
+
+
+def test_invalid_ticker_query_validation():
+    with make_test_client() as client:
+        # Invalid characters in ticker
+        res = client.get("/signals?ticker=BAD$TICKER#")
+        assert res.status_code == 422
+
+        # Too long ticker
+        res = client.get("/signals?ticker=TOOLONGTICKERNAME")
+        assert res.status_code == 422
+
+        # Invalid ticker in orders
+        res = client.get("/orders?ticker=INVALID%")
+        assert res.status_code == 422
+
+
+def test_invalid_order_id_path_validation():
+    with make_test_client() as client:
+        # Negative order id
+        res = client.get("/orders/-1/detail")
+        assert res.status_code == 422
+
+        # Zero order id
+        res = client.get("/orders/0/detail")
+        assert res.status_code == 422

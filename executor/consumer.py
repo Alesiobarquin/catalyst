@@ -194,8 +194,11 @@ def _send_order_request(
                 time.sleep(backoff)
                 continue
             return False, None, "error", None, str(te)
+        except (httpx.HTTPError, ValueError, KeyError) as e:
+            logger.warning("Alpaca request failed: %s", e)
+            return False, None, "error", None, str(e)
         except Exception as e:
-            logger.exception("Alpaca request failed: %s", e)
+            logger.exception("Unexpected Alpaca request error: %s", e)
             return False, None, "error", None, str(e)
     return False, None, "error", None, "Max retries exceeded"
 

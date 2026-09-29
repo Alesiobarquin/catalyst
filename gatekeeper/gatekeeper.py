@@ -3,7 +3,8 @@ import logging
 import time
 from datetime import datetime, timezone
 
-from redis import Redis
+from kafka.errors import KafkaError
+from redis import Redis, RedisError
 
 from gatekeeper.config import (
     CONFLUENCE_THRESHOLD,
@@ -40,7 +41,7 @@ class GatekeeperService:
             self.redis = Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
             # Fail fast if Redis is not reachable.
             self.redis.ping()
-        except Exception as exc:
+        except (RedisError, ConnectionError, OSError) as exc:
             logger.error(
                 "Failed to connect to Redis at %s:%s: %s",
                 REDIS_HOST,
@@ -66,7 +67,7 @@ class GatekeeperService:
                     value_serializer=lambda value: json.dumps(value).encode("utf-8"),
                 )
                 break
-            except Exception as exc:
+            except (KafkaError, ValueError, OSError) as exc:
                 last_error = exc
                 logger.warning(
                     "Kafka connection attempt %s/3 failed: %s. Retrying in %ss",
@@ -89,13 +90,19 @@ class GatekeeperService:
         for message in self.consumer:
             try:
                 self.process_event(message.value)
+            except (RedisError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+                logger.error("Error processing raw event: %s", exc, exc_info=True)
             except Exception as exc:
                 logger.error("Unhandled error processing raw event: %s", exc, exc_info=True)
             finally:
-                if hasattr(self, "consumer") and self.consumer:
+                if (
+                    hasattr(self, "consumer")
+                    and hasattr(self.consumer, "commit")
+                    and callable(self.consumer.commit)
+                ):
                     try:
                         self.consumer.commit()
-                    except Exception as exc:
+                    except (KafkaError, OSError) as exc:
                         logger.warning("Kafka commit failed: %s", exc)
 
     def close(self):
@@ -153,10 +160,14 @@ class GatekeeperService:
         }
         self.producer.send(TRIAGE_PRIORITY_TOPIC, triage_payload)
         self.producer.flush()
-        if hasattr(self, "consumer") and self.consumer:
+        if (
+            hasattr(self, "consumer")
+            and hasattr(self.consumer, "commit")
+            and callable(self.consumer.commit)
+        ):
             try:
                 self.consumer.commit()
-            except Exception as exc:
+            except (KafkaError, OSError) as exc:
                 logger.warning("Kafka commit failed after forwarding triage payload: %s", exc)
 
         self.mark_sent(ticker)
