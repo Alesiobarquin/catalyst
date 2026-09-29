@@ -188,12 +188,15 @@ def test_get_order_detail_not_found():
 def test_order_stats_success():
     mock_conn = AsyncMock()
     mock_conn.fetchval.side_effect = [10, 82.5, 250000.0]
+    mock_conn.fetchrow.return_value = {"total_pnl_usd": 12500.0, "avg_pnl_pct": 14.5}
     mock_conn.fetch.side_effect = [
         [{"strategy_used": "Supernova", "cnt": 6}, {"strategy_used": "Scalper", "cnt": 4}],
         [{"catalyst_type": "SUPERNOVA", "cnt": 7}, {"catalyst_type": "EARNINGS", "cnt": 3}],
         [
-            {"status": "HIT_TARGET", "cnt": 6},
-            {"status": "HIT_STOP", "cnt": 2},
+            {"status": "HIT_TARGET", "cnt": 4},
+            {"status": "RESOLVED_WIN", "cnt": 2},
+            {"status": "HIT_STOP", "cnt": 1},
+            {"status": "RESOLVED_LOSS", "cnt": 1},
             {"status": "ACTIVE", "cnt": 2},
         ],
         [{"date": "Sep 27", "cnt": 10}],
@@ -207,10 +210,12 @@ def test_order_stats_success():
     data = res.json()
     assert data["total_orders"] == 10
     assert data["avg_conviction"] == 82.5
-    assert data["hit_target_count"] == 6
-    assert data["hit_stop_count"] == 2
+    assert data["hit_target_count"] == 6  # 4 + 2
+    assert data["hit_stop_count"] == 2    # 1 + 1
     assert data["active_count"] == 2
     assert data["win_rate_percent"] == 75.0
+    assert data["realized_pnl_percent"] == 14.5
+    assert data["total_realized_pnl_usd"] == 12500.0
     assert data["total_recommended_volume_usd"] == 250000.0
     assert data["strategy_breakdown"]["Supernova"] == 6
     assert data["catalyst_breakdown"]["SUPERNOVA"] == 7

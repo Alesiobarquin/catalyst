@@ -26,6 +26,7 @@ class TestTradeResolverEvaluation:
         assert resolution["status"] == "HIT_TARGET"
         assert resolution["resolved_price"] == 125.0
         assert resolution["pnl_percent"] == 25.0  # (125 - 100) / 100 * 100
+        assert resolution["realized_pnl_usd"] == 1250.0  # 5000 * 0.25
 
     def test_evaluate_buy_hit_stop(self):
         resolution = self.resolver.evaluate_order(self.base_order, current_price=88.5)
@@ -33,6 +34,7 @@ class TestTradeResolverEvaluation:
         assert resolution["status"] == "HIT_STOP"
         assert resolution["resolved_price"] == 88.5
         assert resolution["pnl_percent"] == -11.5  # (88.5 - 100) / 100 * 100
+        assert resolution["realized_pnl_usd"] == -575.0  # 5000 * -0.115
 
     def test_evaluate_buy_remains_active(self):
         resolution = self.resolver.evaluate_order(self.base_order, current_price=105.0)
@@ -127,6 +129,7 @@ class TestTradeResolverProcessCycle:
                 "limit_price": 100.0,
                 "stop_loss": 90.0,
                 "target_price": 120.0,
+                "recommended_size_usd": 10000.0,
             }
         ]
 
@@ -142,12 +145,14 @@ class TestTradeResolverProcessCycle:
 
         assert len(resolved) == 1
         assert resolved[0]["status"] == "HIT_TARGET"
+        assert resolved[0]["realized_pnl_usd"] == 3000.0
         assert mock_cur.execute.called
         assert mock_conn.commit.called
         assert mock_producer.send.called
         sent_topic, payload = mock_producer.send.call_args[0]
         assert sent_topic == "trade-resolutions"
         assert payload["ticker"] == "NVDA"
+        assert payload["realized_pnl_usd"] == 3000.0
 
     def test_stop_cleans_up_producer(self):
         mock_producer = MagicMock()

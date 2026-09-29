@@ -308,9 +308,24 @@ async def order_stats(conn: asyncpg.Connection = Depends(get_conn)):
         or 0.0
     )
 
+    try:
+        pnl_stats = await conn.fetchrow(
+            """
+            SELECT COALESCE(SUM(realized_pnl_usd), 0.0) AS total_pnl_usd,
+                   COALESCE(AVG(pnl_percent), 0.0) AS avg_pnl_pct
+            FROM trade_orders
+            WHERE status IN ('HIT_TARGET', 'HIT_STOP', 'RESOLVED_WIN', 'RESOLVED_LOSS')
+            """
+        )
+        total_pnl_usd = float(pnl_stats["total_pnl_usd"]) if pnl_stats else 0.0
+        avg_pnl_pct = round(float(pnl_stats["avg_pnl_pct"]), 2) if pnl_stats else 0.0
+    except (asyncpg.UndefinedColumnError, asyncpg.UndefinedTableError):
+        total_pnl_usd = 0.0
+        avg_pnl_pct = 0.0
+
     status_map = {r["status"]: r["cnt"] for r in status_rows}
-    hit_target = int(status_map.get("HIT_TARGET", 0))
-    hit_stop = int(status_map.get("HIT_STOP", 0))
+    hit_target = int(status_map.get("HIT_TARGET", 0)) + int(status_map.get("RESOLVED_WIN", 0))
+    hit_stop = int(status_map.get("HIT_STOP", 0)) + int(status_map.get("RESOLVED_LOSS", 0))
     closed_total = hit_target + hit_stop
     win_rate = round((hit_target / closed_total) * 100.0, 1) if closed_total > 0 else 0.0
 
@@ -328,8 +343,8 @@ async def order_stats(conn: asyncpg.Connection = Depends(get_conn)):
             {"bucket": r["bucket"], "count": r["cnt"]} for r in bucket_rows
         ],
         "win_rate_percent": win_rate,
-        "realized_pnl_percent": 0.0,
-        "total_realized_pnl_usd": 0.0,
+        "realized_pnl_percent": avg_pnl_pct,
+        "total_realized_pnl_usd": total_pnl_usd,
         "total_recommended_volume_usd": float(tot_vol),
     }
 

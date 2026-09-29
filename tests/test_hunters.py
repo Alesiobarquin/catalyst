@@ -373,3 +373,158 @@ class TestHunterOrchestrator:
         assert "Timed out after 0.01s" in res["error"]
         assert res["duration_sec"] >= 0.01
 
+    @pytest.mark.asyncio
+    async def test_main_cli_list(self, capsys):
+        from unittest.mock import patch
+        from hunters.main import main
+
+        with patch("sys.argv", ["main.py", "--list"]):
+            results = await main()
+
+        assert results == []
+        captured = capsys.readouterr()
+        assert "Available hunters:" in captured.out
+        assert "squeeze" in captured.out
+        assert "biotech" in captured.out
+
+    @pytest.mark.asyncio
+    async def test_main_cli_all(self):
+        from unittest.mock import AsyncMock, patch
+        from hunters.main import main
+
+        with patch("hunters.main.run_hunter", new_callable=AsyncMock) as mock_run:
+            mock_run.return_value = {"hunter": "test", "success": True, "error": None, "duration_sec": 0.1}
+            with patch("sys.argv", ["main.py", "all", "--timeout", "15"]):
+                results = await main()
+
+        assert len(results) == 5
+        assert all(r["success"] is True for r in results)
+        assert mock_run.call_count == 5
+
+    @pytest.mark.asyncio
+    async def test_main_cli_single(self):
+        from unittest.mock import AsyncMock, patch
+        from hunters.main import main
+
+        with patch("hunters.main.run_hunter", new_callable=AsyncMock) as mock_run:
+            mock_run.return_value = {"hunter": "drifter", "success": True, "error": None, "duration_sec": 0.2}
+            with patch("sys.argv", ["main.py", "drifter"]):
+                results = await main()
+
+        assert len(results) == 1
+        assert results[0]["hunter"] == "drifter"
+        mock_run.assert_called_once_with("drifter", timeout_sec=None)
+
+
+class TestBiotechScraper:
+    import pytest
+
+    @pytest.mark.asyncio
+    async def test_scrape_biopharm_filters_high_impact(self):
+        from unittest.mock import AsyncMock, MagicMock
+        from hunters.biotech_hunter import scrape_biopharm
+
+        mock_page = AsyncMock()
+
+        # Cell mock helper
+        def make_cell(text):
+            cell = AsyncMock()
+            cell.inner_text.return_value = text
+            return cell
+
+        # Row 1: High impact (Phase 3)
+        row1 = AsyncMock()
+        row1.query_selector_all.return_value = [
+            make_cell("BIIB"),
+            make_cell("Aducanumab"),
+            make_cell("Phase 3 readout"),
+            make_cell("2026-06-30"),
+        ]
+
+        # Row 2: Low impact (Phase 1, should be ignored)
+        row2 = AsyncMock()
+        row2.query_selector_all.return_value = [
+            make_cell("PFE"),
+            make_cell("PF-001"),
+            make_cell("Phase 1 trial"),
+            make_cell("2026-07-15"),
+        ]
+
+        # Row 3: High impact (PDUFA)
+        row3 = AsyncMock()
+        row3.query_selector_all.return_value = [
+            make_cell("MRNA"),
+            make_cell("mRNA-1273"),
+            make_cell("PDUFA Decision"),
+            make_cell("2026-08-01"),
+        ]
+
+        mock_page.query_selector_all.return_value = [row1, row2, row3]
+
+        catalysts = await scrape_biopharm(mock_page)
+
+        assert len(catalysts) == 2
+        tickers = [c["ticker"] for c in catalysts]
+        assert "BIIB" in tickers
+        assert "MRNA" in tickers
+        assert "PFE" not in tickers
+        assert catalysts[0]["hunter"] == "biotech"
+        assert catalysts[0]["source_hunter"] == "biotech"
+
+
+class TestDrifterSweep:
+    import pytest
+
+    @pytest.mark.asyncio
+    async def test_run_sweep_filters_and_emits(self):
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from hunters.drifter_hunter import _run_sweep
+        import hunters.drifter_hunter as dh
+
+        dh._SEEN.clear()
+        dh._SEEN_SET.clear()
+
+        mock_client = AsyncMock()
+        mock_kafka = MagicMock()
+
+        sample_calendar = [
+            {
+                "symbol": "AAPL",
+                "date": "2026-03-25",
+                "eps": 2.10,
+                "epsEstimated": 1.90,  # +10.53% beat (passes >= 5.0%)
+                "revenue": 100_000_000,
+                "revenueEstimated": 95_000_000,
+            },
+            {
+                "symbol": "MSFT",
+                "date": "2026-03-25",
+                "eps": 2.02,
+                "epsEstimated": 2.00,  # +1.0% beat (fails < 5.0%)
+                "revenue": 50_000_000,
+                "revenueEstimated": 50_000_000,
+            },
+        ]
+
+        with patch("hunters.drifter_hunter._fetch_calendar", new_callable=AsyncMock) as mock_fetch, \
+             patch("hunters.drifter_hunter.fetch_liquidity_metrics") as mock_liq:
+            mock_fetch.return_value = sample_calendar
+            mock_liq.return_value = {
+                "price": 180.0,
+                "volume": 25_000_000,
+                "relative_volume": 2.5,
+            }
+
+            pushed = await _run_sweep(mock_client, mock_kafka)
+
+        assert pushed == 1
+        assert mock_kafka.send_message.call_count == 2  # KAFKA_TOPIC_DRIFTER + RAW_EVENTS_TOPIC
+        call_args = mock_kafka.send_message.call_args_list[0]
+        payload = call_args[0][1]
+        assert payload["ticker"] == "AAPL"
+        assert payload["hunter"] == "drifter"
+        assert payload["source_hunter"] == "drifter"
+        assert payload["price"] == 180.0
+        assert payload["volume"] == 25_000_000
+
+

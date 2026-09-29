@@ -213,6 +213,7 @@ Multi-channel real-time catalyst alerting service:
 | **Phase 34** | Strict Path Validation, Confluence ZSET Watcher & Expanded Frontend Tests | Standardized regex `Path` validation on `/signals/{ticker}` and `/orders/{ticker}`, upgraded `confluence_watcher.py` to inspect and prune `gk:sources_zset:*` keys alongside legacy sets, and added comprehensive Vitest component test suites for `SignalFilterBar` and `PipelineStatus` (326 tests across stack: 249 Python, 33 Java, 44 Vitest). |
 | **Phase 35** | TradeCard Component Testing & Realized PnL Field Exposure | Exposed `realized_pnl_usd` across API models, queries, and CSV exports, expanded `TradeStatus` union with lifecycle states (`RESOLVED_WIN`, `RESOLVED_LOSS`, `SUBMITTED`), made `getStatusConfig` defensively resilient against undefined statuses, and built Vitest unit test suite for `TradeCard` (331 tests across stack: 249 Python, 33 Java, 49 Vitest). |
 | **Phase 36** | Performance API Terminal Resolution Fast-Path, Orders CSV Resolution Exports & Real-Time / Search Test Suite | Hardened `/performance` and `/performance/batch` with terminal resolved fast-path (`RESOLVED_WIN`, `RESOLVED_LOSS`, `HIT_TARGET`, `HIT_STOP`, `EXPIRED`) skipping redundant yfinance queries, added CSV resolution column tests, and built comprehensive Vitest component test suites for `LiveStreamBanner` (SSE, audio chime, auto-sync), `TickerSearchInput` (debounced search, keyboard navigation), `StatsBar` (KPI cards, zero-state win rate), and `SignalRow` (expand, quotes, risks) (361 tests across stack: 255 Python, 33 Java, 73 Vitest). |
+| **Phase 37** | Closed-Loop Realized Dollar PnL, Hunter Sweeper & CLI Tests, and Dashboard Component Suite | Calculated and persisted `realized_pnl_usd` in `trade_resolver.py`, aggregated portfolio dollar PnL in `/orders/stats`, integrated `RESOLVED_WIN`/`RESOLVED_LOSS` in hit counts, tested hunter orchestrator CLI + Biotech/Drifter sweeps, added `aria-label` accessibility to FilterBar, and built Vitest suites for `FilterBar`, `MarketOverviewBar`, and `Navbar` (383 tests across stack: 260 Python, 33 Java, 90 Vitest). |
 
 ---
 
@@ -224,7 +225,7 @@ Multi-channel real-time catalyst alerting service:
   ```bash
   .venv/bin/pytest
   ```
-  *Current status: 255 passing tests.*
+  *Current status: 260 passing tests.*
 - **Linting & Code Style**:
   ```bash
   .venv/bin/ruff check .
@@ -237,7 +238,7 @@ Multi-channel real-time catalyst alerting service:
   ```bash
   npm --prefix frontend run test
   ```
-  *Current status: 73 passing tests across 11 test files.*
+  *Current status: 90 passing tests across 14 test files.*
 - **Type Checking**:
   ```bash
   npm --prefix frontend run typecheck

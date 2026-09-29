@@ -184,11 +184,16 @@ class TradeResolver:
         if status is None:
             return None
 
-        # Calculate realized PnL percentage
+        # Calculate realized PnL percentage and dollar amount
+        recommended_size = float(order.get("recommended_size_usd") or 0.0)
         if action == "SELL":
             pnl_pct = ((limit_price - current_price) / limit_price) * 100.0
         else:
             pnl_pct = ((current_price - limit_price) / limit_price) * 100.0
+
+        realized_pnl_usd = (
+            round(recommended_size * (pnl_pct / 100.0), 2) if recommended_size > 0 else 0.0
+        )
 
         return {
             "id": order["id"],
@@ -199,6 +204,7 @@ class TradeResolver:
             "limit_price": limit_price,
             "resolved_price": round(current_price, 4),
             "pnl_percent": round(pnl_pct, 4),
+            "realized_pnl_usd": realized_pnl_usd,
             "resolved_at": now.isoformat(),
         }
 
@@ -237,7 +243,8 @@ class TradeResolver:
                     SET status = %s,
                         resolved_at = %s,
                         resolved_price = %s,
-                        pnl_percent = %s
+                        pnl_percent = %s,
+                        realized_pnl_usd = %s
                     WHERE id = %s AND timestamp_utc = %s
                     """,
                     (
@@ -245,6 +252,7 @@ class TradeResolver:
                         r["resolved_at"],
                         r["resolved_price"],
                         r["pnl_percent"],
+                        r["realized_pnl_usd"],
                         r["id"],
                         r["timestamp_utc"],
                     ),

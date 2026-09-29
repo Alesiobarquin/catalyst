@@ -352,6 +352,7 @@ export function FilterBar({
               fontFamily: "var(--font-mono)",
             }}
             title="Export filtered orders to CSV"
+            aria-label="Export filtered orders as CSV"
           >
             <Download size={12} />
             Export CSV
