@@ -223,6 +223,7 @@ Multi-channel real-time catalyst alerting service:
 | **Phase 44** | Gatekeeper Source Alias Normalization & Defensive AI Prompt Signal Formatting | Introduced `SOURCE_ALIASES` dictionary mapping scraper sources (`barchart_unusual`, `biopharm_catalyst`, `edgar_api_json`, `fmp_earnings`, `finviz`) to canonical hunter types in Gatekeeper, hardened AI prompt builder to accept string JSON arrays or single objects, and expanded unit tests (461 tests across stack: 286 Python, 33 Java, 142 Vitest across 25 test files). |
 | **Phase 45** | Trade Order Realized PnL Flyway Migration, In-Memory Resolver Price Caching & Notifier Bidirectional R:R | Added Flyway `V5__add_realized_pnl_usd_to_trade_orders.sql` and JPA `@Column` mapping in `TradeOrderEntity.java`, built TTL-based in-memory price caching with stale fallback in `TradeResolver`, upgraded multi-channel `notifier` with bidirectional SELL/short risk-to-reward ratio formatting, and expanded unit test suites (465 tests across stack: 290 Python, 33 Java, 142 Vitest across 25 test files). |
 | **Phase 46** | Validated Signal Confluence Count Exposure, Multi-Source Confluence Filtering & Multiplier Badge | Exposed `confluence_count` across API models, queries, SSE streaming, and CSV export; added `min_confluence` query parameter filter to `/signals` and `/signals/export/csv`; added confluence multiplier badge (`2x`, `3x`) in `SignalRow.tsx`; and expanded API and Vitest component test suites (466 tests across stack: 290 Python, 33 Java, 143 Vitest across 25 test files). |
+| **Phase 47** | Market Quote In-Memory TTL Caching, Unchanged Price Precision & Overview Error Fallback | Built thread-safe 15-second in-memory quote cache with `clear_quote_cache()`, fixed falsy evaluation bug where unchanged stocks (`change == 0.0`) incorrectly evaluated `change_percent` as `None` instead of `0.0`, added cached fallback resilience to `market_overview`, and expanded unit test suite (468 tests across stack: 292 Python, 33 Java, 143 Vitest across 25 test files). |
 
 ---
 
@@ -234,7 +235,7 @@ Multi-channel real-time catalyst alerting service:
   ```bash
   .venv/bin/pytest
   ```
-  *Current status: 290 passing tests.*
+  *Current status: 292 passing tests.*
 - **Linting & Code Style**:
   ```bash
   .venv/bin/ruff check .

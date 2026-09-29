@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from datetime import datetime
 
 import asyncpg
@@ -13,9 +14,26 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/market", tags=["market"])
 
+_QUOTE_CACHE: dict[str, tuple[dict, float]] = {}
+_QUOTE_CACHE_TTL_SECONDS: float = 15.0
+
+
+def clear_quote_cache() -> None:
+    """Clear the in-memory market quote cache."""
+    _QUOTE_CACHE.clear()
+
 
 def _fetch_quote(symbol: str) -> dict:
-    t = yf.Ticker(symbol.upper())
+    sym = symbol.strip().upper()
+    now = time.time()
+
+    # Check cache first
+    if sym in _QUOTE_CACHE:
+        cached_data, cached_ts = _QUOTE_CACHE[sym]
+        if (now - cached_ts) < _QUOTE_CACHE_TTL_SECONDS:
+            return cached_data
+
+    t = yf.Ticker(sym)
     fast_info = getattr(t, "fast_info", None)
 
     last_price = getattr(fast_info, "last_price", None) if fast_info else None
@@ -44,21 +62,34 @@ def _fetch_quote(symbol: str) -> dict:
         except Exception as h_err:
             logger.debug("History fallback failed for %s: %s", symbol, h_err)
 
-    change = round(last_price - prev_close, 4) if last_price and prev_close else None
-    pct_change = round((change / prev_close) * 100, 2) if change and prev_close else None
+    change = (
+        round(last_price - prev_close, 4)
+        if (last_price is not None and prev_close is not None)
+        else None
+    )
+    pct_change = (
+        round((change / prev_close) * 100, 2)
+        if (change is not None and prev_close is not None and prev_close != 0)
+        else None
+    )
 
-    return {
-        "ticker": symbol.upper(),
-        "price": round(float(last_price), 4) if last_price else None,
+    quote_data = {
+        "ticker": sym,
+        "price": round(float(last_price), 4) if last_price is not None else None,
         "change": change,
         "change_percent": pct_change,
-        "day_high": round(float(day_high), 4) if day_high else None,
-        "day_low": round(float(day_low), 4) if day_low else None,
-        "volume": int(volume) if volume else None,
-        "fifty_two_week_high": round(float(year_high), 4) if year_high else None,
-        "fifty_two_week_low": round(float(year_low), 4) if year_low else None,
-        "market_cap": int(market_cap) if market_cap else None,
+        "day_high": round(float(day_high), 4) if day_high is not None else None,
+        "day_low": round(float(day_low), 4) if day_low is not None else None,
+        "volume": int(volume) if volume is not None else None,
+        "fifty_two_week_high": round(float(year_high), 4) if year_high is not None else None,
+        "fifty_two_week_low": round(float(year_low), 4) if year_low is not None else None,
+        "market_cap": int(market_cap) if market_cap is not None else None,
     }
+
+    if quote_data.get("price") is not None:
+        _QUOTE_CACHE[sym] = (quote_data, now)
+
+    return quote_data
 
 
 @router.get("/search")
@@ -99,7 +130,11 @@ async def market_overview(
     for t, q in zip(tickers, quotes, strict=False):
         if isinstance(q, Exception):
             logger.warning("Failed to fetch overview quote for %s: %s", t, q)
-            results.append({"ticker": t})
+            cached = _QUOTE_CACHE.get(t)
+            if cached and cached[0].get("price") is not None:
+                results.append(cached[0])
+            else:
+                results.append({"ticker": t})
         else:
             results.append(q)
     return results

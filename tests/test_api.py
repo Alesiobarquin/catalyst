@@ -238,6 +238,74 @@ def test_market_quote_success():
     assert data["volume"] == 45000000
 
 
+def test_market_quote_unchanged_price_zero_pnl():
+    from unittest.mock import MagicMock, patch
+
+    from api.routers.market import clear_quote_cache
+
+    clear_quote_cache()
+    mock_fast_info = MagicMock()
+    mock_fast_info.last_price = 100.00
+    mock_fast_info.previous_close = 100.00
+    mock_fast_info.day_high = 101.00
+    mock_fast_info.day_low = 99.00
+    mock_fast_info.last_volume = 1000000
+    mock_fast_info.year_high = 150.00
+    mock_fast_info.year_low = 75.00
+    mock_fast_info.market_cap = 50000000000
+
+    mock_ticker_instance = MagicMock()
+    mock_ticker_instance.fast_info = mock_fast_info
+
+    with (
+        patch("yfinance.Ticker", return_value=mock_ticker_instance),
+        make_test_client() as client,
+    ):
+        res = client.get("/market/AAPL/quote")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["ticker"] == "AAPL"
+    assert data["price"] == 100.00
+    assert data["change"] == 0.0
+    assert data["change_percent"] == 0.0
+
+
+def test_market_quote_caching():
+    from unittest.mock import MagicMock, patch
+
+    from api.routers.market import clear_quote_cache
+
+    clear_quote_cache()
+    mock_fast_info = MagicMock()
+    mock_fast_info.last_price = 250.0
+    mock_fast_info.previous_close = 240.0
+    mock_ticker_instance = MagicMock()
+    mock_ticker_instance.fast_info = mock_fast_info
+
+    with (
+        patch("yfinance.Ticker", return_value=mock_ticker_instance) as mock_yf,
+        make_test_client() as client,
+    ):
+        # First call fetches and caches
+        res1 = client.get("/market/QQQ/quote")
+        assert res1.status_code == 200
+        assert res1.json()["price"] == 250.0
+        assert mock_yf.call_count == 1
+
+        # Second call hits cache without calling yf.Ticker
+        res2 = client.get("/market/QQQ/quote")
+        assert res2.status_code == 200
+        assert res2.json()["price"] == 250.0
+        assert mock_yf.call_count == 1
+
+        # Clear cache and verify it calls yf.Ticker again
+        clear_quote_cache()
+        res3 = client.get("/market/QQQ/quote")
+        assert res3.status_code == 200
+        assert mock_yf.call_count == 2
+
+
 def test_delete_alpaca_keys_requires_auth():
     with make_test_client() as client:
         res = client.delete("/settings/alpaca")
