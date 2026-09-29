@@ -75,6 +75,12 @@ export function orderToSignalDetail(order: TradeOrder): SignalDetail {
     HIT_TARGET: "Target hit",
     HIT_STOP: "Stopped",
     EXPIRED: "Expired",
+    RESOLVED_WIN: "Target hit",
+    RESOLVED_LOSS: "Stopped",
+    SUBMITTED: "Active",
+    PENDING_NEW: "Active",
+    NEW: "Active",
+    ACCEPTED: "Active",
   };
 
   // Split rationale into paragraphs on double-newlines; fall back to single block.

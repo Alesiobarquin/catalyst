@@ -83,7 +83,30 @@ async def search_tickers(
     return [{"ticker": r["ticker"]} for r in rows]
 
 
+@router.get("/overview", response_model=list[MarketQuoteResponse])
+async def market_overview(
+    symbols: str = Query("SPY,QQQ,DIA,IWM", description="Comma-separated ticker list")
+):
+    """Return quote metrics for benchmark indices or custom symbols concurrently."""
+    tickers = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    if not tickers:
+        return []
+
+    tasks = [asyncio.to_thread(_fetch_quote, t) for t in tickers]
+    quotes = await asyncio.gather(*tasks, return_exceptions=True)
+
+    results: list[dict] = []
+    for t, q in zip(tickers, quotes, strict=False):
+        if isinstance(q, Exception):
+            logger.warning("Failed to fetch overview quote for %s: %s", t, q)
+            results.append({"ticker": t})
+        else:
+            results.append(q)
+    return results
+
+
 @router.get("/{ticker}/quote", response_model=MarketQuoteResponse)
+@router.get("/quote/{ticker}", response_model=MarketQuoteResponse)
 async def ticker_quote(
     ticker: str = Path(..., min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-\=\^]+$")
 ):
@@ -106,6 +129,7 @@ def _fetch_history(symbol: str, start_date_str: str):
 
 
 @router.get("/{ticker}/history", response_model=list[PriceBar])
+@router.get("/history/{ticker}", response_model=list[PriceBar])
 async def price_history(
     ticker: str = Path(..., min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-\=\^]+$"),
     from_ts: str = Query(..., alias="from", description="ISO 8601 timestamp — start of range"),
@@ -146,3 +170,4 @@ async def price_history(
         )
 
     return bars
+

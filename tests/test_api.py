@@ -768,3 +768,85 @@ def test_invalid_ticker_path_validation():
         res = client.get("/orders/TOOLONGTICKERNAME")
         assert res.status_code == 422
 
+
+def test_market_overview_success():
+    from unittest.mock import patch
+
+    mock_quotes = {
+        "SPY": {"ticker": "SPY", "price": 505.25, "change": 2.50, "change_percent": 0.50},
+        "QQQ": {"ticker": "QQQ", "price": 440.10, "change": -1.20, "change_percent": -0.27},
+    }
+
+    def _fake_fetch_quote(sym):
+        return mock_quotes.get(sym, {"ticker": sym})
+
+    with (
+        patch("api.routers.market._fetch_quote", side_effect=_fake_fetch_quote),
+        make_test_client() as client,
+    ):
+        res = client.get("/market/overview?symbols=SPY,QQQ")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data) == 2
+    assert data[0]["ticker"] == "SPY"
+    assert data[0]["price"] == 505.25
+    assert data[1]["ticker"] == "QQQ"
+    assert data[1]["price"] == 440.10
+
+
+def test_market_quote_url_alias_success():
+    from unittest.mock import MagicMock, patch
+
+    mock_fast_info = MagicMock()
+    mock_fast_info.last_price = 145.00
+    mock_fast_info.previous_close = 140.00
+    mock_fast_info.day_high = 146.50
+    mock_fast_info.day_low = 142.00
+    mock_fast_info.last_volume = 32000000
+    mock_fast_info.year_high = 150.00
+    mock_fast_info.year_low = 90.00
+    mock_fast_info.market_cap = 2500000000000
+
+    mock_ticker = MagicMock()
+    mock_ticker.fast_info = mock_fast_info
+
+    with (
+        patch("yfinance.Ticker", return_value=mock_ticker),
+        make_test_client() as client,
+    ):
+        res = client.get("/market/quote/AAPL")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["ticker"] == "AAPL"
+    assert data["price"] == 145.00
+
+
+def test_market_history_url_alias_success():
+    from unittest.mock import patch
+
+    import pandas as pd
+
+    ts = pd.Timestamp("2026-03-27", tz="America/New_York")
+    df = pd.DataFrame(
+        {
+            "Open": [120.0],
+            "High": [126.0],
+            "Low": [119.5],
+            "Close": [125.5],
+        },
+        index=[ts],
+    )
+
+    with (
+        patch("api.routers.market._fetch_history", return_value=df),
+        make_test_client() as client,
+    ):
+        res = client.get("/market/history/NVDA?from=2026-03-01T00:00:00Z")
+
+    assert res.status_code == 200
+    bars = res.json()
+    assert len(bars) == 1
+    assert bars[0]["close"] == 125.5
+

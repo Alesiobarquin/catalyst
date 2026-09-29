@@ -215,6 +215,19 @@ export async function getQuote(ticker: string): Promise<MarketQuote | null> {
 /** Fetch major market benchmark indices concurrently */
 export async function getMarketBenchmarks(): Promise<MarketQuote[]> {
   const tickers = ["SPY", "QQQ", "DIA", "IWM"];
+  if (USE_MOCK) {
+    return tickers.map((t) => ({ ticker: t, price: 100 }));
+  }
+  try {
+    const res = await fetch(`${apiBaseUrl()}/market/overview?symbols=${tickers.join(",")}`, {
+      next: { revalidate: 15 },
+    });
+    if (res.ok) {
+      return res.json();
+    }
+  } catch {
+    // Fall back to individual requests
+  }
   const quotes = await Promise.all(
     tickers.map(async (t) => {
       try {

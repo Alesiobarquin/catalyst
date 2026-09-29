@@ -128,4 +128,54 @@ describe("api", () => {
       expect(url).to.satisfy((u: string) => u.startsWith("http://localhost:8000"));
     });
   });
+
+  describe("market endpoints", () => {
+    it("getQuote fetches quote for given ticker", async () => {
+      const mockQuote = { ticker: "NVDA", price: 125.5, change: 5.5, change_percent: 4.58 };
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockQuote,
+      } as Response);
+
+      const { getQuote } = await import("@/lib/api");
+      const res = await getQuote("NVDA");
+
+      expect(res).toEqual(mockQuote);
+      const url = vi.mocked(global.fetch).mock.calls[0][0] as string;
+      expect(url).toContain("/market/NVDA/quote");
+    });
+
+    it("getQuote returns null on error", async () => {
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: false,
+      } as Response);
+
+      const { getQuote } = await import("@/lib/api");
+      const res = await getQuote("INVALID");
+
+      expect(res).toBeNull();
+    });
+
+    it("getMarketBenchmarks uses /market/overview endpoint", async () => {
+      const mockOverview = [
+        { ticker: "SPY", price: 505.0 },
+        { ticker: "QQQ", price: 440.0 },
+        { ticker: "DIA", price: 390.0 },
+        { ticker: "IWM", price: 205.0 },
+      ];
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockOverview,
+      } as Response);
+
+      const { getMarketBenchmarks } = await import("@/lib/api");
+      const res = await getMarketBenchmarks();
+
+      expect(res).toEqual(mockOverview);
+      const url = vi.mocked(global.fetch).mock.calls[0][0] as string;
+      expect(url).toContain("/market/overview?symbols=SPY,QQQ,DIA,IWM");
+    });
+  });
 });
+
