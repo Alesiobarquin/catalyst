@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, BarChart3, Zap, Settings, User } from "lucide-react";
+import { LayoutDashboard, BarChart3, Zap, Settings, BookOpen } from "lucide-react";
 import { NavClock } from "./NavClock";
+import { PipelineStatus } from "./PipelineStatus";
 
 const NAV_LINKS = [
   { href: "/",          label: "Dashboard",  icon: LayoutDashboard },
   { href: "/analytics", label: "Analytics",  icon: BarChart3       },
   { href: "/signals",   label: "Signals",    icon: Zap             },
+  { href: "/architecture", label: "How It Works", icon: BookOpen },
   { href: "/settings",  label: "Settings",   icon: Settings        },
 ];
 
@@ -137,46 +139,7 @@ export function Navbar() {
           {/* Clock */}
           <NavClock />
 
-          {/* Static live indicator — NO animation */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background: "#10B981",
-                display: "inline-block",
-                flexShrink: 0,
-              }}
-            />
-            <span
-              style={{
-                fontSize: 10,
-                color: "var(--color-text-muted)",
-                fontWeight: 600,
-                letterSpacing: "0.06em",
-              }}
-            >
-              LIVE
-            </span>
-          </div>
-
-          {/* User avatar placeholder */}
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: "50%",
-              background: "var(--color-bg-row)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-            }}
-          >
-            <User size={13} color="var(--color-text-muted)" strokeWidth={1.5} />
-          </div>
+          <PipelineStatus />
         </div>
       </div>
     </header>

@@ -11,6 +11,12 @@ vi.mock("next/navigation", () => ({
 describe("Navbar", () => {
   beforeEach(() => {
     mockPathname = "/";
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ api: "ok", database: "ok", redis: "ok", engine: "UP", ready: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
   });
 
   it("renders brand logo, platform title, and subtitle", () => {
@@ -20,17 +26,19 @@ describe("Navbar", () => {
     expect(screen.getByText("Signal intelligence platform")).toBeInTheDocument();
   });
 
-  it("renders all core navigation links", () => {
+  it("renders all core navigation links including How It Works", () => {
     render(<Navbar />);
 
     const dashboardLink = screen.getByText("Dashboard").closest("a");
     const analyticsLink = screen.getByText("Analytics").closest("a");
     const signalsLink = screen.getByText("Signals").closest("a");
+    const howItWorksLink = screen.getByText("How It Works").closest("a");
     const settingsLink = screen.getByText("Settings").closest("a");
 
     expect(dashboardLink).toHaveAttribute("href", "/");
     expect(analyticsLink).toHaveAttribute("href", "/analytics");
     expect(signalsLink).toHaveAttribute("href", "/signals");
+    expect(howItWorksLink).toHaveAttribute("href", "/architecture");
     expect(settingsLink).toHaveAttribute("href", "/settings");
   });
 
@@ -42,17 +50,19 @@ describe("Navbar", () => {
     expect(dashboardLink).toHaveStyle({ borderBottom: "2px solid #0EA5E9" });
   });
 
+  it("highlights How It Works when on /architecture route", () => {
+    mockPathname = "/architecture";
+    render(<Navbar />);
+
+    const howItWorksLink = screen.getByText("How It Works").closest("a");
+    expect(howItWorksLink).toHaveStyle({ borderBottom: "2px solid #0EA5E9" });
+  });
+
   it("highlights Signals when on /signals route", () => {
     mockPathname = "/signals";
     render(<Navbar />);
 
     const signalsLink = screen.getByText("Signals").closest("a");
     expect(signalsLink).toHaveStyle({ borderBottom: "2px solid #0EA5E9" });
-  });
-
-  it("renders static live indicator badge", () => {
-    render(<Navbar />);
-
-    expect(screen.getByText("LIVE")).toBeInTheDocument();
   });
 });

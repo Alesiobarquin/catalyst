@@ -1,5 +1,7 @@
 # Project Catalyst: The Plan
 
+> **Note**: This document reflects the original design vision. For the canonical living specification, see [AGENTS.md](../AGENTS.md).
+
 **Practical note:** For what `docker compose up` actually guarantees (event-driven flow, gatekeeper confluence, Gemini, engine), see [PIPELINE_EXPLAINED.md](PIPELINE_EXPLAINED.md).
 
 ## 1. The Core Philosophy
@@ -14,7 +16,7 @@ Catalyst is a High-Fidelity Signal Generator. It replaces manual chart monitorin
 
 ### Layer 1: The Hunters (Python Ingestion)
 **Role:** The Ears. We listen to the market.
-We monitor 6 distinct data streams (The "Hunters").
+We monitor 5 distinct data streams (The "Hunters").
 
 1.  **Insider Hunter: The SEC Watchdog**
     *   *Role:* The fastest, most reliable signal in the stack.
@@ -50,9 +52,6 @@ We monitor 6 distinct data streams (The "Hunters").
     *   *The Hack:* The URL parameter `f=sh_short_o20` tells Finviz to filter for >20% short interest.
     *   *Kafka Topic:* `signal-squeeze`
 
-6.  **Shadow Hunter**
-    *   Removed from active scope. Tradytics dark-pool data is paywalled and not suitable for a free scraper workflow.
-
 ### Layer 2: The Nervous System (Apache Kafka)
 **Role:** Decoupling. Handles the speed mismatch between fast data and deep thought.
 *   **Topic 1:** `raw-events` $\rightarrow$ All Hunter outputs go here.
@@ -76,7 +75,7 @@ This layer prevents "garbage in, garbage out" and saves API costs by filtering r
     *   OR **Technical_Score > 70** (Massive outlier event)
     *   THEN $\rightarrow$ Push to `triage-priority` (or directly to `validated-signals` for analysis).
 
-### Layer 3: The Brain (Gemini 1.5 Pro)
+### Layer 3: The Brain (Gemini 2.5)
 **Role:** The Synthesizer. It classifies context.
 *   **Input:** Reads from `raw-events`. Fetches recent news headlines + Sector Sentiment.
 *   **Prompt Logic:** "Analyze confluence. Identify the Catalyst Type. Check for 'Trap' scenarios (e.g., Insider Buy but Bearish Options Flow). Output structured JSON."
@@ -92,7 +91,7 @@ This layer prevents "garbage in, garbage out" and saves API costs by filtering r
 
 ### Layer 4: The Strategist (Java Spring Boot)
 **Role:** Strict Math. The Strategy Pattern.  
-**Implementation:** `engine/` — Spring Boot 3.x, Java 21, Kafka consumer/producer, JPA + Flyway on TimescaleDB.
+**Implementation:** `engine/` — Spring Boot 3.4, Java 21, Kafka consumer/producer, JPA + Flyway on TimescaleDB.
 
 This layer consumes `validated-signals` and turns a narrative into a **trade blueprint** (limit, stop, target, suggested size). **Full walkthrough, trading glossary (VIX, Kelly, SMA, etc.), and config:** [ENGINE.md](ENGINE.md).
 
@@ -137,12 +136,12 @@ Stores: Trade History, Active Signals, Performance Metrics.
     *   UI: Redpanda Console or UI for Apache Kafka
 
 3.  **The Brain (Intelligence)**
-    *   Model: Google Gemini 1.5 Pro
+    *   Model: Google Gemini 2.5
     *   Integration: Python Microservice or Java
 
 4.  **Strategy Engine (The Executioner)**
     *   Language: Java 21 (LTS)
-    *   Framework: Spring Boot 3.2.x
+    *   Framework: Spring Boot 3.4
     *   Concurrency: Virtual Threads (Project Loom)
     *   Communication: Kafka Consumer API, Alpaca-Java SDK, Spring Websocket (STOMP)
 
@@ -151,7 +150,8 @@ Stores: Trade History, Active Signals, Performance Metrics.
     *   Cold Storage: PostgreSQL 16 with TimescaleDB extension
 
 6.  **Frontend (The Face)**
-    *   Framework: Next.js 14 (App Router)
+    *   Framework: Next.js 16 (App Router)
     *   Styling: Tailwind CSS + shadcn/ui
     *   State: Zustand
     *   Charts: TradingView Lightweight Charts
+

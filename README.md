@@ -5,10 +5,18 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16%20App%20Router-black.svg)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/Tests-468%20Passing-emerald.svg)](https://github.com/Alesiobarquin/catalyst)
+[![Tests](https://img.shields.io/badge/Tests-480%20Passing-emerald.svg)](https://github.com/Alesiobarquin/catalyst)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
 **Catalyst** is an event-driven quantitative trading and market signal discovery platform. It ingests volatile market events across disparate financial feeds (scrapers, SEC EDGAR Form 4 filings, unusual options flow, earnings surprises), filters them through a stateful Redis confluence gatekeeper, validates theses in real-time via Gemini 2.5 with Google Search grounding, sizes orders via a Java Spring Boot quantitative engine (Half-Kelly criterion and SPY/VIX regime filtering), executes paper orders via Alpaca Markets, tracks closed-loop lifecycle PnL via an autonomous resolver daemon, broadcasts real-time alerts to Discord/Slack/Telegram, and provides an executive analytics dashboard built on Next.js 16 and FastAPI.
+
+## Why Catalyst?
+
+**Catalyst began as a learning experiment**: What would it take to build a production-grade, event-driven trading pipeline that spans multiple languages, integrates real-time AI reasoning, and maintains institutional-grade risk controls — all while keeping cloud costs under $8/month?
+
+The answer turned into a polyglot distributed system: Python microservices for rapid data ingestion and AI integration, a Java Spring Boot engine for deterministic quantitative math, and a Next.js 16 dashboard for real-time visualization. Every architectural decision — from Redis Sorted Set confluence windows to Half-Kelly position sizing to scheduled EC2 shutdowns — was driven by a specific engineering trade-off worth understanding.
+
+Explore the [How It Works](http://localhost:3000/architecture) page in the dashboard for an interactive deep-dive into the design decisions.
 
 ---
 
@@ -75,27 +83,27 @@ graph TD
 | **Trade Resolver** (`resolver/`) | Python 3.12, TimescaleDB, Yahoo Finance | ✅ Active | Autonomous order resolution daemon polling pending orders, querying Alpaca order fills, tracking real-time price against stop/target levels, and persisting closed-loop realized PnL (`RESOLVED_WIN`, `RESOLVED_LOSS`, `EXPIRED`). |
 | **Notification Dispatcher** (`notifier/`) | Python 3.12, Webhooks, HTTPX | ✅ Active | Real-time multi-channel notification engine consuming `validated-signals` and dispatching rich alerts to Discord embeds, Slack Block Kit, and Telegram HTML for high-conviction events ($\ge 70$). |
 | **FastAPI Read Layer** (`api/`) | Python 3.12, FastAPI, asyncpg, Redis | ✅ Active | Asynchronous REST and Server-Sent Events (SSE) streaming API (`/signals/stream`). Exposes KPI statistics (`/signals/stats`, `/orders/stats`), CSV exports, market quotes, pipeline health (`/health/pipeline`), and Prometheus metrics (`/metrics`). |
-| **Frontend Dashboard** (`frontend/`) | Next.js 16, React 19, Tailwind CSS 4, Vitest | ✅ 142 Tests | Real-time dashboard featuring SSE `LiveStreamBanner` with Web Audio synthesized chimes, TradingView `PriceChart` with full-width Entry/Stop/Target lines, `KellySimulator` quantitative risk tool, and accessible keyboard-navigable filters. |
+| **Frontend Dashboard** (`frontend/`) | Next.js 16, React 19, Tailwind CSS 4, Vitest | ✅ 153 Tests | Real-time dashboard featuring SSE `LiveStreamBanner` with Web Audio synthesized chimes, TradingView `PriceChart` with full-width Entry/Stop/Target lines, `KellySimulator` quantitative risk tool, and accessible keyboard-navigable filters. |
 
 ---
 
 ## 3. Test Coverage & Quality Gates
 
-The codebase maintains rigorous multi-stack automated testing with **468 passing tests** across 3 language ecosystems:
+The codebase maintains rigorous multi-stack automated testing with **480 passing tests** across 3 language ecosystems:
 
 ```text
 ================================ TEST SUITE SUMMARY ================================
-✅ Python Microservices (Pytest):   292 tests passed (0 failures, 100% pass rate)
+✅ Python Microservices (Pytest):   294 tests passed (0 failures, 100% pass rate)
 ✅ Java Quantitative Engine (JUnit 5): 33 tests passed (0 failures, 100% pass rate)
-✅ Next.js Frontend (Vitest):        143 tests passed (0 failures, 100% pass rate)
+✅ Next.js Frontend (Vitest):        153 tests passed (0 failures, 100% pass rate)
 ------------------------------------------------------------------------------------
-TOTAL VERIFIED AUTOMATED TESTS:      468 tests passing across stack
+TOTAL VERIFIED AUTOMATED TESTS:      480 tests passing across stack
 ====================================================================================
 ```
 
 ### Running the Test Suites
 
-#### 1. Python Test Suite (292 tests)
+#### 1. Python Test Suite (294 tests)
 ```bash
 .venv/bin/pytest
 .venv/bin/ruff check .
@@ -103,7 +111,8 @@ TOTAL VERIFIED AUTOMATED TESTS:      468 tests passing across stack
 
 #### 2. Java Strategy Engine Suite (33 tests)
 ```bash
-export JAVA_HOME=/Users/alesio/Library/Java/JavaVirtualMachines/temurin-21.0.11/Contents/Home
+# macOS: export JAVA_HOME=$(/usr/libexec/java_home -v 21)
+# Linux: export JAVA_HOME=/usr/lib/jvm/temurin-21-jdk
 cd engine && mvn -B test && cd ..
 ```
 
@@ -140,7 +149,7 @@ ALPACA_SECRET_KEY=your_alpaca_secret
 ### Start the Infrastructure & Microservices
 ```bash
 # Launch core services via Docker Compose
-docker compose up -d zookeeper kafka redis timescaledb gatekeeper ai-layer persistence catalyst-api resolver notifier
+docker compose up -d
 
 # Launch the Next.js frontend
 cd frontend && npm install && npm run dev

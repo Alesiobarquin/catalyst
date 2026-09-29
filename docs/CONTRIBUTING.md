@@ -32,9 +32,8 @@ catalyst/
 ├── persistence/       # TimescaleDB background ingestion consumer
 ├── resolver/          # Order lifecycle resolution & closed-loop PnL tracking daemon
 ├── scripts/           # Diagnostics, synthetic signal injection, and health verification
-├── tests/             # Python pytest test suite (247 tests)
+├── tests/             # Python pytest test suite (294 tests)
 └── AGENTS.md          # Single source of truth architecture manual (MUST keep updated)
-```
 
 ---
 
@@ -71,7 +70,7 @@ Key environment variables:
 
 ## 4. Running the Test Suites
 
-Catalyst enforces rigorous multi-stack testing with **over 315 automated tests**. All tests must pass before submitting changes.
+Catalyst enforces rigorous multi-stack testing with **over 480 automated tests**. All tests must pass before submitting changes.
 
 ### 4.1 Python Unit & Integration Tests (Pytest)
 ```bash
@@ -90,7 +89,8 @@ Catalyst enforces rigorous multi-stack testing with **over 315 automated tests**
 
 ### 4.3 Java Strategy Engine Tests (JUnit 5 + Maven)
 ```bash
-export JAVA_HOME=/Users/alesio/Library/Java/JavaVirtualMachines/temurin-21.0.11/Contents/Home
+# macOS: export JAVA_HOME=$(/usr/libexec/java_home -v 21)
+# Linux: export JAVA_HOME=/usr/lib/jvm/temurin-21-jdk
 cd engine
 mvn -B test
 cd ..
@@ -144,10 +144,10 @@ npm --prefix frontend run build
 ## 7. Pull Request Checklist
 
 Before submitting a Pull Request, verify:
-- [ ] `.venv/bin/pytest` passes (247+ tests).
+- [ ] `.venv/bin/pytest` passes (294+ tests).
 - [ ] `.venv/bin/ruff check .` passes with zero warnings.
 - [ ] `cd engine && mvn -B test` passes (33+ tests).
-- [ ] `npm --prefix frontend run test` passes (35+ tests).
+- [ ] `npm --prefix frontend run test` passes (153+ tests).
 - [ ] `npm --prefix frontend run typecheck` succeeds.
 - [ ] `npm --prefix frontend run build` succeeds without build errors.
 - [ ] `AGENTS.md` is updated with the changes and new test metrics.

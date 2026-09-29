@@ -350,13 +350,6 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
               View analysis
             </button>
           )}
-          <button
-            style={ACTION_LINK}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.72"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
-          >
-            Set alert
-          </button>
         </div>
       </div>
 

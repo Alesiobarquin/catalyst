@@ -1,5 +1,7 @@
 # Catalyst Implementation Roadmap
 
+> **Note**: This roadmap is superseded by the Phase history in [AGENTS.md](../AGENTS.md), which tracks all 50 phases of development.
+
 **Purpose:** Phased implementation plan, estimates, dependencies, and recruiting angles.
 
 **For the current ordered backlog (scheduler → second hunter → UI), use [PRODUCT_PRIORITIES.md](PRODUCT_PRIORITIES.md)** — it is maintained as the living “what next” checklist. This file may lag the codebase.

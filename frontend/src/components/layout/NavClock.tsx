@@ -8,10 +8,14 @@ export function NavClock() {
   useEffect(() => {
     function tick() {
       const now = new Date();
-      const hh = now.getHours().toString().padStart(2, "0");
-      const mm = now.getMinutes().toString().padStart(2, "0");
-      const ss = now.getSeconds().toString().padStart(2, "0");
-      setTime(`${hh}:${mm}:${ss}`);
+      const time = now.toLocaleTimeString("en-US", {
+        timeZone: "America/New_York",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+      setTime(time);
     }
     tick();
     const id = setInterval(tick, 1000);

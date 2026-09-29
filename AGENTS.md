@@ -149,6 +149,7 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
   - `/`: Executive KPI overview and recent activity.
   - `/signals`: Interactive signals table, KPI ribbon (`/signals/stats`), CSV export, date range filters, and signal detail drawer.
   - `/analytics`: Portfolio performance, win rate, equity curve, regime breakdown.
+  - `/architecture`: Engineering narrative with 5-stage pipeline visualization, expandable Architectural Decision Records, test coverage breakdown, "What I Learned" reflections, and full tech stack grid.
   - `/settings`: Alpaca API key validation form, real-time pipeline telemetry card (`/health/pipeline`), and developer synthetic signal injection test panel.
 - **Components**:
   - `LiveStreamBanner`: Real-time SSE alert banner with connection status, auto-refresh toggle, and Web Audio API synthesized alert chime.
@@ -226,6 +227,7 @@ Multi-channel real-time catalyst alerting service:
 | **Phase 47** | Market Quote In-Memory TTL Caching, Unchanged Price Precision & Overview Error Fallback | Built thread-safe 15-second in-memory quote cache with `clear_quote_cache()`, fixed falsy evaluation bug where unchanged stocks (`change == 0.0`) incorrectly evaluated `change_percent` as `None` instead of `0.0`, added cached fallback resilience to `market_overview`, and expanded unit test suite (468 tests across stack: 292 Python, 33 Java, 143 Vitest across 25 test files). |
 | **Phase 48** | Local Multi-Service Preview, AI Fallback Synthesis & Fast-Path, Maven Exclude Fix, Notifier Packaging & Pipeline Simulation | Fixed Maven Spring Boot repackage plugin `<exclude>` version error in `engine/pom.xml`, decoupled `notifier/requirements.txt` from monolithic dev requirements, added `./api:/app/api` volume mount to Docker compose, implemented deterministic heuristic fallback analysis in `ai_layer` with instant fast-path rejection on invalid API keys, ran end-to-end multi-catalyst simulation producing live orders and signals across TimescaleDB, and verified all 4 frontend routes returning 200 (470 tests across stack: 294 Python, 33 Java, 143 Vitest across 25 test files). |
 | **Phase 49** | Signals Table Column Alignment, Min-Width & MarketOverviewBar Hydration Hardening | Resolved Signals page table text collision by expanding `Catalyst` column from 120px to 210px, adding 16px column gap, ellipsis truncation, and 900px min-width across header, rows, and loading skeleton; eliminated React hydration error and ESLint `set-state-in-effect` on `MarketOverviewBar` via `suppressHydrationWarning` and direct state initialization (470 tests across stack: 294 Python, 33 Java, 143 Vitest across 25 test files). |
+| **Phase 50** | Recruiter-Ready Portfolio Presentation Overhaul | Created `/architecture` page with 6-section engineering narrative (Hero/Why, 5-Stage Pipeline Visualization, Architectural Decision Records with expandable cards, Engineering Quality & 470-test breakdown, "What I Learned" reflections, Tech Stack grid); restored real `PipelineStatus` telemetry in `Navbar.tsx` replacing static LIVE dot; added "How It Works" nav link; fixed `NavClock` timezone to use `America/New_York`; removed dead buttons from `TradeCard.tsx` and `SignalDetailPanel.tsx`; hardened `README.md` (test counts, sanitized JAVA_HOME, added `engine`/`executor` to quickstart, added "Why Catalyst?" section); synced outdated `docs/ARCHITECTURE.md`, `docs/CONTRIBUTING.md`, and `docs/IMPLEMENTATION_ROADMAP.md`; added `frontend/package.json` metadata; created root `CONTRIBUTING.md` redirect (480 tests across stack: 294 Python, 33 Java, 153 Vitest across 26 test files). |
 
 ---
 
@@ -250,7 +252,7 @@ Multi-channel real-time catalyst alerting service:
   ```bash
   npm --prefix frontend run test
   ```
-  *Current status: 143 passing tests across 25 test files.*
+  *Current status: 153 passing tests across 26 test files.*
 - **Type Checking**:
   ```bash
   npm --prefix frontend run typecheck
