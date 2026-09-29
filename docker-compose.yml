@@ -309,6 +309,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    volumes:
+      - ./api:/app/api
     restart: unless-stopped
 
   # Alpaca paper executor — consumes trade-orders, places orders per user_alpaca_keys

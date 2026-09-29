@@ -354,3 +354,40 @@ class TestAIAnalysisServiceWorkflow:
         ):
             service.analyze_with_retry("Analyze TSLA")
 
+    def test_synthesize_fallback_analysis_confluence(self):
+        payload = {
+            "ticker": "NVDA",
+            "confluence_sources": ["squeeze", "insider"],
+            "confluence_count": 2,
+        }
+        res = AIAnalysisService.synthesize_fallback_analysis(payload)
+        assert res["conviction_score"] == 82
+        assert res["catalyst_type"] in ("FOLLOWER", "SUPERNOVA")
+        assert res["is_trap"] is False
+        assert "NVDA" in res["rationale"]
+
+    def test_process_event_engages_fallback_on_failure(self):
+        from unittest.mock import MagicMock, patch
+
+        service = AIAnalysisService.__new__(AIAnalysisService)
+        service.producer = MagicMock()
+        service.consumer = MagicMock()
+
+        payload = {
+            "ticker": "NVDA",
+            "confluence_sources": ["biotech"],
+            "confluence_count": 1,
+            "timestamp_utc": "2026-09-29T12:00:00Z",
+        }
+
+        with patch.object(service, "analyze_with_retry", side_effect=RuntimeError("API key invalid")):
+            service.process_event(payload)
+
+        assert service.producer.send.called
+        call_topic, call_val = service.producer.send.call_args[0]
+        assert call_topic == "validated-signals"
+        assert call_val["ticker"] == "NVDA"
+        assert call_val["conviction_score"] >= 50
+        assert call_val["catalyst_type"] == "SCALPER"
+
+
