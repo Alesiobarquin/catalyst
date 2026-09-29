@@ -748,3 +748,23 @@ def test_invalid_order_id_path_validation():
         # Zero order id
         res = client.get("/orders/0/detail")
         assert res.status_code == 422
+
+
+def test_invalid_ticker_path_validation():
+    with make_test_client() as client:
+        # Invalid characters in signals path
+        res = client.get("/signals/BAD$TICKER#")
+        assert res.status_code == 422
+
+        # Too long ticker in signals path
+        res = client.get("/signals/TOOLONGTICKERNAME")
+        assert res.status_code == 422
+
+        # Invalid characters in orders path
+        res = client.get("/orders/BAD$TICKER#")
+        assert res.status_code == 422
+
+        # Too long ticker in orders path
+        res = client.get("/orders/TOOLONGTICKERNAME")
+        assert res.status_code == 422
+

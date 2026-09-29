@@ -43,6 +43,24 @@ class TestConfluenceWatcher:
         assert found[0]["sources"] == ["insider", "squeeze"]
         assert found[0]["ttl_seconds"] == 240
 
+    def test_inspect_confluence_zset_meets_threshold(self):
+        mock_redis = MagicMock()
+        # First scan call (zset match) returns key, second scan call (set match) returns empty
+        mock_redis.scan.side_effect = [
+            (0, [b"gk:sources_zset:TSLA"]),
+            (0, []),
+        ]
+        mock_redis.zrange.return_value = [b"squeeze", b"whale"]
+        mock_redis.ttl.return_value = 280
+        found = inspect_confluence(mock_redis, min_sources=2)
+        assert len(found) == 1
+        assert found[0]["ticker"] == "TSLA"
+        assert found[0]["count"] == 2
+        assert found[0]["sources"] == ["squeeze", "whale"]
+        assert found[0]["ttl_seconds"] == 280
+        mock_redis.zremrangebyscore.assert_called_once()
+
+
 
 class TestInjectSyntheticSignals:
     def test_create_squeeze_event(self):

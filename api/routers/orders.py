@@ -608,7 +608,7 @@ async def get_order_detail(
 
 @router.get("/{ticker}", response_model=list[TradeOrderResponse])
 async def orders_by_ticker(
-    ticker: str,
+    ticker: str = Path(..., min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-]+$"),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     """All orders for a specific ticker, newest first."""

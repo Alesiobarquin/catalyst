@@ -8,7 +8,7 @@ import logging
 from datetime import datetime, timezone
 
 import asyncpg
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Path, Query, Request
 from fastapi.responses import StreamingResponse
 
 from api.db import get_conn
@@ -348,7 +348,7 @@ async def stream_signals(
 
 @router.get("/{ticker}", response_model=list[ValidatedSignalResponse])
 async def signals_by_ticker(
-    ticker: str,
+    ticker: str = Path(..., min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-]+$"),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     rows = await conn.fetch(

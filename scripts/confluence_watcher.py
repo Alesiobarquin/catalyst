@@ -31,33 +31,71 @@ logger = logging.getLogger("confluence-watcher")
 def inspect_confluence(
     r: Redis[Any],
     min_sources: int = 2,
+    window_seconds: int = 300,
 ) -> list[dict[str, Any]]:
-    """Scan Redis for gk:sources:* keys meeting or exceeding the source threshold."""
-    found: list[dict[str, Any]] = []
+    """Scan Redis for gk:sources_zset:* or gk:sources:* keys meeting or exceeding the source threshold."""
+    found_by_ticker: dict[str, dict[str, Any]] = {}
+
+    # 1. Scan sorted sets (ZSET with millisecond sliding window)
+    now_ts = time.time()
+    cutoff_ts = now_ts - window_seconds
+    cursor = 0
+    while True:
+        cursor, keys = r.scan(cursor=cursor, match="gk:sources_zset:*", count=100)
+        for key in keys:
+            key_str = key.decode("utf-8") if isinstance(key, bytes) else str(key)
+            ticker = key_str.replace("gk:sources_zset:", "")
+            try:
+                r.zremrangebyscore(key, "-inf", cutoff_ts)
+                zset_sources = r.zrange(key, 0, -1)
+                decoded_sources = {
+                    s.decode("utf-8") if isinstance(s, bytes) else str(s)
+                    for s in zset_sources
+                }
+                if len(decoded_sources) >= min_sources:
+                    ttl = r.ttl(key)
+                    found_by_ticker[ticker] = {
+                        "ticker": ticker,
+                        "sources": sorted(decoded_sources),
+                        "count": len(decoded_sources),
+                        "ttl_seconds": ttl,
+                    }
+            except Exception:
+                pass
+        if cursor == 0:
+            break
+
+    # 2. Scan standard sets (fallback / backward compatibility)
     cursor = 0
     pattern = "gk:sources:*"
     while True:
         cursor, keys = r.scan(cursor=cursor, match=pattern, count=100)
         for key in keys:
             key_str = key.decode("utf-8") if isinstance(key, bytes) else str(key)
+            if "zset" in key_str:
+                continue
             ticker = key_str.replace("gk:sources:", "")
-            sources = r.smembers(key)
-            decoded_sources = {
-                s.decode("utf-8") if isinstance(s, bytes) else str(s) for s in sources
-            }
-            if len(decoded_sources) >= min_sources:
-                ttl = r.ttl(key)
-                found.append(
-                    {
+            if ticker in found_by_ticker:
+                continue
+            try:
+                sources = r.smembers(key)
+                decoded_sources = {
+                    s.decode("utf-8") if isinstance(s, bytes) else str(s) for s in sources
+                }
+                if len(decoded_sources) >= min_sources:
+                    ttl = r.ttl(key)
+                    found_by_ticker[ticker] = {
                         "ticker": ticker,
                         "sources": sorted(decoded_sources),
                         "count": len(decoded_sources),
                         "ttl_seconds": ttl,
                     }
-                )
+            except Exception:
+                pass
         if cursor == 0:
             break
-    return found
+
+    return sorted(found_by_ticker.values(), key=lambda x: str(x["ticker"]))
 
 
 def run_watcher(
