@@ -102,6 +102,36 @@ class TestTradeResolverPriceFetching:
         assert "MSFT" in prices
         assert prices["MSFT"] == 138.25
 
+    @patch("yfinance.Ticker")
+    def test_fetch_current_prices_uses_cache(self, mock_ticker_cls):
+        mock_instance = MagicMock()
+        mock_instance.fast_info.last_price = 200.0
+        mock_ticker_cls.return_value = mock_instance
+
+        # First fetch fills cache
+        prices1 = self.resolver.fetch_current_prices(["TSLA"])
+        assert prices1["TSLA"] == 200.0
+        assert mock_ticker_cls.call_count == 1
+
+        # Second fetch should use cache without invoking Ticker
+        prices2 = self.resolver.fetch_current_prices(["TSLA"])
+        assert prices2["TSLA"] == 200.0
+        assert mock_ticker_cls.call_count == 1
+
+    @patch("yfinance.Ticker")
+    def test_fetch_current_prices_fallback_to_stale_cache_on_error(self, mock_ticker_cls):
+        # Prepopulate cache with older price
+        self.resolver._price_cache["AMZN"] = (180.0, 0.0)  # expired timestamp
+        mock_ticker_cls.side_effect = RuntimeError("Rate limited or network error")
+
+        prices = self.resolver.fetch_current_prices(["AMZN"])
+        assert prices["AMZN"] == 180.0
+
+    def test_clear_price_cache(self):
+        self.resolver._price_cache["TEST"] = (50.0, 12345.0)
+        self.resolver.clear_price_cache()
+        assert self.resolver._price_cache == {}
+
 
 class TestTradeResolverProcessCycle:
     def setup_method(self):

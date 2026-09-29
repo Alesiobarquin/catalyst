@@ -43,15 +43,22 @@ def build_discord_payload(signal: dict[str, Any], dashboard_url: str = DASHBOARD
     else:
         color = 0xF59E0B  # Amber
 
+    action = str(signal.get("action") or "BUY").upper()
+
     fields = [
         {"name": "Conviction", "value": f"**{conviction}/100**", "inline": True},
-        {"name": "Action", "value": "BUY", "inline": True},
+        {"name": "Action", "value": action, "inline": True},
         {"name": "Entry Price", "value": f"${entry:.2f}" if entry > 0 else "Market", "inline": True},
     ]
 
     if target > 0 and stop > 0:
-        risk = entry - stop
-        reward = target - entry
+        if action == "SELL":
+            risk = stop - entry
+            reward = entry - target
+        else:
+            risk = entry - stop
+            reward = target - entry
+
         rr_str = f"{reward / risk:.1f}:1" if risk > 0 else "—"
         fields.extend([
             {"name": "Target Price", "value": f"${target:.2f}", "inline": True},
@@ -86,8 +93,26 @@ def build_slack_payload(signal: dict[str, Any], dashboard_url: str = DASHBOARD_U
     ticker = (signal.get("ticker") or "UNKNOWN").upper()
     cat_type = (signal.get("catalyst_type") or "CATALYST").upper()
     conviction = int(signal.get("conviction_score") or 0)
+    action = str(signal.get("action") or "BUY").upper()
     entry = float(signal.get("entry_price") or signal.get("price") or 0.0)
+    stop = float(signal.get("stop_loss") or 0.0)
+    target = float(signal.get("target_price") or 0.0)
     thesis = signal.get("catalyst_summary") or signal.get("thesis") or "Confluence detected."
+
+    fields = [
+        {"type": "mrkdwn", "text": f"*Conviction:*\n{conviction}/100"},
+        {"type": "mrkdwn", "text": f"*Action:*\n{action}"},
+        {"type": "mrkdwn", "text": f"*Entry Price:*\n${entry:.2f}" if entry > 0 else "*Entry Price:*\nMarket"},
+    ]
+    if target > 0 and stop > 0:
+        if action == "SELL":
+            risk = stop - entry
+            reward = entry - target
+        else:
+            risk = entry - stop
+            reward = target - entry
+        rr_str = f"{reward / risk:.1f}:1" if risk > 0 else "—"
+        fields.append({"type": "mrkdwn", "text": f"*R:R Ratio:*\n{rr_str}"})
 
     return {
         "text": f"🎯 Catalyst Alert: {ticker} ({cat_type}) - Conviction {conviction}/100",
@@ -102,10 +127,7 @@ def build_slack_payload(signal: dict[str, Any], dashboard_url: str = DASHBOARD_U
             },
             {
                 "type": "section",
-                "fields": [
-                    {"type": "mrkdwn", "text": f"*Conviction:*\n{conviction}/100"},
-                    {"type": "mrkdwn", "text": f"*Entry Price:*\n${entry:.2f}"},
-                ],
+                "fields": fields,
             },
             {
                 "type": "section",
@@ -133,6 +155,7 @@ def build_telegram_message(signal: dict[str, Any], dashboard_url: str = DASHBOAR
     ticker = (signal.get("ticker") or "UNKNOWN").upper()
     cat_type = (signal.get("catalyst_type") or "CATALYST").upper()
     conviction = int(signal.get("conviction_score") or 0)
+    action = str(signal.get("action") or "BUY").upper()
     entry = float(signal.get("entry_price") or signal.get("price") or 0.0)
     target = float(signal.get("target_price") or 0.0)
     stop = float(signal.get("stop_loss") or 0.0)
@@ -140,11 +163,18 @@ def build_telegram_message(signal: dict[str, Any], dashboard_url: str = DASHBOAR
 
     lines = [
         f"🎯 <b>Catalyst Alert: {ticker}</b> ({cat_type})",
-        f"<b>Conviction:</b> {conviction}/100",
-        f"<b>Entry Price:</b> ${entry:.2f}",
+        f"<b>Conviction:</b> {conviction}/100 | <b>Action:</b> {action}",
+        f"<b>Entry Price:</b> ${entry:.2f}" if entry > 0 else "<b>Entry Price:</b> Market",
     ]
     if target > 0 and stop > 0:
-        lines.append(f"<b>Target:</b> ${target:.2f} | <b>Stop:</b> ${stop:.2f}")
+        if action == "SELL":
+            risk = stop - entry
+            reward = entry - target
+        else:
+            risk = entry - stop
+            reward = target - entry
+        rr_str = f"{reward / risk:.1f}:1" if risk > 0 else "—"
+        lines.append(f"<b>Target:</b> ${target:.2f} | <b>Stop:</b> ${stop:.2f} | <b>R:R:</b> {rr_str}")
 
     lines.append(f"\n<b>Thesis:</b>\n{thesis[:400]}")
     lines.append(f"\n<a href='{dashboard_url.rstrip('/')}/signals'>Open Catalyst Dashboard</a>")

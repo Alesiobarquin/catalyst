@@ -83,6 +83,27 @@ def test_build_telegram_message(sample_signal):
     assert "Open Catalyst Dashboard" in msg
 
 
+def test_build_payloads_sell_action(sample_signal):
+    sample_signal["action"] = "SELL"
+    sample_signal["entry_price"] = 100.0
+    sample_signal["stop_loss"] = 110.0  # risk = 110 - 100 = 10
+    sample_signal["target_price"] = 80.0  # reward = 100 - 80 = 20 -> 2.0:1
+
+    discord = build_discord_payload(sample_signal)
+    fields = {f["name"]: f["value"] for f in discord["embeds"][0]["fields"]}
+    assert fields["Action"] == "SELL"
+    assert fields["Risk / Reward"] == "2.0:1"
+
+    slack = build_slack_payload(sample_signal)
+    slack_fields = {f["text"].split("\n")[0]: f["text"].split("\n")[1] for f in slack["blocks"][1]["fields"]}
+    assert slack_fields["*Action:*"] == "SELL"
+    assert slack_fields["*R:R Ratio:*"] == "2.0:1"
+
+    telegram = build_telegram_message(sample_signal)
+    assert "<b>Action:</b> SELL" in telegram
+    assert "<b>R:R:</b> 2.0:1" in telegram
+
+
 def test_dispatcher_drops_below_conviction_threshold(sample_signal):
     mock_client = MagicMock(spec=httpx.Client)
     dispatcher = SignalNotificationDispatcher(

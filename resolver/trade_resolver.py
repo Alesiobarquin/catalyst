@@ -58,12 +58,19 @@ class TradeResolver:
         poll_interval: int = RESOLVER_POLL_INTERVAL_SECONDS,
         max_holding_days: int = MAX_HOLDING_DAYS,
         batch_size: int = MAX_BATCH_SIZE,
+        cache_ttl_seconds: float = 60.0,
     ) -> None:
         self.poll_interval = poll_interval
         self.max_holding_days = max_holding_days
         self.batch_size = batch_size
+        self.cache_ttl_seconds = cache_ttl_seconds
         self._running = False
         self._producer = None
+        self._price_cache: dict[str, tuple[float, float]] = {}  # ticker -> (price, epoch_timestamp)
+
+    def clear_price_cache(self) -> None:
+        """Clear in-memory price cache."""
+        self._price_cache.clear()
 
     def get_kafka_producer(self) -> Any | None:
         """Lazily initialize Kafka producer for emitting resolution events."""
@@ -100,22 +107,42 @@ class TradeResolver:
             return list(cur.fetchall())
 
     def fetch_current_prices(self, tickers: list[str]) -> dict[str, float]:
-        """Fetch current prices for unique tickers using yfinance with defensive fallbacks."""
+        """Fetch current prices for unique tickers using yfinance with defensive caching and fallbacks."""
         if not tickers:
             return {}
 
         prices: dict[str, float] = {}
         unique_tickers = sorted({t.strip().upper() for t in tickers if t and t.strip()})
+        now = time.time()
+        tickers_to_fetch: list[str] = []
 
+        # Check cache first
         for ticker in unique_tickers:
-            try:
-                import yfinance as yf
+            if ticker in self._price_cache:
+                cached_price, cached_time = self._price_cache[ticker]
+                if (now - cached_time) <= self.cache_ttl_seconds:
+                    prices[ticker] = cached_price
+                    continue
+            tickers_to_fetch.append(ticker)
 
+        if not tickers_to_fetch:
+            return prices
+
+        try:
+            import yfinance as yf
+        except ImportError:
+            logger.error("yfinance is not installed; cannot fetch market prices.")
+            return prices
+
+        for ticker in tickers_to_fetch:
+            try:
                 t = yf.Ticker(ticker)
                 # fast_info provides fast, cached lookups
                 last_price = getattr(t.fast_info, "last_price", None)
                 if last_price is not None and float(last_price) > 0:
-                    prices[ticker] = round(float(last_price), 4)
+                    price_val = round(float(last_price), 4)
+                    prices[ticker] = price_val
+                    self._price_cache[ticker] = (price_val, now)
                     continue
 
                 # Fallback to history
@@ -123,9 +150,18 @@ class TradeResolver:
                 if not hist.empty and "Close" in hist:
                     close = hist["Close"].iloc[-1]
                     if close and float(close) > 0:
-                        prices[ticker] = round(float(close), 4)
+                        price_val = round(float(close), 4)
+                        prices[ticker] = price_val
+                        self._price_cache[ticker] = (price_val, now)
+                        continue
             except Exception as exc:
                 logger.debug("Failed to fetch price for %s: %s", ticker, exc)
+
+            # Defensive fallback to stale cache if lookup failed
+            if ticker not in prices and ticker in self._price_cache:
+                fallback_price, _ = self._price_cache[ticker]
+                prices[ticker] = fallback_price
+                logger.info("Using cached fallback price %.4f for %s after lookup error", fallback_price, ticker)
 
         return prices
 

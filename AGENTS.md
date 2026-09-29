@@ -221,6 +221,7 @@ Multi-channel real-time catalyst alerting service:
 | **Phase 42** | Multi-Catalyst Synthetic Injection Scenarios, Testing Router Expansion & Frontend Simulator Options | Expanded `scripts/inject_synthetic_signals.py` and `POST /testing/inject` with event builders (`create_whale_event`, `create_biotech_event`, `create_drifter_event`) and deterministic test scenarios (`triple`, `biotech`, `whale`, `drifter`), upgraded Frontend Settings scenario selector with all 5 hunter catalysts, and expanded script/API unit test suites (450 tests across stack: 275 Python, 33 Java, 142 Vitest across 25 test files). |
 | **Phase 43** | Performance Router Short/Sell Resolution, Order Detail Resolution Integration & Persistence Recovery | Added bidirectional (SELL/short) support to performance calculation (`High >= stop_loss`, `Low <= target_price`, inverted PnL), integrated resolution metrics (`resolved_price`, `pnl_percent`, `RESOLVED_WIN`, `RESOLVED_LOSS`) in `get_order_detail`, fixed `conn.closed` reconnection in persistence consumer, and expanded unit tests (459 tests across stack: 284 Python, 33 Java, 142 Vitest across 25 test files). |
 | **Phase 44** | Gatekeeper Source Alias Normalization & Defensive AI Prompt Signal Formatting | Introduced `SOURCE_ALIASES` dictionary mapping scraper sources (`barchart_unusual`, `biopharm_catalyst`, `edgar_api_json`, `fmp_earnings`, `finviz`) to canonical hunter types in Gatekeeper, hardened AI prompt builder to accept string JSON arrays or single objects, and expanded unit tests (461 tests across stack: 286 Python, 33 Java, 142 Vitest across 25 test files). |
+| **Phase 45** | Trade Order Realized PnL Flyway Migration, In-Memory Resolver Price Caching & Notifier Bidirectional R:R | Added Flyway `V5__add_realized_pnl_usd_to_trade_orders.sql` and JPA `@Column` mapping in `TradeOrderEntity.java`, built TTL-based in-memory price caching with stale fallback in `TradeResolver`, upgraded multi-channel `notifier` with bidirectional SELL/short risk-to-reward ratio formatting, and expanded unit test suites (465 tests across stack: 290 Python, 33 Java, 142 Vitest across 25 test files). |
 
 ---
 
@@ -232,7 +233,7 @@ Multi-channel real-time catalyst alerting service:
   ```bash
   .venv/bin/pytest
   ```
-  *Current status: 286 passing tests.*
+  *Current status: 290 passing tests.*
 - **Linting & Code Style**:
   ```bash
   .venv/bin/ruff check .

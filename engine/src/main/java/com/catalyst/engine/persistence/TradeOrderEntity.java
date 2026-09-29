@@ -90,6 +90,9 @@ public class TradeOrderEntity {
     @Column(name = "pnl_percent", precision = 8, scale = 4)
     private BigDecimal pnlPercent;
 
+    @Column(name = "realized_pnl_usd", precision = 12, scale = 2)
+    private BigDecimal realizedPnlUsd;
+
     /** Optional Clerk user id for multi-tenant / execution scoping; engine leaves null. */
     @Column(name = "user_id", length = 128)
     private String userId;
