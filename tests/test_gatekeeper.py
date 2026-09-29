@@ -231,15 +231,25 @@ class TestGatekeeperNormalizeEvent:
         assert gatekeeper.detect_source({"source_hunter": "squeeze"}) == "squeeze"
         assert gatekeeper.detect_source({"hunter": "insider"}) == "insider"
 
+    def test_detect_source_from_aliases(self, gatekeeper):
+        assert gatekeeper.detect_source({"source": "barchart_unusual"}) == "whale"
+        assert gatekeeper.detect_source({"source": "biopharm_catalyst"}) == "biotech"
+        assert gatekeeper.detect_source({"source": "finviz"}) == "squeeze"
+        assert gatekeeper.detect_source({"source": "fmp_earnings"}) == "drifter"
+        assert gatekeeper.detect_source({"source": "edgar_api_json"}) == "insider"
+
     def test_detect_source_from_signal_data(self, gatekeeper):
         evt = {"signal_data": {"source_hunter": "biotech"}}
         assert gatekeeper.detect_source(evt) == "biotech"
+        evt_alias = {"signal_data": {"source": "barchart_unusual"}}
+        assert gatekeeper.detect_source(evt_alias) == "whale"
 
     def test_detect_source_from_inferred_fields(self, gatekeeper):
         assert gatekeeper.detect_source({"short_float": 0.2}) == "squeeze"
         assert gatekeeper.detect_source({"transaction_code": "P"}) == "insider"
         assert gatekeeper.detect_source({"option_type": "put"}) == "whale"
         assert gatekeeper.detect_source({"drug_name": "MK-3475"}) == "biotech"
+        assert gatekeeper.detect_source({"catalyst_type": "PDUFA"}) == "biotech"
         assert gatekeeper.detect_source({"surprise_percent": 10.0}) == "drifter"
 
 

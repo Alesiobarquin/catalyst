@@ -35,6 +35,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger("gatekeeper")
 
+SOURCE_ALIASES = {
+    "squeeze": "squeeze",
+    "finviz": "squeeze",
+    "insider": "insider",
+    "edgar": "insider",
+    "edgar_api_json": "insider",
+    "sec": "insider",
+    "whale": "whale",
+    "barchart": "whale",
+    "barchart_unusual": "whale",
+    "biotech": "biotech",
+    "biopharm": "biotech",
+    "biopharm_catalyst": "biotech",
+    "biopharmcatalyst": "biotech",
+    "drifter": "drifter",
+    "fmp": "drifter",
+    "fmp_earnings": "drifter",
+    "earnings": "drifter",
+}
+
 
 class GatekeeperService:
     def __init__(self):
@@ -211,16 +231,31 @@ class GatekeeperService:
         return normalized
 
     def detect_source(self, raw_event):
-        for field in ("source_hunter", "hunter", "source"):
+        for field in ("source_hunter", "hunter"):
             value = raw_event.get(field)
             if isinstance(value, str) and value:
-                return value.strip().lower()
+                v = value.strip().lower()
+                return SOURCE_ALIASES.get(v, v)
+
+        source_val = raw_event.get("source")
+        if isinstance(source_val, str) and source_val:
+            v = source_val.strip().lower()
+            if v in SOURCE_ALIASES:
+                return SOURCE_ALIASES[v]
 
         signal_data = raw_event.get("signal_data", {})
         if isinstance(signal_data, dict):
-            value = signal_data.get("source_hunter")
-            if isinstance(value, str) and value:
-                return value.strip().lower()
+            for field in ("source_hunter", "hunter"):
+                value = signal_data.get(field)
+                if isinstance(value, str) and value:
+                    v = value.strip().lower()
+                    return SOURCE_ALIASES.get(v, v)
+
+            source_val = signal_data.get("source")
+            if isinstance(source_val, str) and source_val:
+                v = source_val.strip().lower()
+                if v in SOURCE_ALIASES:
+                    return SOURCE_ALIASES[v]
 
         if "short_float" in raw_event or "short_float_pct" in signal_data:
             return "squeeze"
@@ -228,7 +263,7 @@ class GatekeeperService:
             return "insider"
         if "option_type" in raw_event or "option_type" in signal_data:
             return "whale"
-        if "drug_name" in raw_event or "event_date" in signal_data:
+        if "drug_name" in raw_event or "event_date" in signal_data or "catalyst_type" in raw_event:
             return "biotech"
         if "surprise_percent" in raw_event or "surprise_percent" in signal_data:
             return "drifter"

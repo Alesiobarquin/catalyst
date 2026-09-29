@@ -171,6 +171,24 @@ class TestPromptBuilder:
         assert "Signal 2:" in formatted
         assert "Source: insider" in formatted
 
+    def test_format_signal_blocks_json_string_and_dict(self):
+        import json
+
+        from ai_layer.prompt_builder import format_signal_blocks
+
+        # JSON string containing array
+        json_str = json.dumps([{"source_hunter": "whale", "signal_data": {"option_type": "call"}}])
+        formatted = format_signal_blocks(json_str)
+        assert "Source: whale" in formatted
+
+        # Single dict
+        single_dict = {"source_hunter": "drifter", "signal_data": {"surprise_percent": 12.0}}
+        formatted_single = format_signal_blocks(single_dict)
+        assert "Source: drifter" in formatted_single
+
+        # Non-JSON string
+        assert format_signal_blocks("arbitrary text") == "arbitrary text"
+
 
 class TestAIAnalysisServiceWorkflow:
     def test_resolve_model_name_alias(self):

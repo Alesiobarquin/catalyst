@@ -90,8 +90,23 @@ def format_signal_blocks(signals):
     if not signals:
         return "No accumulated signals were provided."
 
+    if isinstance(signals, str):
+        try:
+            signals = json.loads(signals)
+        except Exception:
+            return signals
+
+    if isinstance(signals, dict):
+        signals = [signals]
+
+    if not isinstance(signals, list) or not signals:
+        return "No accumulated signals were provided."
+
     blocks = []
     for index, signal in enumerate(signals, start=1):
+        if not isinstance(signal, dict):
+            blocks.append(f"Signal {index}:\n{signal}")
+            continue
         source = signal.get("source_hunter", "unknown")
         signal_data = json.dumps(signal.get("signal_data", {}), indent=2, sort_keys=True)
         blocks.append(
