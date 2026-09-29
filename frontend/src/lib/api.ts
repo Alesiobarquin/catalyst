@@ -318,7 +318,16 @@ export async function getPipelineHealth(): Promise<PipelineHealth | null> {
 
 /** POST /testing/inject — developer injection of synthetic catalyst signals */
 export async function injectSyntheticSignal(params: {
-  scenario: "confluence" | "single_tech" | "drop";
+  scenario:
+    | "confluence"
+    | "triple"
+    | "biotech"
+    | "whale"
+    | "drifter"
+    | "single_tech"
+    | "single"
+    | "drop"
+    | "custom";
   ticker: string;
   price?: number;
   volume?: number;

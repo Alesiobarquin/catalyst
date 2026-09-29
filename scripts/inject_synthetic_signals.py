@@ -59,6 +59,7 @@ def create_squeeze_event(
 ) -> dict[str, Any]:
     return {
         "hunter": "squeeze",
+        "source_hunter": "squeeze",
         "ticker": ticker.upper(),
         "price": price,
         "volume": volume,
@@ -66,6 +67,7 @@ def create_squeeze_event(
         "short_float": short_float,
         "days_to_cover": 4.5,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -86,6 +88,81 @@ def create_insider_event(
         "relative_volume": relative_volume,
         "source": "edgar_api_json",
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def create_whale_event(
+    ticker: str,
+    price: float = 125.50,
+    volume: float = 850_000.0,
+    relative_volume: float = 3.2,
+    option_type: str = "call",
+    strike_price: float = 130.0,
+    option_volume: int = 15000,
+) -> dict[str, Any]:
+    return {
+        "hunter": "whale",
+        "source_hunter": "whale",
+        "ticker": ticker.upper(),
+        "option_type": option_type,
+        "strike_price": strike_price,
+        "option_volume": option_volume,
+        "price": price,
+        "volume": volume,
+        "relative_volume": relative_volume,
+        "source": "barchart_unusual",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def create_biotech_event(
+    ticker: str,
+    price: float = 45.00,
+    volume: float = 650_000.0,
+    relative_volume: float = 2.8,
+    catalyst_type: str = "PDUFA",
+    stage: str = "Phase 3",
+    drug_name: str = "CAT-101",
+) -> dict[str, Any]:
+    return {
+        "hunter": "biotech",
+        "source_hunter": "biotech",
+        "ticker": ticker.upper(),
+        "catalyst_type": catalyst_type,
+        "stage": stage,
+        "drug_name": drug_name,
+        "event_date": "2026-06-30",
+        "price": price,
+        "volume": volume,
+        "relative_volume": relative_volume,
+        "source": "biopharm_catalyst",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def create_drifter_event(
+    ticker: str,
+    price: float = 180.00,
+    volume: float = 1_200_000.0,
+    relative_volume: float = 2.5,
+    surprise_percent: float = 15.5,
+) -> dict[str, Any]:
+    return {
+        "hunter": "drifter",
+        "source_hunter": "drifter",
+        "ticker": ticker.upper(),
+        "surprise_percent": surprise_percent,
+        "eps_actual": 2.10,
+        "eps_estimate": 1.82,
+        "price": price,
+        "volume": volume,
+        "relative_volume": relative_volume,
+        "source": "fmp_earnings",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -119,7 +196,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--scenario",
-        choices=["single", "confluence", "drop", "custom"],
+        choices=["single", "confluence", "triple", "biotech", "whale", "drifter", "drop", "custom"],
         default="confluence",
         help="Injection scenario (default: confluence)",
     )
@@ -196,6 +273,65 @@ def main() -> None:
             "Scenario 'confluence': Expect Gatekeeper to forward %s to triage-priority (confluence=2).",
             args.ticker,
         )
+    elif args.scenario == "triple":
+        events.append(
+            create_squeeze_event(
+                ticker=args.ticker,
+                price=args.price,
+                volume=args.volume,
+                relative_volume=args.rvol,
+            )
+        )
+        events.append(
+            create_insider_event(
+                ticker=args.ticker,
+                price=args.price,
+                volume=args.volume,
+                relative_volume=args.rvol,
+            )
+        )
+        events.append(
+            create_whale_event(
+                ticker=args.ticker,
+                price=args.price,
+                volume=args.volume,
+                relative_volume=args.rvol,
+            )
+        )
+        logger.info(
+            "Scenario 'triple': Expect Gatekeeper to forward %s with confluence=3.",
+            args.ticker,
+        )
+    elif args.scenario == "biotech":
+        events.append(
+            create_biotech_event(
+                ticker=args.ticker,
+                price=args.price,
+                volume=args.volume,
+                relative_volume=args.rvol,
+            )
+        )
+        logger.info("Scenario 'biotech': Injected clinical catalyst for %s.", args.ticker)
+    elif args.scenario == "whale":
+        events.append(
+            create_whale_event(
+                ticker=args.ticker,
+                price=args.price,
+                volume=args.volume,
+                relative_volume=args.rvol,
+            )
+        )
+        logger.info("Scenario 'whale': Injected unusual options sweep for %s.", args.ticker)
+    elif args.scenario == "drifter":
+        events.append(
+            create_drifter_event(
+                ticker=args.ticker,
+                price=args.price,
+                volume=args.volume,
+                relative_volume=args.rvol,
+            )
+        )
+        logger.info("Scenario 'drifter': Injected post-earnings surprise beat for %s.", args.ticker)
     elif args.scenario == "drop":
         # Low volume (< 50,000 threshold)
         events.append(

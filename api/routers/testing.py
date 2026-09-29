@@ -18,7 +18,17 @@ router = APIRouter(prefix="/testing", tags=["testing"])
 
 
 class SyntheticInjectRequest(BaseModel):
-    scenario: Literal["single", "confluence", "drop", "custom"] = "confluence"
+    scenario: Literal[
+        "single",
+        "single_tech",
+        "confluence",
+        "triple",
+        "biotech",
+        "whale",
+        "drifter",
+        "drop",
+        "custom",
+    ] = "confluence"
     ticker: str = Field(default="NVDA", min_length=1, max_length=10)
     price: float = Field(default=125.50, gt=0)
     volume: float = Field(default=850000.0, gt=0)
@@ -40,7 +50,7 @@ def _create_synthetic_events(req: SyntheticInjectRequest) -> list[dict[str, Any]
     now_iso = datetime.now(timezone.utc).isoformat()
     events: list[dict[str, Any]] = []
 
-    if req.scenario == "single":
+    if req.scenario in ("single", "single_tech"):
         events.append(
             {
                 "hunter": "squeeze",
@@ -51,6 +61,7 @@ def _create_synthetic_events(req: SyntheticInjectRequest) -> list[dict[str, Any]
                 "short_float": req.short_float,
                 "days_to_cover": 4.5,
                 "timestamp": now_iso,
+                "timestamp_utc": now_iso,
             }
         )
     elif req.scenario == "confluence":
@@ -64,6 +75,7 @@ def _create_synthetic_events(req: SyntheticInjectRequest) -> list[dict[str, Any]
                 "short_float": req.short_float,
                 "days_to_cover": 4.5,
                 "timestamp": now_iso,
+                "timestamp_utc": now_iso,
             }
         )
         events.append(
@@ -77,6 +89,103 @@ def _create_synthetic_events(req: SyntheticInjectRequest) -> list[dict[str, Any]
                 "relative_volume": req.relative_volume,
                 "source": "edgar_api_json",
                 "timestamp": now_iso,
+                "timestamp_utc": now_iso,
+            }
+        )
+    elif req.scenario == "triple":
+        events.append(
+            {
+                "hunter": "squeeze",
+                "ticker": ticker,
+                "price": req.price,
+                "volume": req.volume,
+                "relative_volume": req.relative_volume,
+                "short_float": req.short_float,
+                "days_to_cover": 4.5,
+                "timestamp": now_iso,
+                "timestamp_utc": now_iso,
+            }
+        )
+        events.append(
+            {
+                "hunter": "insider",
+                "ticker": ticker,
+                "transaction_code": "P",
+                "transaction_amount_usd": 500000.0,
+                "price": req.price,
+                "volume": req.volume,
+                "relative_volume": req.relative_volume,
+                "source": "edgar_api_json",
+                "timestamp": now_iso,
+                "timestamp_utc": now_iso,
+            }
+        )
+        events.append(
+            {
+                "hunter": "whale",
+                "source_hunter": "whale",
+                "ticker": ticker,
+                "option_type": "call",
+                "strike_price": req.price * 1.05,
+                "option_volume": 15000,
+                "price": req.price,
+                "volume": req.volume,
+                "relative_volume": req.relative_volume,
+                "source": "barchart_unusual",
+                "timestamp": now_iso,
+                "timestamp_utc": now_iso,
+            }
+        )
+    elif req.scenario == "biotech":
+        events.append(
+            {
+                "hunter": "biotech",
+                "source_hunter": "biotech",
+                "ticker": ticker,
+                "catalyst_type": "PDUFA",
+                "stage": "Phase 3",
+                "drug_name": "CAT-101",
+                "event_date": "2026-06-30",
+                "price": req.price,
+                "volume": req.volume,
+                "relative_volume": req.relative_volume,
+                "source": "biopharm_catalyst",
+                "timestamp": now_iso,
+                "timestamp_utc": now_iso,
+            }
+        )
+    elif req.scenario == "whale":
+        events.append(
+            {
+                "hunter": "whale",
+                "source_hunter": "whale",
+                "ticker": ticker,
+                "option_type": "call",
+                "strike_price": req.price * 1.05,
+                "option_volume": 15000,
+                "price": req.price,
+                "volume": req.volume,
+                "relative_volume": req.relative_volume,
+                "source": "barchart_unusual",
+                "timestamp": now_iso,
+                "timestamp_utc": now_iso,
+            }
+        )
+    elif req.scenario == "drifter":
+        events.append(
+            {
+                "hunter": "drifter",
+                "source_hunter": "drifter",
+                "ticker": ticker,
+                "surprise_percent": 15.5,
+                "eps_actual": 2.10,
+                "eps_estimate": 1.82,
+                "price": req.price,
+                "volume": req.volume,
+                "relative_volume": req.relative_volume,
+                "source": "fmp_earnings",
+                "timestamp": now_iso,
+                "timestamp_utc": now_iso,
             }
         )
     elif req.scenario == "drop":
@@ -91,6 +200,7 @@ def _create_synthetic_events(req: SyntheticInjectRequest) -> list[dict[str, Any]
                 "short_float": req.short_float,
                 "days_to_cover": 1.0,
                 "timestamp": now_iso,
+                "timestamp_utc": now_iso,
             }
         )
     elif req.scenario == "custom":
@@ -103,6 +213,7 @@ def _create_synthetic_events(req: SyntheticInjectRequest) -> list[dict[str, Any]
                 "relative_volume": req.relative_volume,
                 "short_float": req.short_float,
                 "timestamp": now_iso,
+                "timestamp_utc": now_iso,
             }
         )
 

@@ -653,6 +653,44 @@ def test_inject_synthetic_signals_endpoint_drop():
     assert mock_producer.send.call_count == 1
 
 
+def test_inject_synthetic_signals_endpoint_all_scenarios():
+    from unittest.mock import MagicMock, patch
+
+    mock_producer = MagicMock()
+    app = create_app()
+
+    test_cases = [
+        ("triple", "NVDA", 3),
+        ("biotech", "BMY", 1),
+        ("whale", "TSLA", 1),
+        ("drifter", "GOOGL", 1),
+        ("single_tech", "AAPL", 1),
+        ("custom", "AMD", 1),
+    ]
+
+    for scenario, ticker, expected_count in test_cases:
+        mock_producer.reset_mock()
+        with patch("kafka.KafkaProducer", return_value=mock_producer), TestClient(app) as client:
+            res = client.post(
+                "/testing/inject",
+                json={
+                    "scenario": scenario,
+                    "ticker": ticker,
+                    "price": 100.0,
+                    "volume": 500000.0,
+                    "relative_volume": 2.5,
+                },
+            )
+
+        assert res.status_code == 200
+        data = res.json()
+        assert data["success"] is True
+        assert data["scenario"] == scenario
+        assert data["ticker"] == ticker
+        assert data["events_injected"] == expected_count
+        assert mock_producer.send.call_count == expected_count
+
+
 def test_inject_synthetic_signals_dry_run():
     app = create_app()
     with TestClient(app) as client:

@@ -4,9 +4,15 @@ from unittest.mock import MagicMock, patch
 
 from scripts.confluence_watcher import inspect_confluence
 from scripts.inject_synthetic_signals import (
+    create_biotech_event,
+    create_drifter_event,
     create_insider_event,
     create_squeeze_event,
+    create_whale_event,
     inject_events,
+)
+from scripts.inject_synthetic_signals import (
+    main as inject_main,
 )
 from scripts.verify_pipeline_health import (
     check_api,
@@ -71,6 +77,7 @@ class TestInjectSyntheticSignals:
         assert event["volume"] == 1_000_000
         assert event["relative_volume"] == 2.5
         assert "timestamp" in event
+        assert "timestamp_utc" in event
 
     def test_create_insider_event(self):
         event = create_insider_event("tsla", price=200.0, amount_usd=1_000_000)
@@ -79,6 +86,39 @@ class TestInjectSyntheticSignals:
         assert event["transaction_code"] == "P"
         assert event["transaction_amount_usd"] == 1_000_000
         assert "timestamp" in event
+        assert "timestamp_utc" in event
+
+    def test_create_whale_event(self):
+        event = create_whale_event("amd", price=140.0, option_type="call", strike_price=145.0, option_volume=25000)
+        assert event["ticker"] == "AMD"
+        assert event["hunter"] == "whale"
+        assert event["source_hunter"] == "whale"
+        assert event["option_type"] == "call"
+        assert event["strike_price"] == 145.0
+        assert event["option_volume"] == 25000
+        assert event["price"] == 140.0
+        assert "timestamp" in event
+        assert "timestamp_utc" in event
+
+    def test_create_biotech_event(self):
+        event = create_biotech_event("bmy", price=55.0, catalyst_type="FDA_APPROVAL", drug_name="TEST-55")
+        assert event["ticker"] == "BMY"
+        assert event["hunter"] == "biotech"
+        assert event["source_hunter"] == "biotech"
+        assert event["catalyst_type"] == "FDA_APPROVAL"
+        assert event["drug_name"] == "TEST-55"
+        assert "timestamp" in event
+        assert "timestamp_utc" in event
+
+    def test_create_drifter_event(self):
+        event = create_drifter_event("googl", price=175.0, surprise_percent=22.4)
+        assert event["ticker"] == "GOOGL"
+        assert event["hunter"] == "drifter"
+        assert event["source_hunter"] == "drifter"
+        assert event["surprise_percent"] == 22.4
+        assert event["eps_actual"] == 2.10
+        assert "timestamp" in event
+        assert "timestamp_utc" in event
 
     def test_inject_events(self):
         mock_producer = MagicMock()
@@ -95,6 +135,32 @@ class TestInjectSyntheticSignals:
 
         assert mock_producer.send.call_count == 1
         assert mock_producer.flush.call_count == 1
+
+    def test_inject_main_scenarios(self):
+        mock_producer = MagicMock()
+        mock_future = MagicMock()
+        mock_record = MagicMock()
+        mock_record.topic = "raw-events"
+        mock_record.partition = 0
+        mock_record.offset = 1
+        mock_future.get.return_value = mock_record
+        mock_producer.send.return_value = mock_future
+
+        scenarios_expected = [
+            ("triple", 3),
+            ("biotech", 1),
+            ("whale", 1),
+            ("drifter", 1),
+        ]
+
+        for scenario, expected_count in scenarios_expected:
+            mock_producer.send.reset_mock()
+            with (
+                patch("scripts.inject_synthetic_signals.get_kafka_producer", return_value=mock_producer),
+                patch("sys.argv", ["inject_synthetic_signals.py", "--scenario", scenario, "--ticker", "TEST"]),
+            ):
+                inject_main()
+                assert mock_producer.send.call_count == expected_count
 
 
 class TestVerifyPipelineHealth:

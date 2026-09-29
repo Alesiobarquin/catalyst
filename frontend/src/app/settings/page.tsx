@@ -35,7 +35,9 @@ export default function SettingsPage() {
   const [pipelineHealth, setPipelineHealth] = useState<PipelineHealth | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
   const [injectTicker, setInjectTicker] = useState("NVDA");
-  const [injectScenario, setInjectScenario] = useState<"confluence" | "single_tech" | "drop">("confluence");
+  const [injectScenario, setInjectScenario] = useState<
+    "confluence" | "triple" | "biotech" | "whale" | "drifter" | "single_tech" | "drop"
+  >("confluence");
   const [injectPrice, setInjectPrice] = useState("125.50");
   const [injectVolume, setInjectVolume] = useState("850000");
   const [injectRvol, setInjectRvol] = useState("3.2");
@@ -692,7 +694,18 @@ export default function SettingsPage() {
               </label>
               <select
                 value={injectScenario}
-                onChange={(e) => setInjectScenario(e.target.value as "confluence" | "single_tech" | "drop")}
+                onChange={(e) =>
+                  setInjectScenario(
+                    e.target.value as
+                      | "confluence"
+                      | "triple"
+                      | "biotech"
+                      | "whale"
+                      | "drifter"
+                      | "single_tech"
+                      | "drop"
+                  )
+                }
                 style={{
                   width: "100%",
                   padding: "8px 12px",
@@ -705,6 +718,10 @@ export default function SettingsPage() {
                 }}
               >
                 <option value="confluence">Confluence (Squeeze + Insider)</option>
+                <option value="triple">Triple Confluence (Squeeze + Insider + Whale)</option>
+                <option value="biotech">Biotech Catalyst (FDA / PDUFA)</option>
+                <option value="whale">Whale Options Sweep</option>
+                <option value="drifter">Post-Earnings Drifter (+15% Beat)</option>
                 <option value="single_tech">Single Technical Score ≥ 4</option>
                 <option value="drop">Drop Filter (Low Volume/Price)</option>
               </select>
