@@ -58,6 +58,9 @@ export interface TradeOrder {
   current_price?: number;
   status?: TradeStatus;
   pnl_pct?: number;
+  resolved_at?: string | null;
+  resolved_price?: number | null;
+  pnl_percent?: number | null;
   /** Alpaca paper execution for the signed-in user (GET /executions/me) */
   execution?: TradeExecution | null;
 }
@@ -107,6 +110,9 @@ export interface OrderStats {
   daily_volume: Array<{ date: string; count: number }>;
   conviction_distribution: Array<{ bucket: string; count: number }>;
   win_rate_percent?: number;
+  expired_count?: number;
+  realized_pnl_percent?: number;
+  total_realized_pnl_usd?: number;
   total_recommended_volume_usd?: number;
 }
 

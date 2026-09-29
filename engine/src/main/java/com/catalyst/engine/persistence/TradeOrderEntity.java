@@ -77,6 +77,19 @@ public class TradeOrderEntity {
     @Column(name = "spy_above_200sma")
     private Boolean spyAbove200Sma;
 
+    @Column(name = "status", length = 20)
+    @Builder.Default
+    private String status = "ACTIVE";
+
+    @Column(name = "resolved_at")
+    private Instant resolvedAt;
+
+    @Column(name = "resolved_price", precision = 12, scale = 4)
+    private BigDecimal resolvedPrice;
+
+    @Column(name = "pnl_percent", precision = 8, scale = 4)
+    private BigDecimal pnlPercent;
+
     /** Optional Clerk user id for multi-tenant / execution scoping; engine leaves null. */
     @Column(name = "user_id", length = 128)
     private String userId;

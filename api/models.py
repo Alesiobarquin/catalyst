@@ -33,6 +33,9 @@ class TradeOrderResponse(BaseModel):
     regime_vix: float | None = None
     spy_above_200sma: bool | None = None
     status: str = "ACTIVE"
+    resolved_at: datetime | None = None
+    resolved_price: float | None = None
+    pnl_percent: float | None = None
     execution: TradeExecutionResponse | None = None
 
 
@@ -52,11 +55,14 @@ class OrderStatsResponse(BaseModel):
     hit_target_count: int
     hit_stop_count: int
     active_count: int
+    expired_count: int = 0
     strategy_breakdown: dict[str, int]
     catalyst_breakdown: dict[str, int]
     daily_volume: list[DailyVolume] = []
     conviction_distribution: list[ConvictionBucket] = []
     win_rate_percent: float = 0.0
+    realized_pnl_percent: float = 0.0
+    total_realized_pnl_usd: float = 0.0
     total_recommended_volume_usd: float = 0.0
 
 

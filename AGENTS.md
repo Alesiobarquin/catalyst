@@ -191,6 +191,7 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
 | **Phase 26** | Execution parity, Prometheus metrics & date filters | Order executions lateral join, signals date range filtering (`7d`/`30d`/`90d`), `POST /testing/inject`, `GET /metrics`, Next.js 16 `proxy.ts` (203 tests). |
 | **Phase 27** | Redis health telemetry, schedule parity & verification probe | Redis async health check in API (`ping_redis()`), aggregate `/health/pipeline` (`api`, `database`, `redis`, `engine`, `ready`), Prometheus `catalyst_redis_up` gauge, EventBridge shutdown alignment (16:10 ET / 20:10 UTC), and automated `scripts/verify_pipeline_health.py` CLI probe (211 tests). |
 | **Phase 28** | Critical bug fixes, Java engine tests & Frontend test suite | Fixed 11 critical bugs (SSE DB pool starvation, TradeList execution wipe, Gatekeeper/AI Kafka offset commits, negative price checks, dual-class tickers `.A`/`.B`/`.C`/`.WS`, settings `isConnected` state, AudioContext leak, CDK `t3.medium`/30GB sizing, Prometheus active pool metric). Added 33-test Java engine JUnit 5 suite (Lombok 1.18.34, strategies, RegimeFilter, KellySizer). Added 31-test frontend Vitest + Testing Library suite (276 total automated tests across stack). |
+| **Phase 29** | Trade Resolution Daemon & Closed-Loop PnL | Implemented autonomous trade resolution daemon (`resolver/trade_resolver.py`), V4 TimescaleDB migration for `resolved_at`/`resolved_price`/`pnl_percent`/`realized_pnl_usd`, API statistics integration (`expired_count`, `realized_pnl_percent`, `total_realized_pnl_usd`), Java entity mapping, docker-compose service, and frontend resolution badges (290 tests across stack: 226 Python, 33 Java, 31 Vitest). |
 
 ---
 
@@ -202,7 +203,7 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
   ```bash
   .venv/bin/pytest
   ```
-  *Current status: 212 passing tests.*
+  *Current status: 226 passing tests.*
 - **Linting & Code Style**:
   ```bash
   .venv/bin/ruff check .

@@ -103,7 +103,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
   const rr        = calcRiskReward(order);
   const status    = order.status ?? "ACTIVE";
   const statusCfg = getStatusConfig(status);
-  const pnlPct    = order.pnl_pct;
+  const pnlPct    = order.pnl_percent ?? order.pnl_pct;
   const pnlColor  = pnlPct !== undefined && pnlPct < 0 ? "#EF4444" : "#10B981";
 
   const stopPct   = signedPct(order.stop_loss   - order.limit_price, order.limit_price);
@@ -182,9 +182,9 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
 
             {/* Right: current price + P&L */}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              {order.current_price !== undefined && (
+              {(order.current_price !== undefined || order.resolved_price != null) && (
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 500, color: "#CBD5E1" }}>
-                  {formatCurrency(order.current_price)}
+                  {formatCurrency(order.resolved_price ?? order.current_price ?? 0)}
                 </span>
               )}
               {pnlPct !== undefined ? (

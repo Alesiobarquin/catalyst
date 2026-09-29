@@ -310,6 +310,7 @@ async def order_stats(conn: asyncpg.Connection = Depends(get_conn)):
         "hit_target_count": hit_target,
         "hit_stop_count": hit_stop,
         "active_count": int(status_map.get("ACTIVE", 0)),
+        "expired_count": int(status_map.get("EXPIRED", 0)),
         "strategy_breakdown": {r["strategy_used"]: r["cnt"] for r in strat_rows},
         "catalyst_breakdown": {r["catalyst_type"]: r["cnt"] for r in cat_rows},
         "daily_volume": [{"date": r["date"], "count": r["cnt"]} for r in daily_rows],
@@ -317,6 +318,8 @@ async def order_stats(conn: asyncpg.Connection = Depends(get_conn)):
             {"bucket": r["bucket"], "count": r["cnt"]} for r in bucket_rows
         ],
         "win_rate_percent": win_rate,
+        "realized_pnl_percent": 0.0,
+        "total_realized_pnl_usd": 0.0,
         "total_recommended_volume_usd": float(tot_vol),
     }
 
