@@ -21,6 +21,7 @@ from gatekeeper.config import (
     REDIS_SENT_KEY,
     REDIS_SIGNALS_KEY,
     REDIS_SOURCES_KEY,
+    REDIS_SOURCES_ZSET_KEY,
     ROLLING_WINDOW_SECONDS,
     TECHNICAL_SCORE_THRESHOLD,
     TRIAGE_PRIORITY_TOPIC,
@@ -148,6 +149,10 @@ class GatekeeperService:
             logger.info("Deduped %s: already sent within rolling window", ticker)
             return
 
+        if not self.mark_sent(ticker):
+            logger.info("Deduped %s: already claimed/sent within rolling window", ticker)
+            return
+
         triage_payload = {
             "ticker": ticker,
             "timestamp_utc": normalized["timestamp_utc"],
@@ -158,8 +163,13 @@ class GatekeeperService:
             "float_shares": normalized.get("float_shares"),
             "market_cap": normalized.get("market_cap"),
         }
-        self.producer.send(TRIAGE_PRIORITY_TOPIC, triage_payload)
-        self.producer.flush()
+        try:
+            self.producer.send(TRIAGE_PRIORITY_TOPIC, triage_payload)
+            self.producer.flush()
+        except Exception:
+            self.clear_sent(ticker)
+            raise
+
         if (
             hasattr(self, "consumer")
             and hasattr(self.consumer, "commit")
@@ -170,7 +180,6 @@ class GatekeeperService:
             except (KafkaError, OSError) as exc:
                 logger.warning("Kafka commit failed after forwarding triage payload: %s", exc)
 
-        self.mark_sent(ticker)
         logger.info(
             "Forwarded %s to %s (confluence=%s, technical_score=%s)",
             ticker,
@@ -409,6 +418,7 @@ class GatekeeperService:
     def track_signal(self, ticker, normalized):
         signal_key = REDIS_SIGNALS_KEY.format(ticker=ticker)
         source_key = REDIS_SOURCES_KEY.format(ticker=ticker)
+        zset_key = REDIS_SOURCES_ZSET_KEY.format(ticker=ticker)
 
         payload = {
             "source_hunter": normalized["source_hunter"],
@@ -417,18 +427,47 @@ class GatekeeperService:
 
         # Cap per-ticker signal history to avoid unbounded growth.
         max_signals_per_window = 200
+        now_ts = time.time()
+        cutoff_ts = now_ts - ROLLING_WINDOW_SECONDS
+
         pipe = self.redis.pipeline()
         pipe.lpush(signal_key, json.dumps(payload))
         pipe.ltrim(signal_key, 0, max_signals_per_window - 1)
         pipe.expire(signal_key, ROLLING_WINDOW_SECONDS)
 
+        # Standard set for backward compatibility
         pipe.sadd(source_key, normalized["source_hunter"])
         pipe.expire(source_key, ROLLING_WINDOW_SECONDS)
+
+        # Sorted set with epoch timestamp score for precise sliding window confluence
+        pipe.zadd(zset_key, {normalized["source_hunter"]: now_ts})
+        pipe.zremrangebyscore(zset_key, "-inf", cutoff_ts)
+        pipe.expire(zset_key, ROLLING_WINDOW_SECONDS)
         pipe.execute()
 
     def get_sources(self, ticker):
+        zset_key = REDIS_SOURCES_ZSET_KEY.format(ticker=ticker)
+        now_ts = time.time()
+        cutoff_ts = now_ts - ROLLING_WINDOW_SECONDS
+
+        try:
+            self.redis.zremrangebyscore(zset_key, "-inf", cutoff_ts)
+            zset_sources = self.redis.zrange(zset_key, 0, -1)
+            if zset_sources:
+                return sorted(
+                    s.decode("utf-8") if isinstance(s, bytes) else str(s)
+                    for s in zset_sources
+                )
+        except Exception as exc:
+            logger.debug("Falling back to standard set for sources on %s: %s", ticker, exc)
+
+        # Fallback to standard set (ensures backwards compatibility and mock resilience)
         source_key = REDIS_SOURCES_KEY.format(ticker=ticker)
-        return sorted(self.redis.smembers(source_key))
+        members = self.redis.smembers(source_key)
+        return sorted(
+            s.decode("utf-8") if isinstance(s, bytes) else str(s)
+            for s in members
+        )
 
     def get_accumulated_signals(self, ticker):
         signal_key = REDIS_SIGNALS_KEY.format(ticker=ticker)
@@ -440,8 +479,18 @@ class GatekeeperService:
         return bool(self.redis.exists(sent_key))
 
     def mark_sent(self, ticker):
+        """Atomically mark ticker as sent using SET NX EX to prevent race conditions.
+
+        Returns True if the lock was acquired and mark set, False if already sent.
+        """
         sent_key = REDIS_SENT_KEY.format(ticker=ticker)
-        self.redis.set(sent_key, "1", ex=ROLLING_WINDOW_SECONDS)
+        result = self.redis.set(sent_key, "1", nx=True, ex=ROLLING_WINDOW_SECONDS)
+        return bool(result)
+
+    def clear_sent(self, ticker):
+        """Clear sent marker if triage delivery fails."""
+        sent_key = REDIS_SENT_KEY.format(ticker=ticker)
+        self.redis.delete(sent_key)
 
     @staticmethod
     def first(raw_event, *keys):

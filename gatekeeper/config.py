@@ -18,5 +18,7 @@ CONFLUENCE_THRESHOLD = int(os.getenv("GATEKEEPER_CONFLUENCE_THRESHOLD", "2"))
 TECHNICAL_SCORE_THRESHOLD = float(os.getenv("GATEKEEPER_TECHNICAL_SCORE_THRESHOLD", "70"))
 
 REDIS_SOURCES_KEY = "gk:sources:{ticker}"
+REDIS_SOURCES_ZSET_KEY = "gk:sources_zset:{ticker}"
 REDIS_SIGNALS_KEY = "gk:signals:{ticker}"
 REDIS_SENT_KEY = "gk:sent:{ticker}"
+

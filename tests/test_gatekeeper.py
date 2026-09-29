@@ -20,8 +20,10 @@ def gatekeeper():
         gk = GatekeeperService()
         gk.redis = MagicMock()
         gk.redis.smembers.return_value = set()
+        gk.redis.zrange.return_value = []
         gk.redis.lrange.return_value = []
         gk.redis.exists.return_value = False
+        gk.redis.set.return_value = True
         return gk
 
 
@@ -377,3 +379,81 @@ class TestGatekeeperRedisAndWorkflow:
         # Should not raise exception out of run()
         gatekeeper.run()
         gatekeeper.process_event.assert_called_once_with(msg.value)
+
+    def test_atomic_mark_sent_acquired(self, gatekeeper):
+        gatekeeper.redis.set.return_value = True
+        acquired = gatekeeper.mark_sent("NVDA")
+        assert acquired is True
+        gatekeeper.redis.set.assert_called_once_with("gk:sent:NVDA", "1", nx=True, ex=300)
+
+    def test_atomic_mark_sent_locked(self, gatekeeper):
+        gatekeeper.redis.set.return_value = None  # Key already existed (NX condition failed)
+        acquired = gatekeeper.mark_sent("NVDA")
+        assert acquired is False
+
+    def test_clear_sent(self, gatekeeper):
+        gatekeeper.clear_sent("NVDA")
+        gatekeeper.redis.delete.assert_called_once_with("gk:sent:NVDA")
+
+    def test_track_signal_populates_zset(self, gatekeeper):
+        pipe_mock = MagicMock()
+        gatekeeper.redis.pipeline.return_value = pipe_mock
+
+        norm = {
+            "source_hunter": "squeeze",
+            "signal_data": {"short_float_pct": 28.5},
+        }
+        gatekeeper.track_signal("GME", norm)
+
+        # Check pipe.zadd called with zset key and score
+        pipe_mock.zadd.assert_called_once()
+        zset_args = pipe_mock.zadd.call_args[0]
+        assert zset_args[0] == "gk:sources_zset:GME"
+        assert "squeeze" in zset_args[1]
+        pipe_mock.zremrangebyscore.assert_called_once()
+        pipe_mock.execute.assert_called_once()
+
+    def test_get_sources_from_zset_success(self, gatekeeper):
+        gatekeeper.redis.zrange.return_value = [b"squeeze", b"insider"]
+        sources = gatekeeper.get_sources("AAPL")
+        assert sources == ["insider", "squeeze"]
+        gatekeeper.redis.zremrangebyscore.assert_called_once()
+
+    def test_process_event_dedupes_when_atomic_mark_sent_fails(self, gatekeeper):
+        gatekeeper.producer = MagicMock()
+        gatekeeper.get_sources = MagicMock(return_value=["whale", "squeeze"])
+        gatekeeper.was_recently_sent = MagicMock(return_value=False)
+        gatekeeper.mark_sent = MagicMock(return_value=False)  # Atomic lock contention!
+
+        raw = {
+            "source_hunter": "whale",
+            "ticker": "NVDA",
+            "option_type": "call",
+            "price": 125.0,
+            "volume": 3_000_000,
+            "relative_volume": 2.2,
+        }
+        gatekeeper.process_event(raw)
+        gatekeeper.producer.send.assert_not_called()
+
+    def test_process_event_releases_sent_on_producer_failure(self, gatekeeper):
+        gatekeeper.producer = MagicMock()
+        gatekeeper.producer.send.side_effect = RuntimeError("Kafka broker down")
+        gatekeeper.get_sources = MagicMock(return_value=["whale", "squeeze"])
+        gatekeeper.was_recently_sent = MagicMock(return_value=False)
+        gatekeeper.mark_sent = MagicMock(return_value=True)
+        gatekeeper.clear_sent = MagicMock()
+
+        raw = {
+            "source_hunter": "whale",
+            "ticker": "NVDA",
+            "option_type": "call",
+            "price": 125.0,
+            "volume": 3_000_000,
+            "relative_volume": 2.2,
+        }
+        with pytest.raises(RuntimeError, match="Kafka broker down"):
+            gatekeeper.process_event(raw)
+
+        gatekeeper.clear_sent.assert_called_once_with("NVDA")
+

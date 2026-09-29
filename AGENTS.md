@@ -209,6 +209,7 @@ Multi-channel real-time catalyst alerting service:
 | **Phase 30** | Error hardening, Redis pooling & hypertable pruning | Eliminated memory leak in `insider_hunter` via synchronized accession deque, narrowed broad exception blocks across services, managed Redis client via FastAPI lifespan, bound `validated_signals` hypertable query to 2-hour window, added regex/Path validation to ticker and order ID inputs, and returned HTTP 503 on Kafka offline in synthetic inject (294 tests across stack: 230 Python, 33 Java, 31 Vitest). |
 | **Phase 31** | Half-Kelly Risk Simulator & TradingView Price Lines | Built interactive `KellySimulator.tsx` quantitative risk tool on `/analytics`, rendered full-scale `createPriceLine` Entry/Stop/Target overlays in `PriceChart.tsx`, added ARIA accessibility labels to `SignalFilterBar.tsx`, and expanded Vitest test suite with interactive component tests (298 tests across stack: 230 Python, 33 Java, 35 Vitest). |
 | **Phase 32** | Real-Time Notification Microservice | Built standalone multi-channel alert dispatcher (`notifier/`) consuming `validated-signals`, delivering formatted alerts to Discord embeds, Slack Block Kit, and Telegram HTML for high-conviction catalysts ($\ge 70$), with HTTP 429 rate limit backoff and Docker Compose service integration (308 tests across stack: 240 Python, 33 Java, 35 Vitest). |
+| **Phase 33** | Gatekeeper Sliding Window & Atomic Dedup | Hardened Gatekeeper state management using Redis Sorted Sets (`gk:sources_zset:{ticker}`) for millisecond-precision sliding window confluence pruning (`zremrangebyscore`), atomic lock deduplication via `SET NX EX` on `gk:sent:{ticker}` to prevent race conditions during signal bursts, and reservation rollback (`clear_sent`) on downstream dispatch failure (315 tests across stack: 247 Python, 33 Java, 35 Vitest). |
 
 ---
 
@@ -220,7 +221,7 @@ Multi-channel real-time catalyst alerting service:
   ```bash
   .venv/bin/pytest
   ```
-  *Current status: 240 passing tests.*
+  *Current status: 247 passing tests.*
 - **Linting & Code Style**:
   ```bash
   .venv/bin/ruff check .
