@@ -19,12 +19,12 @@ export const metadata: Metadata = {
 const SIGNALS_PER_PAGE = 15;
 
 const TABLE_COLS = [
-  { label: "Ticker",    width: "80px"            },
+  { label: "Ticker",    width: "75px"            },
   { label: "Time",      width: "110px"           },
-  { label: "Conv.",     width: "80px"            },
-  { label: "Catalyst",  width: "120px"           },
-  { label: "Rationale", width: "minmax(220px,1fr)" },
-  { label: "Sources",   width: "130px"           },
+  { label: "Conv.",     width: "75px"            },
+  { label: "Catalyst",  width: "210px"           },
+  { label: "Rationale", width: "minmax(260px,1fr)" },
+  { label: "Sources",   width: "140px"           },
 ];
 
 type PageProps = {
@@ -269,10 +269,12 @@ export default async function SignalsPage({ searchParams }: PageProps) {
               style={{
                 display: "grid",
                 gridTemplateColumns: TABLE_COLS.map((c) => c.width).join(" "),
-                minWidth: 760,
+                columnGap: 16,
+                minWidth: 900,
                 borderBottom: "1px solid rgba(255,255,255,0.08)",
                 padding: "10px 20px",
                 background: "#0B1121",
+                alignItems: "center",
               }}
             >
               {TABLE_COLS.map((col) => (

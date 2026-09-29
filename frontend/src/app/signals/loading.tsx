@@ -15,11 +15,13 @@ export default function SignalsLoading() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "80px 110px 80px 120px 1fr 100px",
-            gap: 0,
+            gridTemplateColumns: "75px 110px 75px 210px minmax(260px, 1fr) 140px",
+            columnGap: 16,
+            minWidth: 900,
             padding: "10px 20px",
             borderBottom: "1px solid var(--color-border)",
             background: "var(--color-bg-elevated)",
+            alignItems: "center",
           }}
         >
           {Array.from({ length: 6 }).map((_, i) => (
@@ -33,8 +35,9 @@ export default function SignalsLoading() {
             key={i}
             style={{
               display: "grid",
-              gridTemplateColumns: "80px 110px 80px 120px 1fr 100px",
-              gap: 0,
+              gridTemplateColumns: "75px 110px 75px 210px minmax(260px, 1fr) 140px",
+              columnGap: 16,
+              minWidth: 900,
               padding: "14px 20px",
               borderBottom: i < 5 ? "1px solid var(--color-border-subtle)" : "none",
               alignItems: "center",

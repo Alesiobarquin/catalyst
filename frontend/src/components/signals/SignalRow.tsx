@@ -7,7 +7,7 @@ import { getQuote } from "@/lib/api";
 import { Activity, AlertTriangle, ChevronDown, ChevronUp, TrendingDown, TrendingUp } from "lucide-react";
 
 const GRID_COLS =
-  "80px 110px 80px 120px minmax(220px, 1fr) 130px";
+  "75px 110px 75px 210px minmax(260px, 1fr) 140px";
 
 export function SignalRow({
   signal,
@@ -48,7 +48,8 @@ export function SignalRow({
         style={{
           display: "grid",
           gridTemplateColumns: GRID_COLS,
-          minWidth: 760,
+          columnGap: 16,
+          minWidth: 900,
           padding: "11px 20px",
           borderBottom: !isLast || expanded
             ? "1px solid rgba(255,255,255,0.06)"
@@ -86,7 +87,7 @@ export function SignalRow({
         </div>
 
         {/* Time */}
-        <span style={{ fontSize: 11, color: "#64748B" }}>
+        <span style={{ fontSize: 11, color: "#64748B", whiteSpace: "nowrap" }}>
           {formatRelative(signal.timestamp_utc)}
         </span>
 
@@ -124,7 +125,16 @@ export function SignalRow({
         </div>
 
         {/* Catalyst */}
-        <span style={{ fontSize: 12, color: "#CBD5E1" }}>
+        <span
+          style={{
+            fontSize: 12,
+            color: "#CBD5E1",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+          title={getCatalystLabel(signal.catalyst_type)}
+        >
           {getCatalystLabel(signal.catalyst_type)}
         </span>
 
