@@ -533,3 +533,166 @@ class TestDrifterSweep:
         assert payload["volume"] == 25_000_000
 
 
+class TestWhaleScraper:
+    import pytest
+
+    @pytest.mark.asyncio
+    async def test_scrape_whale_parses_rows(self):
+        from unittest.mock import AsyncMock, patch
+
+        from hunters.whale_hunter import scrape_whale
+
+        mock_page = AsyncMock()
+
+        def make_cell(text):
+            cell = AsyncMock()
+            cell.inner_text.return_value = text
+            return cell
+
+        mock_link = AsyncMock()
+        mock_link.inner_text.return_value = "TSLA"
+
+        row1 = AsyncMock()
+        row1.query_selector.return_value = mock_link
+        row1.query_selector_all.return_value = [
+            make_cell("TSLA"),
+            make_cell("$220.00 Call"),
+            make_cell("5,000"),
+        ]
+
+        mock_page.query_selector_all.return_value = [row1]
+
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            results = await scrape_whale(mock_page)
+
+        assert len(results) == 1
+        assert results[0]["ticker"] == "TSLA"
+        assert results[0]["option_type"] == "call"
+        assert results[0]["strike_price"] == 220.0
+        assert results[0]["hunter"] == "whale"
+        assert results[0]["source_hunter"] == "whale"
+
+    @pytest.mark.asyncio
+    async def test_scrape_whale_deduplicates(self):
+        from unittest.mock import AsyncMock, patch
+
+        from hunters.whale_hunter import scrape_whale
+
+        mock_page = AsyncMock()
+
+        def make_cell(text):
+            cell = AsyncMock()
+            cell.inner_text.return_value = text
+            return cell
+
+        mock_link = AsyncMock()
+        mock_link.inner_text.return_value = "TSLA"
+
+        row = AsyncMock()
+        row.query_selector.return_value = mock_link
+        row.query_selector_all.return_value = [
+            make_cell("TSLA"),
+            make_cell("$220.00 Call"),
+            make_cell("5,000"),
+        ]
+
+        # Two identical rows in table
+        mock_page.query_selector_all.return_value = [row, row]
+
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            results = await scrape_whale(mock_page)
+
+        assert len(results) == 1
+
+
+class TestWhaleSweep:
+    import pytest
+
+    @pytest.mark.asyncio
+    async def test_one_sweep_pushes_to_kafka(self):
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from hunters.whale_hunter import _one_sweep
+
+        mock_kafka = MagicMock()
+        mock_entries = [
+            {
+                "ticker": "NVDA",
+                "option_type": "call",
+                "strike_price": 130.0,
+                "option_volume": 12000,
+                "source": "barchart_unusual",
+                "hunter": "whale",
+                "source_hunter": "whale",
+            }
+        ]
+
+        mock_browser = AsyncMock()
+        mock_browser.new_page.return_value = AsyncMock()
+
+        mock_context = MagicMock()
+        mock_context.__aenter__.return_value = mock_browser
+        mock_context.__aexit__.return_value = None
+
+        with patch("hunters.whale_hunter.BrowserContext", return_value=mock_context), \
+             patch("hunters.whale_hunter.scrape_whale", new_callable=AsyncMock) as mock_scrape, \
+             patch("hunters.whale_hunter.fetch_liquidity_metrics") as mock_liq:
+            mock_scrape.return_value = mock_entries
+            mock_liq.return_value = {
+                "price": 125.0,
+                "volume": 45_000_000,
+                "relative_volume": 3.2,
+            }
+
+            pushed = await _one_sweep(mock_kafka)
+
+        assert pushed == 1
+        assert mock_kafka.send_message.call_count == 2
+        call_args = mock_kafka.send_message.call_args_list[0]
+        assert call_args[0][1]["ticker"] == "NVDA"
+        assert call_args[0][1]["price"] == 125.0
+        assert call_args[0][1]["source_hunter"] == "whale"
+
+    @pytest.mark.asyncio
+    async def test_one_sweep_skips_missing_liquidity(self):
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from hunters.whale_hunter import _one_sweep
+
+        mock_kafka = MagicMock()
+        mock_entries = [{"ticker": "UNKNOWN_TICKER"}]
+
+        mock_browser = AsyncMock()
+        mock_context = MagicMock()
+        mock_context.__aenter__.return_value = mock_browser
+        mock_context.__aexit__.return_value = None
+
+        with patch("hunters.whale_hunter.BrowserContext", return_value=mock_context), \
+             patch("hunters.whale_hunter.scrape_whale", new_callable=AsyncMock) as mock_scrape, \
+             patch("hunters.whale_hunter.fetch_liquidity_metrics", return_value=None):
+            mock_scrape.return_value = mock_entries
+            pushed = await _one_sweep(mock_kafka)
+
+        assert pushed == 0
+        assert mock_kafka.send_message.call_count == 0
+
+    @pytest.mark.asyncio
+    async def test_one_sweep_empty_rows(self):
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from hunters.whale_hunter import _one_sweep
+
+        mock_kafka = MagicMock()
+        mock_browser = AsyncMock()
+        mock_context = MagicMock()
+        mock_context.__aenter__.return_value = mock_browser
+        mock_context.__aexit__.return_value = None
+
+        with patch("hunters.whale_hunter.BrowserContext", return_value=mock_context), \
+             patch("hunters.whale_hunter.scrape_whale", new_callable=AsyncMock, return_value=[]):
+            pushed = await _one_sweep(mock_kafka)
+
+        assert pushed == 0
+
+
+

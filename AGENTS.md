@@ -217,6 +217,7 @@ Multi-channel real-time catalyst alerting service:
 | **Phase 38** | SignalDetailPanel, TradeList & Analytics Vitest Expansion, Ruff Alignment & Trade Resolution Audit Skill | Built Vitest suites for `SignalDetailPanel` (portal modal, ESC/close handlers, scroll lock, chart history, risk scenarios), `TradeList` (performance enrichment, fallback banner), `Charts` (StrategyBreakdown, ConvictionHistogram, SignalTimeline, PerformanceSummary), `DashboardHeader`, and `NavClock` (live tick timers); auto-fixed Ruff import alignments; authored `.agents/skills/trade-resolution-audit/SKILL.md` runbook (405 tests across stack: 260 Python, 33 Java, 112 Vitest across 19 test files). |
 | **Phase 39** | Market Overview Batch API, Quote/History Route Aliases, SignalDetail Resolution Mapping & Vitest Suite | Implemented `GET /market/overview` batch endpoint for concurrent index quotes via `asyncio.gather`, added dual REST URL aliases (`/market/quote/{ticker}` and `/market/history/{ticker}`), mapped `RESOLVED_WIN`/`RESOLVED_LOSS` in `signalDetailUtils.ts`, upgraded frontend `getMarketBenchmarks` to use overview batch, and built unit test suite for `signalDetailUtils` (424 tests across stack: 263 Python, 33 Java, 128 Vitest across 20 test files). |
 | **Phase 40** | Full App Router Page-Level Vitest Suite & TypeScript Strict Alignments | Created complete page-level unit test suites for Next.js App Router pages: `DashboardPage` (benchmarks, stats, order list, pagination, and filter queries), `SignalsPage` (empty state, active filter resets, table rendering, and risk breakdown), `AnalyticsPage` (KPI strip, charts, Kelly simulator, and catalyst distribution), `SettingsPage` (telemetry health, Alpaca form states, synthetic injection), and `NotFound` (404 navigation) with 100% TypeScript typecheck compliance (438 tests across stack: 263 Python, 33 Java, 142 Vitest across 25 test files). |
+| **Phase 41** | Whale Hunter Scraper & Sweep Unit Suites, Dual Ticker Route URL Aliases & Pytest Expansion | Implemented unit test suites for Whale Hunter Playwright scraping (`TestWhaleScraper`) and Kafka emission sweeps (`TestWhaleSweep`), added dual REST URL aliases (`/signals/ticker/{ticker}` and `/orders/ticker/{ticker}`), and verified across all test suites (445 tests across stack: 270 Python, 33 Java, 142 Vitest across 25 test files). |
 
 ---
 
@@ -228,7 +229,7 @@ Multi-channel real-time catalyst alerting service:
   ```bash
   .venv/bin/pytest
   ```
-  *Current status: 263 passing tests.*
+  *Current status: 270 passing tests.*
 - **Linting & Code Style**:
   ```bash
   .venv/bin/ruff check .

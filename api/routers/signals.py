@@ -346,6 +346,7 @@ async def stream_signals(
     )
 
 
+@router.get("/ticker/{ticker}", response_model=list[ValidatedSignalResponse])
 @router.get("/{ticker}", response_model=list[ValidatedSignalResponse])
 async def signals_by_ticker(
     ticker: str = Path(..., min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-]+$"),

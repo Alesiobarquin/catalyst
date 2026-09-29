@@ -379,3 +379,47 @@ def test_export_orders_csv_with_resolution_columns():
     assert "280.0" in lines[1]
     assert "2000.4" in lines[1]
 
+
+def test_orders_ticker_url_alias_success():
+    now = datetime.now(timezone.utc)
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = [
+        {
+            "id": 1,
+            "ticker": "AAPL",
+            "timestamp_utc": now,
+            "action": "BUY",
+            "strategy_used": "Supernova",
+            "recommended_size_usd": 8000.0,
+            "limit_price": 175.0,
+            "stop_loss": 165.0,
+            "target_price": 195.0,
+            "rationale": "Strong breakout",
+            "conviction_score": 85,
+            "catalyst_type": "SUPERNOVA",
+            "regime_vix": 15.0,
+            "spy_above_200sma": True,
+            "status": "ACTIVE",
+            "resolved_at": None,
+            "resolved_price": None,
+            "pnl_percent": None,
+            "realized_pnl_usd": None,
+            "exec_id": None,
+            "alpaca_order_id": None,
+            "execution_status": None,
+            "filled_avg_price": None,
+            "error_message": None,
+        }
+    ]
+
+    with make_orders_test_client(mock_conn) as client:
+        # Test alias /orders/ticker/{ticker}
+        res = client.get("/orders/ticker/AAPL")
+
+    assert res.status_code == 200
+    orders = res.json()
+    assert len(orders) == 1
+    assert orders[0]["ticker"] == "AAPL"
+    assert orders[0]["limit_price"] == 175.0
+
+

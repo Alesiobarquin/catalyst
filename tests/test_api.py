@@ -850,3 +850,43 @@ def test_market_history_url_alias_success():
     assert len(bars) == 1
     assert bars[0]["close"] == 125.5
 
+
+def test_signals_ticker_url_alias_success():
+    from datetime import datetime, timezone
+    from unittest.mock import AsyncMock
+
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = [
+        {
+            "id": 1,
+            "ticker": "TSLA",
+            "timestamp_utc": datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc),
+            "conviction_score": 92,
+            "catalyst_type": "SUPERNOVA",
+            "rationale": "High short interest squeeze breakout",
+            "is_trap": False,
+            "confluence_sources": '["squeeze", "whale"]',
+            "key_risks": '["Volatility"]',
+            "suggested_entry_zone": "230-235",
+            "suggested_stop": "220",
+        }
+    ]
+
+    async def _mock_conn_generator():
+        yield mock_conn
+
+    app = create_app()
+    app.dependency_overrides[db.get_conn] = _mock_conn_generator
+
+    with TestClient(app) as client:
+        # Test alias /signals/ticker/{ticker}
+        res = client.get("/signals/ticker/TSLA")
+
+    assert res.status_code == 200
+    signals = res.json()
+    assert len(signals) == 1
+    assert signals[0]["ticker"] == "TSLA"
+    assert signals[0]["conviction_score"] == 92
+    assert signals[0]["confluence_sources"] == ["squeeze", "whale"]
+
+
