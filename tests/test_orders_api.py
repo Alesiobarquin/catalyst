@@ -423,3 +423,95 @@ def test_orders_ticker_url_alias_success():
     assert orders[0]["limit_price"] == 175.0
 
 
+def test_get_order_detail_resolved_win():
+    now = datetime.now(timezone.utc)
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow.side_effect = [
+        # Order row
+        {
+            "id": 42,
+            "ticker": "NVDA",
+            "timestamp_utc": now,
+            "action": "BUY",
+            "strategy_used": "Supernova",
+            "recommended_size_usd": 15000.0,
+            "limit_price": 120.0,
+            "stop_loss": 110.0,
+            "target_price": 140.0,
+            "rationale": "High short interest breakout",
+            "conviction_score": 92,
+            "catalyst_type": "SUPERNOVA",
+            "regime_vix": 16.0,
+            "spy_above_200sma": True,
+            "status": "RESOLVED_WIN",
+            "resolved_at": now,
+            "resolved_price": 140.0,
+            "pnl_percent": 16.67,
+            "realized_pnl_usd": 2500.5,
+        },
+        # Signal row
+        {
+            "id": 101,
+            "confluence_count": 2,
+            "confluence_sources": '["squeeze", "whale"]',
+            "key_risks": '["Earnings release next week"]',
+        },
+    ]
+
+    with make_orders_test_client(mock_conn) as client:
+        res = client.get("/orders/42/detail")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["ticker"] == "NVDA"
+    assert data["status"] == "Resolved Win"
+    assert data["currentPrice"] == 140.0
+    assert data["pnlPercent"] == 16.67
+    assert data["entryPrice"] == 120.0
+    assert data["targetPrice"] == 140.0
+
+
+def test_get_order_detail_resolved_loss():
+    now = datetime.now(timezone.utc)
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow.side_effect = [
+        # Order row
+        {
+            "id": 43,
+            "ticker": "AMD",
+            "timestamp_utc": now,
+            "action": "BUY",
+            "strategy_used": "Scalper",
+            "recommended_size_usd": 10000.0,
+            "limit_price": 120.0,
+            "stop_loss": 108.0,
+            "target_price": 135.0,
+            "rationale": "FDA catalyst breach",
+            "conviction_score": 75,
+            "catalyst_type": "SCALPER",
+            "regime_vix": 18.0,
+            "spy_above_200sma": True,
+            "status": "RESOLVED_LOSS",
+            "resolved_at": now,
+            "resolved_price": 108.0,
+            "pnl_percent": -10.0,
+            "realized_pnl_usd": -1000.0,
+        },
+        # Signal row in 2-hour window
+        None,
+        # Signal row fallback
+        None,
+    ]
+
+    with make_orders_test_client(mock_conn) as client:
+        res = client.get("/orders/43/detail")
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data["ticker"] == "AMD"
+    assert data["status"] == "Resolved Loss"
+    assert data["currentPrice"] == 108.0
+    assert data["pnlPercent"] == -10.0
+
+
+

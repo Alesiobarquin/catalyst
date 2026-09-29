@@ -126,3 +126,91 @@ class TestPersistSignal:
         assert mock_conn.commit.call_count >= 4
         mock_cur.close.assert_called_once()
 
+
+class TestPersistenceConsumerLoop:
+    def test_run_reconnects_when_connection_closed(self):
+        from unittest.mock import patch
+
+        from persistence.consumer import run
+
+        mock_conn_closed = MagicMock()
+        mock_conn_closed.closed = True
+        mock_conn_new = MagicMock()
+        mock_conn_new.closed = False
+        mock_cur = MagicMock()
+        mock_conn_new.cursor.return_value = mock_cur
+
+        mock_message = MagicMock()
+        mock_message.value = {"ticker": "NVDA", "conviction_score": 85}
+
+        mock_consumer = MagicMock()
+        mock_consumer.__iter__.return_value = [mock_message]
+
+        with (
+            patch("persistence.consumer.get_db_conn", side_effect=[mock_conn_closed, mock_conn_new]) as mock_get_conn,
+            patch("persistence.consumer.init_schema"),
+            patch("persistence.consumer.KafkaConsumer", return_value=mock_consumer),
+        ):
+            run()
+
+            # Should have called get_db_conn at startup and once more to reconnect
+            assert mock_get_conn.call_count == 2
+            assert mock_consumer.commit.called
+
+    def test_run_commits_on_skipped_invalid_signal(self):
+        from unittest.mock import patch
+
+        from persistence.consumer import run
+
+        mock_conn = MagicMock()
+        mock_conn.closed = False
+
+        mock_message = MagicMock()
+        mock_message.value = {"ticker": "   "}  # Invalid empty ticker
+
+        mock_consumer = MagicMock()
+        mock_consumer.__iter__.return_value = [mock_message]
+
+        with (
+            patch("persistence.consumer.get_db_conn", return_value=mock_conn),
+            patch("persistence.consumer.init_schema"),
+            patch("persistence.consumer.KafkaConsumer", return_value=mock_consumer),
+        ):
+            run()
+
+            # Offset committed to avoid loop stall
+            assert mock_consumer.commit.called
+
+    def test_run_handles_operational_error_with_rollback(self):
+        from unittest.mock import patch
+
+        from psycopg import OperationalError
+
+        from persistence.consumer import run
+
+        mock_conn = MagicMock()
+        mock_conn.closed = False
+        mock_cur = MagicMock()
+        mock_cur.execute.side_effect = OperationalError("DB connection dropped")
+        mock_conn.cursor.return_value = mock_cur
+
+        mock_conn_recovered = MagicMock()
+        mock_conn_recovered.closed = False
+
+        mock_message = MagicMock()
+        mock_message.value = {"ticker": "AAPL"}
+
+        mock_consumer = MagicMock()
+        mock_consumer.__iter__.return_value = [mock_message]
+
+        with (
+            patch("persistence.consumer.get_db_conn", side_effect=[mock_conn, mock_conn_recovered]),
+            patch("persistence.consumer.init_schema"),
+            patch("persistence.consumer.KafkaConsumer", return_value=mock_consumer),
+            patch("time.sleep"),  # Skip 1s sleep in tests
+        ):
+            run()
+
+            assert mock_conn.rollback.called
+
+

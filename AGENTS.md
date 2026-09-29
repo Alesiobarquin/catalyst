@@ -219,6 +219,7 @@ Multi-channel real-time catalyst alerting service:
 | **Phase 40** | Full App Router Page-Level Vitest Suite & TypeScript Strict Alignments | Created complete page-level unit test suites for Next.js App Router pages: `DashboardPage` (benchmarks, stats, order list, pagination, and filter queries), `SignalsPage` (empty state, active filter resets, table rendering, and risk breakdown), `AnalyticsPage` (KPI strip, charts, Kelly simulator, and catalyst distribution), `SettingsPage` (telemetry health, Alpaca form states, synthetic injection), and `NotFound` (404 navigation) with 100% TypeScript typecheck compliance (438 tests across stack: 263 Python, 33 Java, 142 Vitest across 25 test files). |
 | **Phase 41** | Whale Hunter Scraper & Sweep Unit Suites, Dual Ticker Route URL Aliases & Pytest Expansion | Implemented unit test suites for Whale Hunter Playwright scraping (`TestWhaleScraper`) and Kafka emission sweeps (`TestWhaleSweep`), added dual REST URL aliases (`/signals/ticker/{ticker}` and `/orders/ticker/{ticker}`), and verified across all test suites (445 tests across stack: 270 Python, 33 Java, 142 Vitest across 25 test files). |
 | **Phase 42** | Multi-Catalyst Synthetic Injection Scenarios, Testing Router Expansion & Frontend Simulator Options | Expanded `scripts/inject_synthetic_signals.py` and `POST /testing/inject` with event builders (`create_whale_event`, `create_biotech_event`, `create_drifter_event`) and deterministic test scenarios (`triple`, `biotech`, `whale`, `drifter`), upgraded Frontend Settings scenario selector with all 5 hunter catalysts, and expanded script/API unit test suites (450 tests across stack: 275 Python, 33 Java, 142 Vitest across 25 test files). |
+| **Phase 43** | Performance Router Short/Sell Resolution, Order Detail Resolution Integration & Persistence Recovery | Added bidirectional (SELL/short) support to performance calculation (`High >= stop_loss`, `Low <= target_price`, inverted PnL), integrated resolution metrics (`resolved_price`, `pnl_percent`, `RESOLVED_WIN`, `RESOLVED_LOSS`) in `get_order_detail`, fixed `conn.closed` reconnection in persistence consumer, and expanded unit tests (459 tests across stack: 284 Python, 33 Java, 142 Vitest across 25 test files). |
 
 ---
 
@@ -230,7 +231,7 @@ Multi-channel real-time catalyst alerting service:
   ```bash
   .venv/bin/pytest
   ```
-  *Current status: 275 passing tests.*
+  *Current status: 284 passing tests.*
 - **Linting & Code Style**:
   ```bash
   .venv/bin/ruff check .

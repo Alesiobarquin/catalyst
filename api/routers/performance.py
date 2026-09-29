@@ -39,15 +39,20 @@ def _compute_ticker_performance(
     now: datetime,
     resolved_price: float | None = None,
     pnl_percent: float | None = None,
+    action: str = "BUY",
 ) -> dict:
     days_held = max(0, (now - signal_dt).days)
+    is_sell = str(action or "BUY").upper() == "SELL"
 
     # Terminal resolved state fast-path: if order is closed and resolved in DB,
     # return the recorded resolution metrics without making redundant external market queries.
     if db_status in ("HIT_TARGET", "HIT_STOP", "EXPIRED", "RESOLVED_WIN", "RESOLVED_LOSS") and resolved_price is not None:
         pnl_val = pnl_percent
         if pnl_val is None and entry_price > 0:
-            pnl_val = round(((resolved_price - entry_price) / entry_price) * 100, 2)
+            if is_sell:
+                pnl_val = round(((entry_price - resolved_price) / entry_price) * 100, 2)
+            else:
+                pnl_val = round(((resolved_price - entry_price) / entry_price) * 100, 2)
         return {
             "order_id": order_id,
             "ticker": ticker,
@@ -67,12 +72,22 @@ def _compute_ticker_performance(
             current_price = round(float(hist["Close"].iloc[-1]), 4)
             if db_status == "ACTIVE":
                 for _, bar in hist.iterrows():
-                    if float(bar["Low"]) <= stop_loss:
-                        computed_status = "HIT_STOP"
-                        break
-                    if float(bar["High"]) >= target_price:
-                        computed_status = "HIT_TARGET"
-                        break
+                    high = float(bar["High"])
+                    low = float(bar["Low"])
+                    if is_sell:
+                        if stop_loss > 0 and high >= stop_loss:
+                            computed_status = "HIT_STOP"
+                            break
+                        if target_price > 0 and low <= target_price:
+                            computed_status = "HIT_TARGET"
+                            break
+                    else:
+                        if stop_loss > 0 and low <= stop_loss:
+                            computed_status = "HIT_STOP"
+                            break
+                        if target_price > 0 and high >= target_price:
+                            computed_status = "HIT_TARGET"
+                            break
                 if computed_status == "ACTIVE" and days_held > 90:
                     computed_status = "EXPIRED"
         else:
@@ -88,7 +103,10 @@ def _compute_ticker_performance(
 
     pnl_pct = pnl_percent
     if pnl_pct is None and current_price is not None and entry_price > 0:
-        pnl_pct = round(((current_price - entry_price) / entry_price) * 100, 2)
+        if is_sell:
+            pnl_pct = round(((entry_price - current_price) / entry_price) * 100, 2)
+        else:
+            pnl_pct = round(((current_price - entry_price) / entry_price) * 100, 2)
 
     return {
         "order_id": order_id,
@@ -124,7 +142,7 @@ async def get_batch_performance(
 
     try:
         rows = await conn.fetch(
-            "SELECT id, ticker, timestamp_utc, limit_price, stop_loss, target_price, status, "
+            "SELECT id, ticker, timestamp_utc, action, limit_price, stop_loss, target_price, status, "
             "resolved_price, pnl_percent "
             "FROM trade_orders WHERE id = ANY($1::bigint[])",
             id_list,
@@ -155,6 +173,7 @@ async def get_batch_performance(
                 now,
                 res_price,
                 pnl_val,
+                row_dict.get("action", "BUY"),
             )
         )
 
@@ -174,7 +193,7 @@ async def get_order_performance(
     """
     try:
         row = await conn.fetchrow(
-            "SELECT id, ticker, timestamp_utc, limit_price, stop_loss, target_price, status, "
+            "SELECT id, ticker, timestamp_utc, action, limit_price, stop_loss, target_price, status, "
             "resolved_price, pnl_percent "
             "FROM trade_orders WHERE id = $1",
             order_id,
@@ -214,6 +233,7 @@ async def get_order_performance(
         now,
         resolved_price,
         pnl_percent,
+        row_dict.get("action", "BUY"),
     )
 
     return {

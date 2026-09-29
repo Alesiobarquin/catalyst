@@ -334,3 +334,126 @@ class TestComputeTickerPerformanceHelper:
         assert result["pnl_pct"] == 16.67
         assert result["status"] == "RESOLVED_WIN"
         assert result["days_held"] == 5
+
+    @patch("api.routers.performance.yf.Ticker")
+    def test_sell_order_hit_target(self, mock_ticker_cls):
+        df = pd.DataFrame(
+            {
+                "Close": [92.0, 83.0],
+                "Low": [91.0, 81.0],  # Breaches target 85.0
+                "High": [102.0, 94.0],
+            }
+        )
+        mock_ticker = MagicMock()
+        mock_ticker.history.return_value = df
+        mock_ticker_cls.return_value = mock_ticker
+
+        dt = datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 3, 3, 10, 0, tzinfo=timezone.utc)
+
+        result = _compute_ticker_performance(
+            order_id=6,
+            ticker="SHORT1",
+            signal_dt=dt,
+            entry_price=100.0,
+            stop_loss=115.0,
+            target_price=85.0,
+            db_status="ACTIVE",
+            now=now,
+            action="SELL",
+        )
+
+        assert result["status"] == "HIT_TARGET"
+        assert result["current_price"] == 83.0
+        assert result["pnl_pct"] == 17.0  # (100 - 83) / 100 * 100
+
+    @patch("api.routers.performance.yf.Ticker")
+    def test_sell_order_hit_stop(self, mock_ticker_cls):
+        df = pd.DataFrame(
+            {
+                "Close": [105.0, 118.0],
+                "Low": [98.0, 104.0],
+                "High": [106.0, 120.0],  # Breaches stop 115.0
+            }
+        )
+        mock_ticker = MagicMock()
+        mock_ticker.history.return_value = df
+        mock_ticker_cls.return_value = mock_ticker
+
+        dt = datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 3, 3, 10, 0, tzinfo=timezone.utc)
+
+        result = _compute_ticker_performance(
+            order_id=7,
+            ticker="SHORT2",
+            signal_dt=dt,
+            entry_price=100.0,
+            stop_loss=115.0,
+            target_price=85.0,
+            db_status="ACTIVE",
+            now=now,
+            action="SELL",
+        )
+
+        assert result["status"] == "HIT_STOP"
+        assert result["current_price"] == 118.0
+        assert result["pnl_pct"] == -18.0  # (100 - 118) / 100 * 100
+
+    @patch("api.routers.performance.yf.Ticker")
+    def test_sell_order_active_pnl(self, mock_ticker_cls):
+        df = pd.DataFrame(
+            {
+                "Close": [95.0, 92.0],
+                "Low": [93.0, 89.0],  # Above target 85.0
+                "High": [101.0, 97.0],  # Below stop 115.0
+            }
+        )
+        mock_ticker = MagicMock()
+        mock_ticker.history.return_value = df
+        mock_ticker_cls.return_value = mock_ticker
+
+        dt = datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 3, 3, 10, 0, tzinfo=timezone.utc)
+
+        result = _compute_ticker_performance(
+            order_id=8,
+            ticker="SHORT3",
+            signal_dt=dt,
+            entry_price=100.0,
+            stop_loss=115.0,
+            target_price=85.0,
+            db_status="ACTIVE",
+            now=now,
+            action="SELL",
+        )
+
+        assert result["status"] == "ACTIVE"
+        assert result["current_price"] == 92.0
+        assert result["pnl_pct"] == 8.0  # (100 - 92) / 100 * 100
+
+    @patch("api.routers.performance.yf.Ticker")
+    def test_sell_order_resolved_win_fastpath(self, mock_ticker_cls):
+        dt = datetime(2026, 3, 20, 10, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 3, 25, 10, 0, tzinfo=timezone.utc)
+
+        result = _compute_ticker_performance(
+            order_id=9,
+            ticker="SHORT4",
+            signal_dt=dt,
+            entry_price=100.0,
+            stop_loss=115.0,
+            target_price=80.0,
+            db_status="RESOLVED_WIN",
+            now=now,
+            resolved_price=80.0,
+            pnl_percent=None,  # verify fallback calculation
+            action="SELL",
+        )
+
+        mock_ticker_cls.assert_not_called()
+        assert result["order_id"] == 9
+        assert result["ticker"] == "SHORT4"
+        assert result["current_price"] == 80.0
+        assert result["pnl_pct"] == 20.0  # (100 - 80) / 100 * 100
+        assert result["status"] == "RESOLVED_WIN"
+

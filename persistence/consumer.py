@@ -173,6 +173,7 @@ def run():
         try:
             if conn.closed:
                 logger.warning("Database connection is closed. Reconnecting...")
+                conn = get_db_conn()
             if persist_signal(conn, message.value):
                 consumer.commit()
                 logger.info("Persisted %s", message.value.get("ticker", "?"))

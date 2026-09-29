@@ -122,20 +122,37 @@ async def list_orders(
     try:
         rows = await conn.fetch(query_with_exec, *data_args)
     except (asyncpg.UndefinedTableError, asyncpg.UndefinedColumnError):
-        rows = await conn.fetch(
-            f"""
-            SELECT id, ticker, timestamp_utc, action, strategy_used,
-                   recommended_size_usd, limit_price, stop_loss, target_price,
-                   rationale, conviction_score, catalyst_type,
-                   regime_vix, spy_above_200sma, status
-            FROM trade_orders
-            {where}
-            ORDER BY timestamp_utc DESC
-            LIMIT {limit_param}
-            OFFSET {offset_param}
-            """,
-            *data_args,
-        )
+        try:
+            rows = await conn.fetch(
+                f"""
+                SELECT id, ticker, timestamp_utc, action, strategy_used,
+                       recommended_size_usd, limit_price, stop_loss, target_price,
+                       rationale, conviction_score, catalyst_type,
+                       regime_vix, spy_above_200sma, status,
+                       resolved_at, resolved_price, pnl_percent, realized_pnl_usd
+                FROM trade_orders
+                {where}
+                ORDER BY timestamp_utc DESC
+                LIMIT {limit_param}
+                OFFSET {offset_param}
+                """,
+                *data_args,
+            )
+        except (asyncpg.UndefinedTableError, asyncpg.UndefinedColumnError):
+            rows = await conn.fetch(
+                f"""
+                SELECT id, ticker, timestamp_utc, action, strategy_used,
+                       recommended_size_usd, limit_price, stop_loss, target_price,
+                       rationale, conviction_score, catalyst_type,
+                       regime_vix, spy_above_200sma, status
+                FROM trade_orders
+                {where}
+                ORDER BY timestamp_utc DESC
+                LIMIT {limit_param}
+                OFFSET {offset_param}
+                """,
+                *data_args,
+            )
 
     return {
         "items": [_format_order_row(r) for r in rows],
@@ -370,6 +387,8 @@ STATUS_LABELS = {
     "HIT_TARGET": "Target hit",
     "HIT_STOP": "Stopped",
     "EXPIRED": "Expired",
+    "RESOLVED_WIN": "Resolved Win",
+    "RESOLVED_LOSS": "Resolved Loss",
 }
 
 
@@ -391,17 +410,31 @@ async def get_order_detail(
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     """Return comprehensive signal analysis matching frontend SignalDetail schema."""
-    order_row = await conn.fetchrow(
-        """
-        SELECT id, ticker, timestamp_utc, action, strategy_used,
-               recommended_size_usd, limit_price, stop_loss, target_price,
-               rationale, conviction_score, catalyst_type,
-               regime_vix, spy_above_200sma, status
-        FROM trade_orders
-        WHERE id = $1
-        """,
-        order_id,
-    )
+    try:
+        order_row = await conn.fetchrow(
+            """
+            SELECT id, ticker, timestamp_utc, action, strategy_used,
+                   recommended_size_usd, limit_price, stop_loss, target_price,
+                   rationale, conviction_score, catalyst_type,
+                   regime_vix, spy_above_200sma, status,
+                   resolved_at, resolved_price, pnl_percent, realized_pnl_usd
+            FROM trade_orders
+            WHERE id = $1
+            """,
+            order_id,
+        )
+    except (asyncpg.UndefinedColumnError, asyncpg.UndefinedTableError):
+        order_row = await conn.fetchrow(
+            """
+            SELECT id, ticker, timestamp_utc, action, strategy_used,
+                   recommended_size_usd, limit_price, stop_loss, target_price,
+                   rationale, conviction_score, catalyst_type,
+                   regime_vix, spy_above_200sma, status
+            FROM trade_orders
+            WHERE id = $1
+            """,
+            order_id,
+        )
     if not order_row:
         raise HTTPException(status_code=404, detail=f"Order {order_id} not found")
 
@@ -584,6 +617,17 @@ async def get_order_detail(
         raw_factors["validated_signal_id"] = sig_row["id"]
         raw_factors["confluence_count"] = sig_row["confluence_count"]
 
+    res_price = (
+        float(order_row["resolved_price"])
+        if order_row.get("resolved_price") is not None
+        else None
+    )
+    res_pnl = (
+        float(order_row["pnl_percent"])
+        if order_row.get("pnl_percent") is not None
+        else None
+    )
+
     return SignalDetailResponse(
         ticker=ticker,
         exchange="NASDAQ",
@@ -598,8 +642,8 @@ async def get_order_detail(
         entryPrice=limit_price,
         stopLoss=stop_loss,
         targetPrice=target_price,
-        currentPrice=None,
-        pnlPercent=None,
+        currentPrice=res_price,
+        pnlPercent=res_pnl,
         riskReward=f"1:{rr_ratio}",
         positionSize=f"${pos_usd / 1000:.0f}K",
         timeHorizon=HORIZONS.get(strat, "—"),
@@ -660,16 +704,31 @@ async def orders_by_ticker(
     try:
         rows = await conn.fetch(query_with_exec, ticker.upper())
     except (asyncpg.UndefinedTableError, asyncpg.UndefinedColumnError):
-        rows = await conn.fetch(
-            """
-            SELECT id, ticker, timestamp_utc, action, strategy_used,
-                   recommended_size_usd, limit_price, stop_loss, target_price,
-                   rationale, conviction_score, catalyst_type,
-                   regime_vix, spy_above_200sma, status
-            FROM trade_orders
-            WHERE ticker = $1
-            ORDER BY timestamp_utc DESC
-            """,
-            ticker.upper(),
-        )
+        try:
+            rows = await conn.fetch(
+                """
+                SELECT id, ticker, timestamp_utc, action, strategy_used,
+                       recommended_size_usd, limit_price, stop_loss, target_price,
+                       rationale, conviction_score, catalyst_type,
+                       regime_vix, spy_above_200sma, status,
+                       resolved_at, resolved_price, pnl_percent, realized_pnl_usd
+                FROM trade_orders
+                WHERE ticker = $1
+                ORDER BY timestamp_utc DESC
+                """,
+                ticker.upper(),
+            )
+        except (asyncpg.UndefinedTableError, asyncpg.UndefinedColumnError):
+            rows = await conn.fetch(
+                """
+                SELECT id, ticker, timestamp_utc, action, strategy_used,
+                       recommended_size_usd, limit_price, stop_loss, target_price,
+                       rationale, conviction_score, catalyst_type,
+                       regime_vix, spy_above_200sma, status
+                FROM trade_orders
+                WHERE ticker = $1
+                ORDER BY timestamp_utc DESC
+                """,
+                ticker.upper(),
+            )
     return [_format_order_row(r) for r in rows]
