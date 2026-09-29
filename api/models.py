@@ -36,6 +36,7 @@ class TradeOrderResponse(BaseModel):
     resolved_at: datetime | None = None
     resolved_price: float | None = None
     pnl_percent: float | None = None
+    realized_pnl_usd: float | None = None
     execution: TradeExecutionResponse | None = None
 
 

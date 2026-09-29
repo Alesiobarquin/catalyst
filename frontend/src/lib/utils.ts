@@ -97,14 +97,28 @@ export function getConvictionLabel(score: number): string {
 
 // ── Status config ──────────────────────────────────────────────────
 // Colors: only profit green for target hit, only loss red for stop hit.
-export function getStatusConfig(status: TradeStatus) {
-  const map: Record<TradeStatus, { label: string; color: string; bg: string }> = {
-    HIT_TARGET: { label: "Target hit",   color: "#10B981", bg: "rgba(16,185,129,0.10)"  },
-    HIT_STOP:   { label: "Stopped",      color: "#EF4444", bg: "rgba(239,68,68,0.10)"   },
-    ACTIVE:     { label: "Active",       color: "#10B981", bg: "rgba(16,185,129,0.10)"  },
-    EXPIRED:    { label: "Expired",      color: "#64748B", bg: "rgba(100,116,139,0.10)" },
+export function getStatusConfig(status: TradeStatus | string) {
+  const map: Record<string, { label: string; color: string; bg: string }> = {
+    HIT_TARGET:    { label: "Target hit",      color: "#10B981", bg: "rgba(16,185,129,0.10)" },
+    HIT_STOP:      { label: "Stopped",         color: "#EF4444", bg: "rgba(239,68,68,0.10)"  },
+    ACTIVE:        { label: "Active",          color: "#10B981", bg: "rgba(16,185,129,0.10)" },
+    EXPIRED:       { label: "Expired",         color: "#64748B", bg: "rgba(100,116,139,0.10)"},
+    RESOLVED_WIN:  { label: "Resolved (Win)",  color: "#10B981", bg: "rgba(16,185,129,0.10)" },
+    RESOLVED_LOSS: { label: "Resolved (Loss)", color: "#EF4444", bg: "rgba(239,68,68,0.10)"  },
+    SUBMITTED:     { label: "Submitted",       color: "#38BDF8", bg: "rgba(56,189,248,0.10)" },
+    PENDING_NEW:   { label: "Pending",         color: "#F59E0B", bg: "rgba(245,158,11,0.10)" },
+    NEW:           { label: "New",             color: "#38BDF8", bg: "rgba(56,189,248,0.10)" },
+    ACCEPTED:      { label: "Accepted",        color: "#38BDF8", bg: "rgba(56,189,248,0.10)" },
+    CANCELED:      { label: "Canceled",        color: "#64748B", bg: "rgba(100,116,139,0.10)"},
+    REJECTED:      { label: "Rejected",        color: "#EF4444", bg: "rgba(239,68,68,0.10)"  },
   };
-  return map[status];
+  return (
+    map[status] ?? {
+      label: String(status).replace("_", " "),
+      color: "#94A3B8",
+      bg: "rgba(148,163,184,0.10)",
+    }
+  );
 }
 
 // ── Catalyst type label ────────────────────────────────────────────

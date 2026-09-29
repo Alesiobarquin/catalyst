@@ -102,6 +102,7 @@ async def list_orders(
                t.recommended_size_usd, t.limit_price, t.stop_loss, t.target_price,
                t.rationale, t.conviction_score, t.catalyst_type,
                t.regime_vix, t.spy_above_200sma, t.status,
+               t.resolved_at, t.resolved_price, t.pnl_percent, t.realized_pnl_usd,
                e.id AS exec_id, e.alpaca_order_id, e.execution_status,
                e.filled_avg_price, e.error_message
         FROM trade_orders t
@@ -120,7 +121,7 @@ async def list_orders(
 
     try:
         rows = await conn.fetch(query_with_exec, *data_args)
-    except asyncpg.UndefinedTableError:
+    except (asyncpg.UndefinedTableError, asyncpg.UndefinedColumnError):
         rows = await conn.fetch(
             f"""
             SELECT id, ticker, timestamp_utc, action, strategy_used,
@@ -211,12 +212,17 @@ async def export_orders_csv(
             "status",
             "regime_vix",
             "spy_above_200sma",
+            "resolved_at",
+            "resolved_price",
+            "pnl_percent",
+            "realized_pnl_usd",
             "rationale",
         ]
     )
 
     for r in rows:
         ts = r["timestamp_utc"].isoformat() if r.get("timestamp_utc") else ""
+        resolved_ts = r["resolved_at"].isoformat() if r.get("resolved_at") else ""
         writer.writerow(
             [
                 r.get("id"),
@@ -233,6 +239,10 @@ async def export_orders_csv(
                 r.get("status"),
                 r.get("regime_vix"),
                 r.get("spy_above_200sma"),
+                resolved_ts,
+                r.get("resolved_price"),
+                r.get("pnl_percent"),
+                r.get("realized_pnl_usd"),
                 r.get("rationale"),
             ]
         )
@@ -617,6 +627,7 @@ async def orders_by_ticker(
                t.recommended_size_usd, t.limit_price, t.stop_loss, t.target_price,
                t.rationale, t.conviction_score, t.catalyst_type,
                t.regime_vix, t.spy_above_200sma, t.status,
+               t.resolved_at, t.resolved_price, t.pnl_percent, t.realized_pnl_usd,
                e.id AS exec_id, e.alpaca_order_id, e.execution_status,
                e.filled_avg_price, e.error_message
         FROM trade_orders t
@@ -632,7 +643,7 @@ async def orders_by_ticker(
     """
     try:
         rows = await conn.fetch(query_with_exec, ticker.upper())
-    except asyncpg.UndefinedTableError:
+    except (asyncpg.UndefinedTableError, asyncpg.UndefinedColumnError):
         rows = await conn.fetch(
             """
             SELECT id, ticker, timestamp_utc, action, strategy_used,

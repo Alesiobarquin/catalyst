@@ -5,7 +5,19 @@ export type Strategy = "Supernova" | "Scalper" | "Follower" | "Drifter" | "Fallb
 export type Action = "BUY" | "SELL";
 export type Regime = "PASS" | "PASS_BEARISH" | "SCALPER_ONLY" | "HALT";
 export type CatalystType = "SUPERNOVA" | "SCALPER" | "FOLLOWER" | "DRIFTER" | "UNKNOWN";
-export type TradeStatus = "HIT_TARGET" | "HIT_STOP" | "ACTIVE" | "EXPIRED";
+export type TradeStatus =
+  | "HIT_TARGET"
+  | "HIT_STOP"
+  | "ACTIVE"
+  | "EXPIRED"
+  | "RESOLVED_WIN"
+  | "RESOLVED_LOSS"
+  | "SUBMITTED"
+  | "PENDING_NEW"
+  | "NEW"
+  | "ACCEPTED"
+  | "CANCELED"
+  | "REJECTED";
 
 /** GET /executions/me — Alpaca paper status for current user */
 export interface TradeExecution {
@@ -61,6 +73,7 @@ export interface TradeOrder {
   resolved_at?: string | null;
   resolved_price?: number | null;
   pnl_percent?: number | null;
+  realized_pnl_usd?: number | null;
   /** Alpaca paper execution for the signed-in user (GET /executions/me) */
   execution?: TradeExecution | null;
 }

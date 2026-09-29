@@ -211,6 +211,7 @@ Multi-channel real-time catalyst alerting service:
 | **Phase 32** | Real-Time Notification Microservice | Built standalone multi-channel alert dispatcher (`notifier/`) consuming `validated-signals`, delivering formatted alerts to Discord embeds, Slack Block Kit, and Telegram HTML for high-conviction catalysts ($\ge 70$), with HTTP 429 rate limit backoff and Docker Compose service integration (308 tests across stack: 240 Python, 33 Java, 35 Vitest). |
 | **Phase 33** | Gatekeeper Sliding Window & Atomic Dedup | Hardened Gatekeeper state management using Redis Sorted Sets (`gk:sources_zset:{ticker}`) for millisecond-precision sliding window confluence pruning (`zremrangebyscore`), atomic lock deduplication via `SET NX EX` on `gk:sent:{ticker}` to prevent race conditions during signal bursts, and reservation rollback (`clear_sent`) on downstream dispatch failure (315 tests across stack: 247 Python, 33 Java, 35 Vitest). |
 | **Phase 34** | Strict Path Validation, Confluence ZSET Watcher & Expanded Frontend Tests | Standardized regex `Path` validation on `/signals/{ticker}` and `/orders/{ticker}`, upgraded `confluence_watcher.py` to inspect and prune `gk:sources_zset:*` keys alongside legacy sets, and added comprehensive Vitest component test suites for `SignalFilterBar` and `PipelineStatus` (326 tests across stack: 249 Python, 33 Java, 44 Vitest). |
+| **Phase 35** | TradeCard Component Testing & Realized PnL Field Exposure | Exposed `realized_pnl_usd` across API models, queries, and CSV exports, expanded `TradeStatus` union with lifecycle states (`RESOLVED_WIN`, `RESOLVED_LOSS`, `SUBMITTED`), made `getStatusConfig` defensively resilient against undefined statuses, and built Vitest unit test suite for `TradeCard` (331 tests across stack: 249 Python, 33 Java, 49 Vitest). |
 
 ---
 
@@ -235,7 +236,7 @@ Multi-channel real-time catalyst alerting service:
   ```bash
   npm --prefix frontend run test
   ```
-  *Current status: 44 passing tests.*
+  *Current status: 49 passing tests.*
 - **Type Checking**:
   ```bash
   npm --prefix frontend run typecheck
