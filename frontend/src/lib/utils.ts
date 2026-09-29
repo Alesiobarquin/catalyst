@@ -25,6 +25,10 @@ export function formatCompact(value: number): string {
   }).format(value);
 }
 
+export function formatPercent(value: number, decimals = 1): string {
+  return `${value.toFixed(decimals)}%`;
+}
+
 // ── Risk/reward calculation ────────────────────────────────────────
 export function calcRiskReward(order: TradeOrder): number {
   const risk   = order.limit_price - order.stop_loss;

@@ -81,13 +81,47 @@ export function PriceChart({ order, bars, height = 220, dataSource = "synthetic"
     const signalTime = Math.floor(new Date(order.timestamp_utc).getTime() / 1000);
     const lineBars   = priceBars.filter((b) => b.time >= signalTime);
 
-    // ── Entry line ────────────────────────────────────────────
+    // ── Horizontal price lines across full price scale ────────
+    if (order.limit_price > 0) {
+      priceLine.createPriceLine({
+        price: order.limit_price,
+        color: "rgba(56, 189, 248, 0.8)",
+        lineWidth: 1,
+        lineStyle: 1,
+        axisLabelVisible: true,
+        title: `Entry $${order.limit_price.toFixed(2)}`,
+      });
+    }
+
+    if (order.stop_loss > 0) {
+      priceLine.createPriceLine({
+        price: order.stop_loss,
+        color: "#F59E0B",
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: `Stop $${order.stop_loss.toFixed(2)}`,
+      });
+    }
+
+    if (order.target_price > 0) {
+      priceLine.createPriceLine({
+        price: order.target_price,
+        color: "#10B981",
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: `Target $${order.target_price.toFixed(2)}`,
+      });
+    }
+
+    // ── Segmented line series for post-signal trajectory ──────
     const entryLine = chart.addSeries(LineSeries, {
-      color:            "rgba(255,255,255,0.45)",
+      color:            "rgba(56, 189, 248, 0.45)",
       lineWidth:        1,
       lineStyle:        1,
       priceLineVisible: false,
-      lastValueVisible: true,
+      lastValueVisible: false,
       title:            `Entry ${order.limit_price.toFixed(2)}`,
     });
     if (lineBars.length > 0) {
@@ -96,13 +130,12 @@ export function PriceChart({ order, bars, height = 220, dataSource = "synthetic"
       );
     }
 
-    // ── Stop loss line ────────────────────────────────────────
     const stopLine = chart.addSeries(LineSeries, {
-      color:            "#F59E0B",
+      color:            "rgba(245, 158, 11, 0.45)",
       lineWidth:        1,
       lineStyle:        2,
       priceLineVisible: false,
-      lastValueVisible: true,
+      lastValueVisible: false,
       title:            `Stop ${order.stop_loss.toFixed(2)}`,
     });
     if (lineBars.length > 0) {
@@ -111,13 +144,12 @@ export function PriceChart({ order, bars, height = 220, dataSource = "synthetic"
       );
     }
 
-    // ── Target line ───────────────────────────────────────────
     const targetLine = chart.addSeries(LineSeries, {
-      color:            "#10B981",
+      color:            "rgba(16, 185, 129, 0.45)",
       lineWidth:        1,
       lineStyle:        2,
       priceLineVisible: false,
-      lastValueVisible: true,
+      lastValueVisible: false,
       title:            `Target ${order.target_price.toFixed(2)}`,
     });
     if (lineBars.length > 0) {

@@ -144,6 +144,8 @@ export function SignalFilterBar({
 
   return (
     <div
+      role="region"
+      aria-label="Signal filters"
       style={{
         display: "flex",
         flexDirection: "column",
@@ -184,6 +186,8 @@ export function SignalFilterBar({
               <button
                 key={opt.value}
                 type="button"
+                aria-pressed={active}
+                aria-label={`Filter catalyst: ${opt.label}`}
                 style={pillStyle(active)}
                 onClick={() => {
                   setCatalyst(opt.value);
@@ -244,6 +248,8 @@ export function SignalFilterBar({
               <button
                 key={String(opt.value)}
                 type="button"
+                aria-pressed={active}
+                aria-label={`Filter conviction: ${opt.label}`}
                 style={pillStyle(active)}
                 onClick={() => {
                   setMinConviction(opt.value);
@@ -276,6 +282,8 @@ export function SignalFilterBar({
               <button
                 key={opt.value}
                 type="button"
+                aria-pressed={active}
+                aria-label={`Filter trap status: ${opt.label}`}
                 style={pillStyle(active)}
                 onClick={() => {
                   setTrapFilter(opt.value);
@@ -308,6 +316,8 @@ export function SignalFilterBar({
               <button
                 key={opt.value}
                 type="button"
+                aria-pressed={active}
+                aria-label={`Filter date range: ${opt.label}`}
                 style={pillStyle(active)}
                 onClick={() => {
                   setDateRange(opt.value);
@@ -325,6 +335,7 @@ export function SignalFilterBar({
           {hasActiveFilters && (
             <button
               type="button"
+              aria-label="Reset all active filters"
               onClick={handleReset}
               style={{
                 display: "flex",
@@ -345,6 +356,7 @@ export function SignalFilterBar({
           )}
 
           <a
+            aria-label="Export filtered signals as CSV"
             href={(() => {
               const exportQs = new URLSearchParams();
               if (catalyst && catalyst !== "all") exportQs.set("catalyst_type", catalyst);

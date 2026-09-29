@@ -7,6 +7,7 @@ import {
   SignalTimeline,
   PerformanceSummary,
 } from "@/components/analytics/Charts";
+import { KellySimulator } from "@/components/analytics/KellySimulator";
 
 export const dynamic = "force-dynamic";
 
@@ -127,6 +128,9 @@ export default async function AnalyticsPage() {
         <ConvictionHistogram stats={stats} />
         <SignalTimeline       stats={stats} />
       </div>
+
+      {/* ── Half-Kelly Risk Simulator ──────────────── */}
+      <KellySimulator />
 
       {/* ── Catalyst type breakdown ──────────────────── */}
       <div
