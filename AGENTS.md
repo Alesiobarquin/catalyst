@@ -214,6 +214,7 @@ Multi-channel real-time catalyst alerting service:
 | **Phase 35** | TradeCard Component Testing & Realized PnL Field Exposure | Exposed `realized_pnl_usd` across API models, queries, and CSV exports, expanded `TradeStatus` union with lifecycle states (`RESOLVED_WIN`, `RESOLVED_LOSS`, `SUBMITTED`), made `getStatusConfig` defensively resilient against undefined statuses, and built Vitest unit test suite for `TradeCard` (331 tests across stack: 249 Python, 33 Java, 49 Vitest). |
 | **Phase 36** | Performance API Terminal Resolution Fast-Path, Orders CSV Resolution Exports & Real-Time / Search Test Suite | Hardened `/performance` and `/performance/batch` with terminal resolved fast-path (`RESOLVED_WIN`, `RESOLVED_LOSS`, `HIT_TARGET`, `HIT_STOP`, `EXPIRED`) skipping redundant yfinance queries, added CSV resolution column tests, and built comprehensive Vitest component test suites for `LiveStreamBanner` (SSE, audio chime, auto-sync), `TickerSearchInput` (debounced search, keyboard navigation), `StatsBar` (KPI cards, zero-state win rate), and `SignalRow` (expand, quotes, risks) (361 tests across stack: 255 Python, 33 Java, 73 Vitest). |
 | **Phase 37** | Closed-Loop Realized Dollar PnL, Hunter Sweeper & CLI Tests, and Dashboard Component Suite | Calculated and persisted `realized_pnl_usd` in `trade_resolver.py`, aggregated portfolio dollar PnL in `/orders/stats`, integrated `RESOLVED_WIN`/`RESOLVED_LOSS` in hit counts, tested hunter orchestrator CLI + Biotech/Drifter sweeps, added `aria-label` accessibility to FilterBar, and built Vitest suites for `FilterBar`, `MarketOverviewBar`, and `Navbar` (383 tests across stack: 260 Python, 33 Java, 90 Vitest). |
+| **Phase 38** | SignalDetailPanel, TradeList & Analytics Vitest Expansion, Ruff Alignment & Trade Resolution Audit Skill | Built Vitest suites for `SignalDetailPanel` (portal modal, ESC/close handlers, scroll lock, chart history, risk scenarios), `TradeList` (performance enrichment, fallback banner), `Charts` (StrategyBreakdown, ConvictionHistogram, SignalTimeline, PerformanceSummary), `DashboardHeader`, and `NavClock` (live tick timers); auto-fixed Ruff import alignments; authored `.agents/skills/trade-resolution-audit/SKILL.md` runbook (405 tests across stack: 260 Python, 33 Java, 112 Vitest across 19 test files). |
 
 ---
 
@@ -238,7 +239,7 @@ Multi-channel real-time catalyst alerting service:
   ```bash
   npm --prefix frontend run test
   ```
-  *Current status: 90 passing tests across 14 test files.*
+  *Current status: 112 passing tests across 19 test files.*
 - **Type Checking**:
   ```bash
   npm --prefix frontend run typecheck
@@ -296,6 +297,8 @@ The repository provides specialized agent skills in `.agents/skills/`:
    - Comprehensive test runner, ruff linting, TypeScript typechecking, and health telemetry verification instructions.
 4. **`aws-catalyst-deployment`** ([SKILL.md](file:///Users/alesio/Developer/Projects/catalyst/.agents/skills/aws-catalyst-deployment/SKILL.md)):
    - AWS CDK provisioning (`infra/catalyst_stack.py`), EC2 bootstrap (`scripts/ec2-bootstrap.sh`), and Lambda/EventBridge automated market-hour scheduling.
+5. **`trade-resolution-audit`** ([SKILL.md](file:///Users/alesio/Developer/Projects/catalyst/.agents/skills/trade-resolution-audit/SKILL.md)):
+   - Operational runbook for evaluating, auditing, and executing closed-loop trade resolutions across TimescaleDB, the Trade Resolution Daemon (`resolver/trade_resolver.py`), Kafka `trade-resolutions` events, Alpaca execution tracking, and FastAPI performance analytics.
 
 ---
 

@@ -376,6 +376,7 @@ class TestHunterOrchestrator:
     @pytest.mark.asyncio
     async def test_main_cli_list(self, capsys):
         from unittest.mock import patch
+
         from hunters.main import main
 
         with patch("sys.argv", ["main.py", "--list"]):
@@ -390,6 +391,7 @@ class TestHunterOrchestrator:
     @pytest.mark.asyncio
     async def test_main_cli_all(self):
         from unittest.mock import AsyncMock, patch
+
         from hunters.main import main
 
         with patch("hunters.main.run_hunter", new_callable=AsyncMock) as mock_run:
@@ -404,6 +406,7 @@ class TestHunterOrchestrator:
     @pytest.mark.asyncio
     async def test_main_cli_single(self):
         from unittest.mock import AsyncMock, patch
+
         from hunters.main import main
 
         with patch("hunters.main.run_hunter", new_callable=AsyncMock) as mock_run:
@@ -421,7 +424,8 @@ class TestBiotechScraper:
 
     @pytest.mark.asyncio
     async def test_scrape_biopharm_filters_high_impact(self):
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import AsyncMock
+
         from hunters.biotech_hunter import scrape_biopharm
 
         mock_page = AsyncMock()
@@ -478,8 +482,9 @@ class TestDrifterSweep:
     @pytest.mark.asyncio
     async def test_run_sweep_filters_and_emits(self):
         from unittest.mock import AsyncMock, MagicMock, patch
-        from hunters.drifter_hunter import _run_sweep
+
         import hunters.drifter_hunter as dh
+        from hunters.drifter_hunter import _run_sweep
 
         dh._SEEN.clear()
         dh._SEEN_SET.clear()
