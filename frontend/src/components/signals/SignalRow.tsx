@@ -165,7 +165,7 @@ export function SignalRow({
         </button>
 
         {/* Confluence sources */}
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
           {signal.confluence_sources.map((src) => (
             <span
               key={src}
@@ -184,6 +184,25 @@ export function SignalRow({
               {src}
             </span>
           ))}
+          {signal.confluence_count && signal.confluence_count >= 2 && (
+            <span
+              title={`${signal.confluence_count} Confluence Sources`}
+              aria-label={`${signal.confluence_count} Confluence Sources`}
+              style={{
+                padding: "2px 5px",
+                borderRadius: 3,
+                fontSize: 10,
+                fontWeight: 600,
+                background: "rgba(56, 189, 248, 0.12)",
+                border: "1px solid rgba(56, 189, 248, 0.3)",
+                color: "#38BDF8",
+                letterSpacing: "0.02em",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {signal.confluence_count}x
+            </span>
+          )}
         </div>
       </div>
 

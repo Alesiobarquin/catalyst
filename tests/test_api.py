@@ -162,6 +162,7 @@ def test_signals_list_and_by_ticker():
         assert data["total"] == 1
         assert len(data["items"]) == 1
         assert data["items"][0]["confluence_sources"] == ["squeeze", "whale"]
+        assert data["items"][0]["confluence_count"] == 2
         assert data["items"][0]["key_risks"] == ["Earnings volatility"]
 
         # 2. Test /signals/{ticker}
@@ -171,14 +172,38 @@ def test_signals_list_and_by_ticker():
         assert len(data_ticker) == 1
         assert data_ticker[0]["ticker"] == "NVDA"
         assert data_ticker[0]["confluence_sources"] == ["squeeze", "whale"]
+        assert data_ticker[0]["confluence_count"] == 2
         assert data_ticker[0]["key_risks"] == ["Earnings volatility"]
 
-        # 3. Test /signals with filters
+        # 3. Test /signals with filters including min_confluence
         res_filtered = client.get(
-            "/signals?catalyst_type=SUPERNOVA&min_conviction=80&is_trap=false&ticker=NVDA"
+            "/signals?catalyst_type=SUPERNOVA&min_conviction=80&is_trap=false&ticker=NVDA&min_confluence=2"
         )
         assert res_filtered.status_code == 200
         assert res_filtered.json()["total"] == 1
+
+        # 4. Test /signals/export/csv with min_confluence
+        mock_conn.fetch.return_value = [
+            {
+                "time": datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc),
+                "ticker": "NVDA",
+                "conviction_score": 85,
+                "catalyst_type": "SUPERNOVA",
+                "is_trap": False,
+                "trap_reason": None,
+                "suggested_entry_zone": "120-125",
+                "suggested_stop": "115",
+                "risk_level": "MODERATE",
+                "suggested_timeframe": "1-3 days",
+                "confluence_count": 2,
+                "rationale": "High short interest",
+            }
+        ]
+        res_csv = client.get("/signals/export/csv?min_confluence=2")
+        assert res_csv.status_code == 200
+        assert "text/csv" in res_csv.headers["content-type"]
+        assert "NVDA" in res_csv.text
+        assert "confluence_count" in res_csv.text
 
 
 def test_market_quote_success():

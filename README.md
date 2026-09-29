@@ -5,7 +5,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16%20App%20Router-black.svg)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/Tests-465%20Passing-emerald.svg)](https://github.com/Alesiobarquin/catalyst)
+[![Tests](https://img.shields.io/badge/Tests-466%20Passing-emerald.svg)](https://github.com/Alesiobarquin/catalyst)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
 **Catalyst** is an event-driven quantitative trading and market signal discovery platform. It ingests volatile market events across disparate financial feeds (scrapers, SEC EDGAR Form 4 filings, unusual options flow, earnings surprises), filters them through a stateful Redis confluence gatekeeper, validates theses in real-time via Gemini 2.5 with Google Search grounding, sizes orders via a Java Spring Boot quantitative engine (Half-Kelly criterion and SPY/VIX regime filtering), executes paper orders via Alpaca Markets, tracks closed-loop lifecycle PnL via an autonomous resolver daemon, broadcasts real-time alerts to Discord/Slack/Telegram, and provides an executive analytics dashboard built on Next.js 16 and FastAPI.
@@ -81,15 +81,15 @@ graph TD
 
 ## 3. Test Coverage & Quality Gates
 
-The codebase maintains rigorous multi-stack automated testing with **465 passing tests** across 3 language ecosystems:
+The codebase maintains rigorous multi-stack automated testing with **466 passing tests** across 3 language ecosystems:
 
 ```text
 ================================ TEST SUITE SUMMARY ================================
 ✅ Python Microservices (Pytest):   290 tests passed (0 failures, 100% pass rate)
 ✅ Java Quantitative Engine (JUnit 5): 33 tests passed (0 failures, 100% pass rate)
-✅ Next.js Frontend (Vitest):        142 tests passed (0 failures, 100% pass rate)
+✅ Next.js Frontend (Vitest):        143 tests passed (0 failures, 100% pass rate)
 ------------------------------------------------------------------------------------
-TOTAL VERIFIED AUTOMATED TESTS:      465 tests passing across stack
+TOTAL VERIFIED AUTOMATED TESTS:      466 tests passing across stack
 ====================================================================================
 ```
 
@@ -107,7 +107,7 @@ export JAVA_HOME=/Users/alesio/Library/Java/JavaVirtualMachines/temurin-21.0.11/
 cd engine && mvn -B test && cd ..
 ```
 
-#### 3. Frontend Vitest Suite (142 tests)
+#### 3. Frontend Vitest Suite (143 tests)
 ```bash
 npm --prefix frontend run test
 npm --prefix frontend run typecheck

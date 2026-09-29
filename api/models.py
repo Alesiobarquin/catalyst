@@ -79,6 +79,7 @@ class ValidatedSignalResponse(BaseModel):
     rationale: str | None = None
     is_trap: bool = False
     confluence_sources: list[str] = []
+    confluence_count: int | None = None
     key_risks: list[str] = []
     suggested_entry_zone: str | None = None
     suggested_stop: str | None = None

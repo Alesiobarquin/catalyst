@@ -109,4 +109,16 @@ describe("SignalRow", () => {
       expect(screen.getByText("Quote data temporarily unavailable.")).toBeInTheDocument();
     });
   });
+
+  it("renders confluence multiplier badge when confluence_count >= 2", () => {
+    const multiSignal: ValidatedSignal = {
+      ...mockSignal,
+      confluence_count: 3,
+    };
+
+    render(<SignalRow signal={multiSignal} isLast={false} />);
+    expect(screen.getByLabelText("3 Confluence Sources")).toBeInTheDocument();
+    expect(screen.getByText("3x")).toBeInTheDocument();
+  });
 });
+

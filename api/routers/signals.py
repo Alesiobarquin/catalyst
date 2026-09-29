@@ -31,6 +31,11 @@ def _format_signal_row(row: asyncpg.Record | dict) -> dict:
                 d[field] = [v] if v.strip() else []
         elif v is None:
             d[field] = []
+
+    if d.get("confluence_count") is None:
+        sources = d.get("confluence_sources")
+        d["confluence_count"] = len(sources) if isinstance(sources, list) else 0
+
     return d
 
 
@@ -41,11 +46,12 @@ async def list_signals(
     is_trap: bool | None = Query(None),
     ticker: str | None = Query(None, min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-]+$"),
     date_range: str | None = Query(None, pattern="^(7d|30d|90d|all)$"),
+    min_confluence: int | None = Query(None, ge=1),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
-    """Return paginated Gemini-validated signals, newest first. Optional catalyst/conviction/trap/ticker/date filters."""
+    """Return paginated Gemini-validated signals, newest first. Optional catalyst/conviction/trap/ticker/date/confluence filters."""
     offset = (page - 1) * per_page
     clauses: list[str] = []
     args: list[object] = []
@@ -65,6 +71,10 @@ async def list_signals(
     if ticker:
         args.append(ticker.strip().upper())
         clauses.append(f"ticker = ${len(args)}")
+
+    if min_confluence is not None:
+        args.append(min_confluence)
+        clauses.append(f"confluence_count >= ${len(args)}")
 
     if date_range and date_range != "all":
         days_map = {"7d": 7, "30d": 30, "90d": 90}
@@ -86,7 +96,7 @@ async def list_signals(
         SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
                ticker, time AS timestamp_utc, conviction_score,
                catalyst_type, rationale, is_trap,
-               confluence_sources, key_risks,
+               confluence_sources, confluence_count, key_risks,
                suggested_entry_zone, suggested_stop
         FROM validated_signals
         {where}
@@ -149,6 +159,7 @@ async def export_signals_csv(
     is_trap: bool | None = Query(None),
     ticker: str | None = Query(None, min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-]+$"),
     date_range: str | None = Query(None, pattern="^(7d|30d|90d|all)$"),
+    min_confluence: int | None = Query(None, ge=1),
     conn: asyncpg.Connection = Depends(get_conn),
 ):
     """Export filtered signals to RFC 4180 CSV format."""
@@ -170,6 +181,10 @@ async def export_signals_csv(
     if ticker:
         args.append(ticker.strip().upper())
         clauses.append(f"ticker = ${len(args)}")
+
+    if min_confluence is not None:
+        args.append(min_confluence)
+        clauses.append(f"confluence_count >= ${len(args)}")
 
     if date_range and date_range != "all":
         days_map = {"7d": 7, "30d": 30, "90d": 90}
@@ -302,7 +317,7 @@ async def stream_signals(
                             SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
                                    ticker, time AS timestamp_utc, conviction_score,
                                    catalyst_type, rationale, is_trap,
-                                   confluence_sources, key_risks,
+                                   confluence_sources, confluence_count, key_risks,
                                    suggested_entry_zone, suggested_stop
                             FROM validated_signals
                             WHERE time > $1 AND conviction_score >= $2
@@ -357,7 +372,7 @@ async def signals_by_ticker(
         SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
                ticker, time AS timestamp_utc, conviction_score,
                catalyst_type, rationale, is_trap,
-               confluence_sources, key_risks,
+               confluence_sources, confluence_count, key_risks,
                suggested_entry_zone, suggested_stop
         FROM validated_signals
         WHERE ticker = $1

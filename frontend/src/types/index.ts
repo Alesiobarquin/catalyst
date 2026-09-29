@@ -88,6 +88,7 @@ export interface ValidatedSignal {
   rationale: string;
   is_trap: boolean;
   confluence_sources: string[];
+  confluence_count?: number | null;
   suggested_stop?: string | number;
   suggested_target?: number;
   suggested_entry_zone?: string;
