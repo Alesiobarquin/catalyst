@@ -154,12 +154,26 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
   - `LiveStreamBanner`: Real-time SSE alert banner with connection status, auto-refresh toggle, and Web Audio API synthesized alert chime.
   - `PipelineStatus`: Live status indicator in navbar reflecting API, DB, Redis, and Java Engine health with interactive tooltip diagnostics.
   - `TickerSearchInput`: Keyboard-navigable ticker auto-complete dropdown.
-  - `PriceChart`: TradingView Lightweight Charts component with live vs. synthetic history indicator.
+  - `PriceChart`: TradingView Lightweight Charts component with live vs. synthetic history indicator and full-width Entry/Stop/Target price lines.
   - `SignalFilterBar`: Interactive catalyst, conviction, trap, and date range pills (`7D`, `30D`, `90D`, `All Time`).
+  - `KellySimulator`: Interactive quantitative risk and position sizing calculator matching Half-Kelly criteria.
+
+### 3.9 Trade Resolution Daemon (`resolver/`)
+Autonomous order lifecycle resolution microservice:
+- Polls un-resolved `trade_orders` (status `SUBMITTED`, `PENDING_NEW`, `NEW`, `ACCEPTED`) from TimescaleDB every 60 seconds.
+- Queries Alpaca API `/v2/orders/{id}` for terminal order execution status (`filled`, `canceled`, `expired`, `rejected`).
+- Fetches real-time market price via Yahoo Finance fast_info for filled positions and checks stop-loss / take-profit breaches or maximum holding period expirations (5 trading days).
+- Computes closed-loop PnL percentage and realized PnL in USD, persisting results into `resolved_at`, `resolved_price`, `pnl_percent`, `realized_pnl_usd`, and updating status to `RESOLVED_WIN`, `RESOLVED_LOSS`, or `EXPIRED`.
+
+### 3.10 Notification Dispatcher (`notifier/`)
+Multi-channel real-time catalyst alerting service:
+- Consumes Kafka `validated-signals` topic for catalysts with conviction score $\ge 70$.
+- Dispatches rich structured alerts concurrently across Discord (rich embeds with color tiers: emerald for $\ge 85$, blue for $\ge 70$, amber for traps), Slack (Block Kit layout with action buttons), and Telegram (HTML formatted messages).
+- Resilient retry logic with exponential backoff on HTTP 429 rate limits and error suppression to avoid consumer crash loops.
 
 ---
 
-## 4. Platform Upgrades & Evolution (Phases 1–27)
+## 4. Platform Upgrades & Evolution (Phases 1–32)
 
 | Phase | Core Deliverable | Key Details |
 |---|---|---|
@@ -194,6 +208,7 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
 | **Phase 29** | Trade Resolution Daemon & Closed-Loop PnL | Implemented autonomous trade resolution daemon (`resolver/trade_resolver.py`), V4 TimescaleDB migration for `resolved_at`/`resolved_price`/`pnl_percent`/`realized_pnl_usd`, API statistics integration (`expired_count`, `realized_pnl_percent`, `total_realized_pnl_usd`), Java entity mapping, docker-compose service, and frontend resolution badges (290 tests across stack: 226 Python, 33 Java, 31 Vitest). |
 | **Phase 30** | Error hardening, Redis pooling & hypertable pruning | Eliminated memory leak in `insider_hunter` via synchronized accession deque, narrowed broad exception blocks across services, managed Redis client via FastAPI lifespan, bound `validated_signals` hypertable query to 2-hour window, added regex/Path validation to ticker and order ID inputs, and returned HTTP 503 on Kafka offline in synthetic inject (294 tests across stack: 230 Python, 33 Java, 31 Vitest). |
 | **Phase 31** | Half-Kelly Risk Simulator & TradingView Price Lines | Built interactive `KellySimulator.tsx` quantitative risk tool on `/analytics`, rendered full-scale `createPriceLine` Entry/Stop/Target overlays in `PriceChart.tsx`, added ARIA accessibility labels to `SignalFilterBar.tsx`, and expanded Vitest test suite with interactive component tests (298 tests across stack: 230 Python, 33 Java, 35 Vitest). |
+| **Phase 32** | Real-Time Notification Microservice | Built standalone multi-channel alert dispatcher (`notifier/`) consuming `validated-signals`, delivering formatted alerts to Discord embeds, Slack Block Kit, and Telegram HTML for high-conviction catalysts ($\ge 70$), with HTTP 429 rate limit backoff and Docker Compose service integration (308 tests across stack: 240 Python, 33 Java, 35 Vitest). |
 
 ---
 
@@ -205,7 +220,7 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
   ```bash
   .venv/bin/pytest
   ```
-  *Current status: 230 passing tests.*
+  *Current status: 240 passing tests.*
 - **Linting & Code Style**:
   ```bash
   .venv/bin/ruff check .

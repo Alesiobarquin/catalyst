@@ -374,6 +374,35 @@ services:
     volumes:
       - ./resolver:/app/resolver
 
+  # Real-Time Notification Dispatcher — alerts Discord / Slack / Telegram for high conviction signals
+  notifier:
+    build:
+      context: .
+      dockerfile: notifier/Dockerfile
+    container_name: catalyst_notifier
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - VALIDATED_SIGNALS_TOPIC=validated-signals
+      - NOTIFIER_CONSUMER_GROUP=catalyst-notifier
+      - NOTIFIER_MIN_CONVICTION=${NOTIFIER_MIN_CONVICTION:-70}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - CATALYST_DASHBOARD_URL=${CATALYST_DASHBOARD_URL:-http://localhost:3000}
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import os; os.getpid()' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    volumes:
+      - ./notifier:/app/notifier
+
   # ==========================================
   # NEXT.JS DASHBOARD (not included in backend-only workflows)
   # ==========================================
