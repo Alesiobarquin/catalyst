@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { TrendingUp, TrendingDown, RefreshCw, Activity } from "lucide-react";
 import type { MarketQuote } from "@/types";
 import { getMarketBenchmarks } from "@/lib/api";
@@ -19,9 +19,13 @@ interface MarketOverviewBarProps {
 export function MarketOverviewBar({ initialQuotes }: MarketOverviewBarProps) {
   const [quotes, setQuotes] = useState<MarketQuote[]>(initialQuotes);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string>(() =>
-    new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-  );
+  const [lastUpdated, setLastUpdated] = useState<string>("");
+
+  useEffect(() => {
+    setLastUpdated(
+      new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    );
+  }, []);
 
   async function handleRefresh() {
     setIsRefreshing(true);
@@ -82,8 +86,11 @@ export function MarketOverviewBar({ initialQuotes }: MarketOverviewBarProps) {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "#64748B" }}>
-            Updated: {lastUpdated}
+          <span
+            suppressHydrationWarning
+            style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "#64748B" }}
+          >
+            {lastUpdated ? `Updated: ${lastUpdated}` : "Market live"}
           </span>
           <button
             type="button"
