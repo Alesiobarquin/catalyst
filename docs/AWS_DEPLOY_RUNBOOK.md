@@ -1,5 +1,7 @@
 # AWS Deploy Runbook (Student Scope)
 
+> **Legacy runbook:** The current public hosting target and outstanding implementation work are documented in [PUBLIC_DEMO_DEPLOYMENT_PLAN.md](PUBLIC_DEMO_DEPLOYMENT_PLAN.md). The start/stop rules below belong to the previous single-instance prototype. Their resource existence does not establish that a public dashboard or unattended daily pipeline has been deployed.
+
 This is the **Phase 4** execution companion to [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Preconditions

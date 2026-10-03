@@ -1,5 +1,7 @@
 # Catalyst: Student-Focused Deployment Guide
 
+> **October 2026 target change:** The current plan is a 24/7 public read-only snapshot dashboard with one weekday EC2 pipeline run and a $10/month hosting budget. See [PUBLIC_DEMO_DEPLOYMENT_PLAN.md](PUBLIC_DEMO_DEPLOYMENT_PLAN.md) for the current assessment and cost model. The guide below preserves the older market-hours prototype workflow and is not the deployment procedure for the new public site.
+
 This document covers how to deploy Catalyst beyond local Docker Compose—optimized for student portfolios, not 24/7 production. The goal: deploy with a **portfolio operating cadence** (weekday high-value windows) at very low cost while still demonstrating strong system design.
 
 ---

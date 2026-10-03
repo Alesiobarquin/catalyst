@@ -12,8 +12,8 @@
 **Catalyst** is an event-driven market signal discovery and algorithmic trade generation pipeline. It aggregates volatile market signals from disparate financial feeds (scrapers, APIs, SEC filings), filters them through a stateful confluence gatekeeper, validates real-time catalysts via Gemini LLM with Google Search grounding, sizes trades via a Java Spring Boot quantitative engine (Half-Kelly criterion and market regime filtering), and exposes actionable signals and orders through a FastAPI backend and Next.js 16 dashboard.
 
 ### Core Value Proposition
-- **Portfolio-first POC**: Designed to run cost-effectively ($3–8/mo on AWS EC2) during high-probability weekday market windows (06:50 to 16:10 ET) rather than incurring unnecessary 24/7 enterprise infrastructure costs.
-- **Explainability**: Raw hunter signals require confluence ($\ge 2$ sources) and AI grounding before being converted into structured trade orders.
+- **Portfolio-first POC**: The approved hosting target is a public read-only dashboard available 24/7 at an AWS-provided HTTPS URL, refreshed by one weekday pipeline run, with a hosting budget of at most $10/month excluding domain registration. The proposed S3/CloudFront snapshot site and scheduled EC2 worker are **not yet implemented**; see [Public Demo Deployment Plan](docs/PUBLIC_DEMO_DEPLOYMENT_PLAN.md). Older market-hours schedules and cost estimates describe the previous deployment target.
+- **Explainability**: The current Gatekeeper accepts either confluence ($\ge 2$ sources) or technical score $\ge 70$. Gemini grounding is attempted, but a Gemini failure currently produces an unmarked heuristic fallback. Public deployment must distinguish grounded, heuristic, and synthetic results.
 
 ---
 
@@ -31,8 +31,8 @@ graph TD
 
     subgraph Layer 2: Confluence & Filtering
         RE --> GK[Gatekeeper Service]
-        GK <-->|Rolling 5m Window| RD[(Redis: gk:sources / gk:signals)]
-        GK -->|Confluence >= 2 or Tech Score >= 4| TP[Kafka: triage-priority]
+        GK <-->|Rolling 5m Window| RD[(Redis: gk:sources_zset / gk:signals)]
+        GK -->|Confluence >= 2 or Tech Score >= 70| TP[Kafka: triage-priority]
     end
 
     subgraph Layer 3: AI Validation
@@ -69,14 +69,16 @@ graph TD
 | `signal-whale` | Hunter-specific archive for unusual options sweeps | Whale Hunter | Diagnostics / UI | Options sweep details |
 | `signal-earnings` | Hunter-specific archive for earnings beats | Drifter Hunter | Diagnostics / UI | Earnings surprise metrics |
 | `triage-priority` | Coalesced events that passed confluence/technical checks | Gatekeeper | AI Layer | Triage payload with accumulated signals & liquidity |
-| `validated-signals` | AI-validated catalysts with conviction score $\ge 50$ | AI Layer | Persistence, Strategy Engine | Structured analysis JSON (catalyst type, entry, stop, risks) |
+| `validated-signals` | Analysis outputs with conviction score $\ge 50$; may currently include heuristic fallback | AI Layer | Persistence, Strategy Engine, Notifier | Structured analysis JSON (catalyst type, entry, stop, risks) |
 | `trade-orders` | Quantitative orders sized via Half-Kelly and regime | Java Engine | Executor (Alpaca) | Trade order with position size, Kelly fraction, regime |
+| `trade-resolutions` | Resolved recommendation events | Trade Resolver | Available for downstream analytics; no consumer wired in the current notifier | Resolution status, reference price, modeled PnL |
 
 ### Redis Key & Cache Schema
 
 | Key Pattern | Data Type | TTL | Purpose |
 |---|---|---|---|
-| `gk:sources:{TICKER}` | Set | 300s (5 min) | Unique hunter source names (e.g. `{"squeeze", "insider"}`) seen within rolling window. Used for confluence calculation: `SCARD >= 2`. |
+| `gk:sources_zset:{TICKER}` | Sorted Set | 300s (5 min) | Canonical sliding-window source timestamps; expired scores are pruned before counting distinct hunter sources. |
+| `gk:sources:{TICKER}` | Set | 300s (5 min) | Compatibility copy and fallback when the sorted set is unavailable or empty; its TTL is refreshed by arriving events. |
 | `gk:signals:{TICKER}` | List | 300s (5 min) | Raw JSON signal payloads collected for this ticker during the window. |
 | `gk:sent:{TICKER}` | String | 300s (5 min) | Timestamp of when ticker was forwarded to `triage-priority`. Prevents duplicate forwarding. |
 | `gk:baseline_vol:{TICKER}` | String / Hash | 7 Days | 20-day historical volume baseline used for relative volume calculation when upstream hunter lacks RVOL. |
@@ -100,9 +102,9 @@ Independent agents that scan disparate financial data sources and publish to Kaf
 ### 3.2 Gatekeeper (`gatekeeper/`)
 The noise filter protecting the AI Layer from costly API query floods:
 - **Normalization**: Robust ticker normalization strips dollar signs (`$TSLA` $\to$ `TSLA`), uppercase conversion, strips exchange prefixes (`NASDAQ:AAPL` $\to$ `AAPL`), strips newlines, and drops Canadian/foreign suffixes (`BIIB.TO` $\to$ `BIIB`).
-- **Confluence Rule**: Requires $\ge 2$ distinct hunter sources in `gk:sources:{TICKER}` within the rolling 5-minute window OR a single signal with technical score $\ge 4.0$.
+- **Confluence Rule**: Requires $\ge 2$ distinct hunter sources from `gk:sources_zset:{TICKER}` within the rolling 5-minute window OR a single signal with technical score $\ge 70$. A compatibility set fallback is retained.
 - **Hard Filters**: Dropped if volume $< 50,000$, RVOL $< 1.5\times$, or price outside $\$2.00$–$\$500.00$.
-- **Deduplication**: Once forwarded, `gk:sent:{TICKER}` is set with a 300-second TTL to suppress duplicate triage queries.
+- **Deduplication**: `SET NX EX` reserves `gk:sent:{TICKER}` atomically for 300 seconds; downstream dispatch failure clears the reservation.
 
 ### 3.3 AI Layer (`ai_layer/`)
 Synthesizes market signals into structured investment theses using Gemini 2.5:
@@ -111,11 +113,13 @@ Synthesizes market signals into structured investment theses using Gemini 2.5:
 - **Model Aliases & Fallbacks**: Maps model names with fallback resilience (`GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`, e.g., falling back to `gemini-2.5-flash` or `gemini-2.5-pro`).
 - **Resilient JSON Parser**: Extracts structured JSON even when wrapped in markdown code fences (````json ... ````) or conversational prefix/suffix prose.
 - **Threshold**: Drops signals with `conviction_score < 50`.
+- **Heuristic fallback**: `process_event()` synthesizes a deterministic score of 75/82/88 after Gemini analysis failure. That output currently has no explicit provenance flag and must not be described as Gemini-grounded evidence.
 
 ### 3.4 Strategy Engine (`engine/`)
 Java 21 Spring Boot 3.4 microservice that handles quantitative risk and sizing:
-- **Market Regime**: Analyzes SPY 50/200 DMA and VIX to classify market regime (`BULL_QUIET`, `BULL_VOLATILE`, `BEAR_VOLATILE`, `BEAR_QUIET`).
-- **Half-Kelly Sizing**: Calculates position size based on win probability derived from AI conviction score and historical odds, capped at 2% account equity risk.
+- **Market Regime**: Uses SPY versus its 200-day SMA and VIX to classify `PASS`, `PASS_BEARISH`, `SCALPER_ONLY` (default VIX $\ge 30$), or `HALT` (default VIX $\ge 40$). MarketDataService starts with illustrative values and retains them if the first refresh fails; public-run validation must require a successful market snapshot.
+- **Half-Kelly Sizing**: Uses conviction/100 as a probability proxy and reward/risk from strategy prices. Defaults are a $100,000 book and a 25% per-order capital allocation cap; `PASS_BEARISH` halves the allocation. This is not an implemented 2% loss-risk cap or an aggregate per-ticker exposure limit.
+- **Virtual threads**: Spring Boot's virtual-thread property is enabled. The custom Kafka listener factory uses concurrency 1 and does not explicitly install a virtual-thread executor; confirm callback thread type at runtime or wire it explicitly before claiming the sizing callbacks run on Loom.
 - **Live Price Fetching**: Fetches live quotes from Yahoo Finance. **CRITICAL:** Synthetic tickers (e.g., `TEST1`) cannot be sized and will be skipped; always use real tickers (e.g., `NVDA`) for end-to-end engine sizing tests.
 - **Persistence**: Writes generated orders directly into the TimescaleDB `trade_orders` table.
 
@@ -127,10 +131,10 @@ Python background consumer:
 
 ### 3.6 Executor (`executor/`)
 Autonomous paper execution bridge:
-- Consumes `trade-orders` and executes market/limit orders via the Alpaca Markets API.
+- Consumes `trade-orders` and submits day limit orders for users with credentials in `user_alpaca_keys`. Frontend Clerk and credential setup remain operationally deferred.
 - Rate-limiting protection: Handles HTTP 429 with exponential backoff.
 - Circuit breaker: Halts automatic execution after consecutive failed orders.
-- Order safety caps: Enforces maximum notional value per trade and maximum open positions.
+- Order safety cap: Enforces maximum order notional (default $100,000). No maximum-open-position check is implemented in the current consumer. Public daily demo deployment will exclude the executor.
 
 ### 3.7 FastAPI Read Layer (`api/`)
 Exposes read-optimized endpoints and streaming for the frontend:
@@ -160,21 +164,21 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
   - `KellySimulator`: Interactive quantitative risk and position sizing calculator matching Half-Kelly criteria.
 
 ### 3.9 Trade Resolution Daemon (`resolver/`)
-Autonomous order lifecycle resolution microservice:
-- Polls un-resolved `trade_orders` (status `SUBMITTED`, `PENDING_NEW`, `NEW`, `ACCEPTED`) from TimescaleDB every 60 seconds.
-- Queries Alpaca API `/v2/orders/{id}` for terminal order execution status (`filled`, `canceled`, `expired`, `rejected`).
-- Fetches real-time market price via Yahoo Finance fast_info for filled positions and checks stop-loss / take-profit breaches or maximum holding period expirations (5 trading days).
-- Computes closed-loop PnL percentage and realized PnL in USD, persisting results into `resolved_at`, `resolved_price`, `pnl_percent`, `realized_pnl_usd`, and updating status to `RESOLVED_WIN`, `RESOLVED_LOSS`, or `EXPIRED`.
+Recommendation resolution microservice:
+- Polls `trade_orders` with status `ACTIVE`, by default every 300 seconds.
+- Fetches Yahoo Finance prices with a 60-second in-memory cache and stale-cache fallback; evaluates BUY and SELL reference prices against stop/target thresholds.
+- Updates status to `HIT_TARGET`, `HIT_STOP`, or `EXPIRED` after a default maximum holding period of 14 calendar days. It persists `resolved_at`, `resolved_price`, `pnl_percent`, and `realized_pnl_usd`, and emits `trade-resolutions` events.
+- PnL is modeled from the recommended allocation and reference prices. This daemon does not query Alpaca fills, submit closing orders, or measure realized brokerage PnL. A daily scan can miss intraday stop/target crossings; public analytics must disclose that limitation.
 
 ### 3.10 Notification Dispatcher (`notifier/`)
 Multi-channel real-time catalyst alerting service:
 - Consumes Kafka `validated-signals` topic for catalysts with conviction score $\ge 70$.
-- Dispatches rich structured alerts concurrently across Discord (rich embeds with color tiers: emerald for $\ge 85$, blue for $\ge 70$, amber for traps), Slack (Block Kit layout with action buttons), and Telegram (HTML formatted messages).
+- Dispatches alerts sequentially across configured Discord, Slack, and Telegram channels. Discord colors follow conviction: emerald for $\ge 85$, blue for $\ge 70$, otherwise amber; trap status does not currently change that color.
 - Resilient retry logic with exponential backoff on HTTP 429 rate limits and error suppression to avoid consumer crash loops.
 
 ---
 
-## 4. Platform Upgrades & Evolution (Phases 1–32)
+## 4. Platform Upgrades & Evolution (Phases 1–50)
 
 | Phase | Core Deliverable | Key Details |
 |---|---|---|

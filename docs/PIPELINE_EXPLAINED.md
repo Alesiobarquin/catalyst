@@ -62,8 +62,9 @@ These are the topics the app uses for the **signal → trade** story. Names defa
 |-------|-------------------|-------------------|------------|
 | **`raw-events`** | All hunters (each emission is also sent here) | **Gatekeeper** | Unified stream for confluence and filtering. This is what the gatekeeper actually reads. |
 | **`triage-priority`** | **Gatekeeper** | **AI layer** | Batches / enriched payloads for tickers that passed the gate (confluence or technical score). **Gemini only runs downstream of this topic.** |
-| **`validated-signals`** | **AI layer** (after Gemini + rules) | **Java engine**, **Python persistence** | Structured “approved” signals; engine input and DB copy for `validated_signals`. |
-| **`trade-orders`** | **Java engine** | Nothing in-repo yet (commentary: dashboard / future broker) | Sized orders after regime + strategy + Kelly. |
+| **`validated-signals`** | **AI layer** (Gemini or current heuristic fallback, then threshold rules) | **Java engine**, **Python persistence**, **Notifier** | Structured analysis; engine input, DB copy, and configured alerts. |
+| **`trade-orders`** | **Java engine** | **Alpaca executor** | Sized recommendations after regime + strategy + Kelly. The executor submits paper orders only for users with stored credentials; the public snapshot deployment excludes execution. |
+| **`trade-resolutions`** | **Trade resolver** | Available for downstream consumers | Sampled-price recommendation outcomes and modeled PnL; not brokerage fill/close events. |
 
 Logical chain in topics only:
 

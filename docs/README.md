@@ -2,6 +2,7 @@
 
 | Document | Contents |
 |----------|----------|
+| **[PUBLIC_DEMO_DEPLOYMENT_PLAN.md](PUBLIC_DEMO_DEPLOYMENT_PLAN.md)** | **Current hosting target:** 24/7 public HTTPS dashboard, one weekday scan, under-$10 budget, verified AWS inventory, deployment gaps, and résumé evidence audit. Proposed; not yet deployed. Supersedes older market-hours cadence guidance. |
 | **[ENGINE.md](ENGINE.md)** | **Strategy engine deep dive:** end-to-end flow per message, regime filter, Half-Kelly, strategy router, Kafka/DB I/O, env vars. **Trading glossary** (VIX, SPY 200 SMA, limit/stop/target, reward-to-risk, Kelly, catalyst types). **Not implemented:** OFI gate. |
 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | Full stack narrative: Hunters → Kafka → Gatekeeper → AI → Engine → persistence/UI. |
 | **[schemas.md](schemas.md)** | Kafka JSON contracts (`raw-events`, `validated-signals`, `trade-orders`) + TimescaleDB tables (`trade_orders`, `validated_signals`). |

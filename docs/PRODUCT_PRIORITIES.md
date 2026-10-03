@@ -2,7 +2,9 @@
 
 **Purpose:** Canonical ordered backlog for **what to build next** — operational reliability first, then signal volume, then UI. Use this doc when planning sprints, agent tasks, or weekly check-ins. Update checkboxes and the “Last updated” line as work completes.
 
-**Last updated:** June 2026 (Tracks 1–3 complete; Tracks 4–7 added for AWS, polish, housekeeping, auth/execution)
+**Last updated:** October 3, 2026 (public hosting target revised; historical Tracks 1–7 retained below)
+
+**Current priority:** Implement the [Public Demo Deployment Plan](PUBLIC_DEMO_DEPLOYMENT_PLAN.md): a 24/7 read-only AWS HTTPS site showing the latest successful weekday scan, with at most $10/month in hosting costs. Build trustworthy daily results and snapshot export first, then static public UI, production releases, CDK hosting/orchestration, and deployment verification. The older market-hours cadence and Track 4 checklist below describe the previous target. No public snapshot site has been deployed yet.
 
 **See also:** [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) (older phased estimates and recruiting context), [TESTING.md](TESTING.md) (how to verify the stack), [DEPLOYMENT.md](DEPLOYMENT.md) (AWS / scheduling ideas).
 

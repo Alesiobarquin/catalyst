@@ -9,11 +9,17 @@ description: >-
 
 This skill guides provisioning, configuring, and managing the Catalyst pipeline on AWS EC2 with cost-effective automated scheduling.
 
-## Architecture
+## Current public hosting target (October 2026)
 
-- **Compute**: Single EC2 `t3.micro` (or `t3.small`) running Ubuntu 22.04 Jammy with Docker Compose.
-- **Storage**: 8GB GP3 EBS volume.
-- **Cost**: ~$3–8/month using weekday variable market schedule (vs. $200+/mo for always-on ECS/MSK).
+The accepted target is a public read-only dashboard available 24/7 over an AWS-provided HTTPS URL, with one weekday pipeline run and a hosting budget of at most $10/month. The S3/CloudFront snapshot site and scheduled EC2 worker are proposed, not implemented. Read [docs/PUBLIC_DEMO_DEPLOYMENT_PLAN.md](../../../docs/PUBLIC_DEMO_DEPLOYMENT_PLAN.md) and the current `AGENTS.md` before provisioning or activating schedules.
+
+The remaining instructions describe the **legacy single-instance prototype**. Stopping that instance also stops an instance-hosted dashboard. Do not present this legacy workflow as sufficient for the 24/7 public target. The existing instance is a running `t3.micro` / 8 GiB disk, while the CDK source's optional create path is `t3.medium` / 30 GiB; neither establishes a validated memory requirement for the full stack.
+
+## Legacy architecture
+
+- **Compute**: Existing EC2 `t3.micro`; optional CDK create path provisions `t3.medium`, running Ubuntu 22.04 with Docker Compose.
+- **Storage**: Existing 8 GiB gp3; optional CDK create path provisions 30 GiB.
+- **Cost**: Old $3–8/month guidance omitted important runtime/IPv4/sizing distinctions. Use the current deployment plan's explicit assumptions and verified price model.
 - **Automation**:
   - `catalyst-startup` Lambda: Starts EC2 at 6:50 AM ET on weekdays.
   - `catalyst-shutdown` Lambda: Stops EC2 at 4:10 PM ET on weekdays.

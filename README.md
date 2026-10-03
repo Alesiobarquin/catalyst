@@ -77,10 +77,10 @@ graph TD
 | **Hunters** (`hunters/`) | Python 3.12, Playwright, BeautifulSoup, HTTPX | ✅ 5 Active | Autonomous scrapers scanning Finviz (Squeeze), BioPharmCatalyst (FDA readouts), SEC EDGAR (Form 4 insider buys), Barchart (unusual options flow), and FMP (post-earnings beats). |
 | **Gatekeeper** (`gatekeeper/`) | Python 3.12, Redis 7, Kafka | ✅ Hardened | Stateful noise filter using Redis Sorted Sets (`gk:sources_zset:{ticker}`) for sliding 5-min confluence ($\ge 2$ sources) and atomic `SET NX EX` deduplication. Enforces volume ($\ge 50\text{k}$), RVOL ($\ge 1.5\times$), and price bounds. |
 | **AI Layer** (`ai_layer/`) | Python 3.12, Google GenAI SDK | ✅ Active | Synthesizes catalysts using Gemini 2.5 with Google Search grounding. Generates structured JSON (catalyst type, conviction score, stop loss, profit target, trap indicators). Drops signals with conviction $< 50$. |
-| **Strategy Engine** (`engine/`) | Java 21, Spring Boot 3.4, JPA, Spring Kafka | ✅ 33 Tests | Quantitative risk engine. Assesses SPY 50/200 SMA and VIX to classify market regime (`PASS`, `SCALPER_ONLY`, `PASS_BEARISH`, `HALT`). Calculates position sizing via Half-Kelly criterion ($f^* = (bp - q) / 2b$) capped at 2% account equity. Routes to 4 specialized strategies (Supernova, Scalper, Drifter, Follower). |
+| **Strategy Engine** (`engine/`) | Java 21, Spring Boot 3.4, JPA, Spring Kafka | ✅ 33 Tests | Quantitative risk engine. Assesses SPY versus its 200-day SMA and VIX to classify market regime (`PASS`, `SCALPER_ONLY`, `PASS_BEARISH`, `HALT`). Calculates position sizing via Half-Kelly criterion ($f^* = (bp - q) / 2b$), capped at 25% of a $100,000 book per recommendation by default. Routes to 4 specialized strategies (Supernova, Scalper, Drifter, Follower). |
 | **Persistence** (`persistence/`) | Python 3.12, TimescaleDB / PostgreSQL 16 | ✅ Active | Consumes `validated-signals` and persists records into TimescaleDB hypertables with catalyst indexing and non-blocking offset commits on corrupt payloads. |
 | **Executor** (`executor/`) | Python 3.12, Alpaca REST API | ✅ Active | Consumes `trade-orders` and dispatches paper orders with exponential backoff on HTTP 429, execution circuit breakers, and notional trade caps. |
-| **Trade Resolver** (`resolver/`) | Python 3.12, TimescaleDB, Yahoo Finance | ✅ Active | Autonomous order resolution daemon polling pending orders, querying Alpaca order fills, tracking real-time price against stop/target levels, and persisting closed-loop realized PnL (`RESOLVED_WIN`, `RESOLVED_LOSS`, `EXPIRED`). |
+| **Trade Resolver** (`resolver/`) | Python 3.12, TimescaleDB, Yahoo Finance | ✅ Active | Resolves `ACTIVE` recommendations against sampled Yahoo prices and a 14-calendar-day holding limit. Persists modeled recommendation PnL and `HIT_TARGET`, `HIT_STOP`, or `EXPIRED`; this daemon does not query broker fills or close positions. |
 | **Notification Dispatcher** (`notifier/`) | Python 3.12, Webhooks, HTTPX | ✅ Active | Real-time multi-channel notification engine consuming `validated-signals` and dispatching rich alerts to Discord embeds, Slack Block Kit, and Telegram HTML for high-conviction events ($\ge 70$). |
 | **FastAPI Read Layer** (`api/`) | Python 3.12, FastAPI, asyncpg, Redis | ✅ Active | Asynchronous REST and Server-Sent Events (SSE) streaming API (`/signals/stream`). Exposes KPI statistics (`/signals/stats`, `/orders/stats`), CSV exports, market quotes, pipeline health (`/health/pipeline`), and Prometheus metrics (`/metrics`). |
 | **Frontend Dashboard** (`frontend/`) | Next.js 16, React 19, Tailwind CSS 4, Vitest | ✅ 153 Tests | Real-time dashboard featuring SSE `LiveStreamBanner` with Web Audio synthesized chimes, TradingView `PriceChart` with full-width Entry/Stop/Target lines, `KellySimulator` quantitative risk tool, and accessible keyboard-navigable filters. |
@@ -116,7 +116,7 @@ TOTAL VERIFIED AUTOMATED TESTS:      480 tests passing across stack
 cd engine && mvn -B test && cd ..
 ```
 
-#### 3. Frontend Vitest Suite (143 tests)
+#### 3. Frontend Vitest Suite (153 tests)
 ```bash
 npm --prefix frontend run test
 npm --prefix frontend run typecheck
@@ -175,10 +175,11 @@ python scripts/inject_synthetic_signals.py --ticker NVDA --sources squeeze,insid
 
 ## 6. AWS Deployment & Cost Efficiency
 
-Designed as a cost-effective POC (~$3–8/month) running on an AWS EC2 `t3.medium` instance during high-probability market hours (06:50 to 16:10 ET):
-- **Automated Lifecycle**: AWS EventBridge rules trigger Lambda functions to start the EC2 instance at 06:50 ET and gracefully stop it at 16:10 ET (20:10 UTC).
-- **Infrastructure as Code**: Provisioned via AWS CDK in `infra/catalyst_stack.py`.
-- **Runbook**: See [docs/AWS_DEPLOY_RUNBOOK.md](docs/AWS_DEPLOY_RUNBOOK.md) for step-by-step instructions.
+The current hosting target is a **public read-only dashboard available 24/7**, refreshed by **one weekday pipeline run**, for **at most $10/month** excluding domain registration. The proposed public mode uses private S3 + CloudFront for HTTPS and an EC2 Docker worker for collection, validation, sizing, and FastAPI snapshot export. It is **not yet implemented or published**.
+
+The [Public Demo Deployment Plan](docs/PUBLIC_DEMO_DEPLOYMENT_PLAN.md) records the AWS inventory, an estimated $6–$9 combined operating cost under bounded usage, implementation gaps, and the evidence needed for the résumé claims. The site will display actual collection timestamps and distinguish live-source, heuristic, and controlled test results. Processing-rate measurements describe active runs rather than continuous collection.
+
+The existing [CDK stack](infra/catalyst_stack.py) provides legacy EC2 start/stop functions and disabled UTC EventBridge rules. Stopping that same instance would take an instance-hosted dashboard offline; the new design separates public availability from worker runtime. Older market-hours runbooks describe the previous target.
 
 ---
 
