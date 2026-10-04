@@ -9,20 +9,33 @@
 
 ## 1. Project Overview & North Star
 
-**October 4 deployment update:** The paid-tier replacement Gemini key has now passed an actual Google Search-grounded `gemini-3.8-flash` request. The new `CatalystPublicDemoStack` is provisioned with HTTPS endpoint `https://d36bndaw2y0rrh.cloudfront.net` and private worker `i-0597d111f82782b5d`; publication and cold-start validation remain in progress. Both cloud workers were deliberately stopped while the release builds; the old repository was archived privately under `backups/legacy-repository-20261004.tgz`, and its original 8 GiB EBS disk is retained. The temporary inspection IAM role/profile and SSH allowance are being removed. Clean `npm ci` revealed Vitest 5 requires Node type definitions 22 or newer; frontend metadata now targets Node 22 to match CI. Fresh GitHub runners resolved newer Python versions; Ruff now formats Markdown snippets by default, unlike the local 0.15.11 baseline. `deploy/constraints.txt` pins release runtime/tool versions and is consumed by CI and both Python images. Public release CI uses path filters so documentation-only changes do not rebuild images. The previous instance root disk is 100% full with no Docker containers; access was recovered via temporary EC2 Instance Connect, and data must be preserved before stopping it. Strict batch scraping propagates provider failures, liquidity calls run in threads to preserve concurrent hunters, Finviz traversal is bounded to ten pages, and public event counts subtract pre-sweep Kafka offsets instead of reporting lifetime offsets. Java Yahoo requests have explicit connect/read deadlines, initial regime values are zero, and a missing 200-session SMA cannot substitute the latest price. `scripts/public_demo.py configure` stores local keys in encrypted SSM and configures GitHub OIDC variables; it preserves the existing database password on rotation.
+**Catalyst** is an event-driven market signal discovery and algorithmic recommendation pipeline. Five Python hunters aggregate financial feeds; Redis filters for confluence; Gemini validates catalysts with Google Search; Java 21 sizes recommendations using Half-Kelly and SPY/VIX regime data; TimescaleDB stores results for FastAPI and a Next.js dashboard.
 
-**Catalyst** is an event-driven market signal discovery and algorithmic trade generation pipeline. It aggregates volatile market signals from disparate financial feeds (scrapers, APIs, SEC filings), filters them through a stateful confluence gatekeeper, validates real-time catalysts via Gemini LLM with Google Search grounding, sizes trades via a Java Spring Boot quantitative engine (Half-Kelly criterion and market regime filtering), and exposes actionable signals and orders through a FastAPI backend and Next.js 16 dashboard.
+### Current public deployment (October 4, 2026)
 
-### Core Value Proposition
-**Deployment implementation in progress (October 4, 2026):** Hunters now support `--once`/`--report` with delivery counts, strict batch Kafka delivery, and failure reporting. Kafka listener callbacks explicitly use a virtual-thread executor and log their runtime thread type. Regime sizing halts when market data is missing or older than 15 minutes. The standalone validated-signals DDL now includes time in its primary key. New public hosting code and infrastructure will be recorded here as each subsystem lands; deployment is not live yet.
-AI deployment controls: `AI_ALLOW_HEURISTIC_FALLBACK=false` fails closed; `AI_REQUIRE_GROUNDING=true` requires returned search-source chunks. `AI_DAILY_REQUEST_LIMIT` caps all network attempts including retries, stored persistently in `AI_BUDGET_FILE` (single AI consumer). `GEMINI_MAX_OUTPUT_TOKENS` and `GEMINI_DISABLE_THINKING` bound output. Local heuristic fallback remains available with explicit `analysis_method`/`analysis_model` metadata. Persistence gains those columns; insertion/export mapping follows in this deployment change.
-Public UI mode uses `NEXT_PUBLIC_DEMO_MODE=snapshot`, `frontend/src/lib/snapshot.ts` and a separate static route tree in `frontend/public-site/`. Data is read from a validated same-origin `/data/manifest.json` and immutable snapshot; shared chart/detail helpers use snapshots instead of localhost. Settings and runtime health are excluded from public navigation. Benchmark timestamps may be supplied through `asOf`; public quotes never use page-open time as collection time.
-Production worker packaging is in `deploy/compose.batch.yml`: nine persistent processing services plus hunter, resolver, and snapshot jobs (12 configured services; job lifetimes differ). Shared Python and browser-hunter images are built separately, with the existing Java image. `deploy/batch.sh` collects hunter outcomes, waits for Kafka offsets to drain, verifies both hypertables, calls private FastAPI, uploads immutable JSON, then atomically promotes a manifest. Export is bounded to 200 orders/signals, 12 chart tickers, and 30 details, and rejects secrets/broker execution data. Logs and DB dumps go only to the private artifact bucket. `AI_DAILY_REQUEST_LIMIT=2` is the intended public cap, with retries included.
-`infra/public_demo_stack.py` is selected by CDK context `publicDemo=true`; it leaves `CatalystStack` separate. It provisions private S3/OAC CloudFront, encrypted 40 GiB m6a.large worker without ingress, SSM, three immutable ECR repositories, main-branch GitHub OIDC, and a console-visible $10 account-wide budget (no email subscription). `enableDailyScan=true` activates 10:00/11:30 America/New_York weekday start/hard-stop schedules. Worker boot/service watchdogs stop the instance after bootstrap or job failure; SSM Parameter Store `/catalyst/public-demo/runtime` stores the runtime secrets outside Git/CloudFormation. Public stack and source are under validation, not yet live.
-Live preflight findings: the replacement Gemini key is valid, but Gemini 2.5 Flash rejects inference for new users. The public worker will use supported Gemini 3.8 Flash with `GEMINI_THINKING_LEVEL=low` and output/request caps. Search grounding currently receives HTTP 429 even though ungrounded inference succeeds; paid-tier grounding access remains to be enabled/verified. `GATEKEEPER_REQUIRE_CONFLUENCE=true` disables technical bypass explicitly in the public profile. Drifter now uses FMP's stable earnings-calendar endpoint and accepts `epsActual`/`revenueActual` as well as legacy fields. Python format drift was resolved to allow CI releases.
-`GET /market-state` on the private Java worker reports fetched regime freshness and acquisition time. Exported scan reports mark missing market data as partial; sizing remains halted. Public charts show an unavailable state instead of generated placeholder prices when history is missing. AWS Free Plan was found to expire October 21, 2026, with $75.33 credit remaining; the CLI upgraded it to PAID/ACTIVE to preserve credits and hosting access beyond that date. The first deployment rolled back because m6a.large was unavailable on the Free Plan; empty retained buckets/repositories from that attempt were removed before retry. A temporary SSM role is being used to inspect the legacy instance before its backup and shutdown.
-- **Portfolio-first POC**: The approved hosting target is a public read-only dashboard available 24/7 at an AWS-provided HTTPS URL, refreshed by one weekday pipeline run, with a hosting budget of at most $10/month excluding domain registration. The proposed S3/CloudFront snapshot site and scheduled EC2 worker are **not yet implemented**; see [Public Demo Deployment Plan](docs/PUBLIC_DEMO_DEPLOYMENT_PLAN.md). Older market-hours schedules and cost estimates describe the previous deployment target.
-- **Explainability**: The current Gatekeeper accepts either confluence ($\ge 2$ sources) or technical score $\ge 70$. Gemini grounding is attempted, but a Gemini failure currently produces an unmarked heuristic fallback. Public deployment must distinguish grounded, heuristic, and synthetic results.
+- **Public site:** https://d36bndaw2y0rrh.cloudfront.net — read-only Next.js static export, private S3 with CloudFront OAC/HTTPS. The site is published; first cloud pipeline validation and schedule activation are in progress.
+- **Daily worker:** `CatalystPublicDemoStack`, EC2 `i-0597d111f82782b5d`, `m6a.large`, encrypted 40 GiB gp3, SSM management and no ingress. Target cadence: 10:00 America/New_York on weekdays; normal completion stops it, boot watchdog is 80 minutes, independent scheduled hard stop is 11:30. Both new schedules remain disabled until validation finishes.
+- **Budget:** at most $10/month target, excluding domain/tax, with explicit runtime, AI, image/log retention controls. The $10 account-wide AWS Budget is console-visible and has no email subscription; it is not a hard billing cap. See [operations and cost model](docs/PUBLIC_DEMO_OPERATIONS.md).
+- **Provenance:** public strict confluence requires two distinct sources; grounded Gemini 3.8 Flash only, threshold 50, heuristic fallback disabled. Local fallback remains available and is explicitly tagged. PnL is modeled from sampled recommendation prices, not brokerage profit. Public executor/notifier are disabled.
+- **Résumé evidence:** the actual Kafka listener task executor uses Java virtual threads (verified by a JVM test), Half-Kelly defaults are a $100k book/25% allocation cap, and VIX >=40 halts sizing. No measured live 50–100 events/min artifact has been established; do not conflate daily scan counts with processing capacity.
+- **Accounts:** updated Gemini key passed a real Search-grounded 3.8 Flash request. Google 2.5 Flash rejects new-user inference. AWS Free plan was upgraded via CLI to PAID/ACTIVE because it expired October 21; approximately $75.33 credits were preserved.
+- **Legacy:** `i-0194d6c0b8f0e191a` stopped with its 8 GiB root retained. Disk was full and no containers ran. Private repository backup: `backups/legacy-repository-20261004.tgz` in the artifact bucket. Temporary inspection IAM role/profile and SSH allowance were removed; legacy EventBridge schedules remain disabled.
+
+### Public implementation details
+
+`hunters.main --once --report` starts five bounded sweeps concurrently and records sanitized provider failures, elapsed times, and Kafka delivery counts. Strict delivery raises on broker errors; provider scrape errors propagate in the public profile. Blocking liquidity calls run in threads; Finviz traversal is capped at ten pages. FMP uses the stable earnings-calendar endpoint (`epsActual`/`revenueActual` with legacy aliases).
+
+`deploy/compose.batch.yml` declares 12 services: nine processing services, resolver, finite hunter job, and exporter job. Jobs have different lifetimes. Shared Python, browser-hunter, and Java images are immutable ECR commit tags built natively on GitHub. `deploy/constraints.txt` pins release Python/tool versions; frontend uses Node 22, matching type definitions, and Next.js/eslint-config-next 16.3.8. A local-time-dependent NavClock fixture was replaced with UTC instants after Linux CI exposed it; the public clock is labeled New York rather than data freshness.
+
+`deploy/batch.sh` captures pre-sweep Kafka offsets, waits for consumer groups to drain, verifies both hypertables, exports bounded FastAPI responses, uploads immutable JSON and a private database backup, then atomically promotes `/data/manifest.json`. Public snapshots contain at most 200 orders/signals, 12 chart tickers and 30 details, reject secrets and execution data, and disclose per-run counts/source failures. Missing regime data marks a run partial. Failed publication preserves the previous dataset. Private logs have 14-day retention; backup noncurrent versions have seven days. Export counters subtract baseline offsets instead of reporting lifetime offsets.
+
+`NEXT_PUBLIC_DEMO_MODE=snapshot`, `frontend/src/lib/snapshot.ts` and the independent route tree `frontend/public-site/` preserve local API-backed pages while exporting `/`, `/signals`, `/analytics`, `/architecture` publicly. Shared helpers read validated same-origin snapshots; filters, pagination, details, charts, CSV and Kelly simulation remain browser-side. Settings/SSE/API health and trading controls are excluded from public navigation. Collection timestamps are explicit; missing chart history is unavailable rather than synthetic.
+
+AI controls: `AI_ALLOW_HEURISTIC_FALLBACK=false`, `AI_REQUIRE_GROUNDING=true`, `AI_DAILY_REQUEST_LIMIT=2`, persistent `AI_BUDGET_FILE`, `GEMINI_MODEL=gemini-3.8-flash`, `GEMINI_THINKING_LEVEL=low`, `GEMINI_MAX_OUTPUT_TOKENS=2048`, no model fallback, one retry limit. All attempts reserve the persistent UTC-day budget before network access; prompt length is 24,000 characters. `analysis_method`/`analysis_model` are persisted and exposed through the signals API. The counter assumes one AI consumer. `GATEKEEPER_REQUIRE_CONFLUENCE=true` disables the technical single-source exception.
+
+`infra/public_demo_stack.py` is selected by `-c publicDemo=true`, separate from legacy `CatalystStack`; `-c enableDailyScan=true` activates both timezone schedules. The stack owns S3/CloudFront, worker, IAM/SSM, ECR, GitHub main-branch OIDC and budget. `infra/worker_bootstrap.sh` installs the boot/systemd job; runtime keys are an encrypted SSM SecureString `/catalyst/public-demo/runtime`. `scripts/public_demo.py configure` securely rotates local `.env` keys, preserves the database password, and sets GitHub variables. Release CI publishes only verified images/archives and does not replace the data manifest on ordinary releases; documentation-only changes do not rebuild images. Existing EC2 instances do not automatically rerun changed first-boot user data.
+
+Java `GET /market-state` is private and reports actual regime acquisition/freshness. Yahoo calls have connect/read deadlines. Initial regime values are zero; sizing halts on missing/stale data or insufficient 200-session SMA, with no latest-price substitution. Persistence's standalone primary key includes time to satisfy hypertable constraints. Docker build contexts exclude local secrets and data.
 
 ---
 
@@ -45,7 +58,7 @@ graph TD
     end
 
     subgraph Layer 3: AI Validation
-        TP --> AI[AI Layer: Gemini 2.5]
+        TP --> AI[AI Layer: Gemini]
         AI <-->|Grounding| GS[Google Search API]
         AI -->|Conviction >= 50| VS[Kafka: validated-signals]
     end
@@ -78,7 +91,7 @@ graph TD
 | `signal-whale` | Hunter-specific archive for unusual options sweeps | Whale Hunter | Diagnostics / UI | Options sweep details |
 | `signal-earnings` | Hunter-specific archive for earnings beats | Drifter Hunter | Diagnostics / UI | Earnings surprise metrics |
 | `triage-priority` | Coalesced events that passed confluence/technical checks | Gatekeeper | AI Layer | Triage payload with accumulated signals & liquidity |
-| `validated-signals` | Analysis outputs with conviction score $\ge 50$; may currently include heuristic fallback | AI Layer | Persistence, Strategy Engine, Notifier | Structured analysis JSON (catalyst type, entry, stop, risks) |
+| `validated-signals` | Analysis outputs with conviction score $\ge 50$; includes tagged heuristic fallback locally; public profile requires grounding | AI Layer | Persistence, Strategy Engine, Notifier | Structured analysis JSON (catalyst type, entry, stop, risks) |
 | `trade-orders` | Quantitative orders sized via Half-Kelly and regime | Java Engine | Executor (Alpaca) | Trade order with position size, Kelly fraction, regime |
 | `trade-resolutions` | Resolved recommendation events | Trade Resolver | Available for downstream analytics; no consumer wired in the current notifier | Resolution status, reference price, modeled PnL |
 
@@ -111,24 +124,24 @@ Independent agents that scan disparate financial data sources and publish to Kaf
 ### 3.2 Gatekeeper (`gatekeeper/`)
 The noise filter protecting the AI Layer from costly API query floods:
 - **Normalization**: Robust ticker normalization strips dollar signs (`$TSLA` $\to$ `TSLA`), uppercase conversion, strips exchange prefixes (`NASDAQ:AAPL` $\to$ `AAPL`), strips newlines, and drops Canadian/foreign suffixes (`BIIB.TO` $\to$ `BIIB`).
-- **Confluence Rule**: Requires $\ge 2$ distinct hunter sources from `gk:sources_zset:{TICKER}` within the rolling 5-minute window OR a single signal with technical score $\ge 70$. A compatibility set fallback is retained.
+- **Confluence Rule**: Requires $\ge 2$ distinct hunter sources from `gk:sources_zset:{TICKER}` within the rolling 5-minute window OR a single signal with technical score $\ge 70$. A compatibility set fallback is retained. `GATEKEEPER_REQUIRE_CONFLUENCE=true` disables the technical exception for the public worker.
 - **Hard Filters**: Dropped if volume $< 50,000$, RVOL $< 1.5\times$, or price outside $\$2.00$–$\$500.00$.
 - **Deduplication**: `SET NX EX` reserves `gk:sent:{TICKER}` atomically for 300 seconds; downstream dispatch failure clears the reservation.
 
 ### 3.3 AI Layer (`ai_layer/`)
-Synthesizes market signals into structured investment theses using Gemini 2.5:
+Synthesizes market signals into structured investment theses using Gemini (public model 3.8 Flash):
 - **SDK**: Uses `google-genai` SDK (`from google import genai`).
 - **Search Grounding**: Injects Google Search tool (`types.Tool(google_search=types.GoogleSearch())`) to ground conviction in real-time SEC filings and breaking news.
 - **Model Aliases & Fallbacks**: Maps model names with fallback resilience (`GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`, e.g., falling back to `gemini-2.5-flash` or `gemini-2.5-pro`).
 - **Resilient JSON Parser**: Extracts structured JSON even when wrapped in markdown code fences (````json ... ````) or conversational prefix/suffix prose.
 - **Threshold**: Drops signals with `conviction_score < 50`.
-- **Heuristic fallback**: `process_event()` synthesizes a deterministic score of 75/82/88 after Gemini analysis failure. That output currently has no explicit provenance flag and must not be described as Gemini-grounded evidence.
+- **Heuristic fallback**: `process_event()` synthesizes a deterministic score of 75/82/88 after Gemini analysis failure. That output is tagged `analysis_method=heuristic`; public mode disables it with `AI_ALLOW_HEURISTIC_FALLBACK=false`.
 
 ### 3.4 Strategy Engine (`engine/`)
 Java 21 Spring Boot 3.4 microservice that handles quantitative risk and sizing:
-- **Market Regime**: Uses SPY versus its 200-day SMA and VIX to classify `PASS`, `PASS_BEARISH`, `SCALPER_ONLY` (default VIX $\ge 30$), or `HALT` (default VIX $\ge 40$). MarketDataService starts with illustrative values and retains them if the first refresh fails; public-run validation must require a successful market snapshot.
+- **Market Regime**: Uses SPY versus its 200-day SMA and VIX to classify `PASS`, `PASS_BEARISH`, `SCALPER_ONLY` (default VIX $\ge 30$), or `HALT` (default VIX $\ge 40$). MarketDataService starts with unavailable zero values; RegimeFilter halts until a valid snapshot exists and also halts when it is older than 15 minutes.
 - **Half-Kelly Sizing**: Uses conviction/100 as a probability proxy and reward/risk from strategy prices. Defaults are a $100,000 book and a 25% per-order capital allocation cap; `PASS_BEARISH` halves the allocation. This is not an implemented 2% loss-risk cap or an aggregate per-ticker exposure limit.
-- **Virtual threads**: Spring Boot's virtual-thread property is enabled. The custom Kafka listener factory uses concurrency 1 and does not explicitly install a virtual-thread executor; confirm callback thread type at runtime or wire it explicitly before claiming the sizing callbacks run on Loom.
+- **Virtual threads**: Spring Boot's virtual-thread property is enabled. The custom Kafka listener factory uses concurrency 1 with an explicit virtual-thread SimpleAsyncTaskExecutor. A JVM test verifies the configured executor launches a virtual thread, and callbacks log their runtime thread type.
 - **Live Price Fetching**: Fetches live quotes from Yahoo Finance. **CRITICAL:** Synthetic tickers (e.g., `TEST1`) cannot be sized and will be skipped; always use real tickers (e.g., `NVDA`) for end-to-end engine sizing tests.
 - **Persistence**: Writes generated orders directly into the TimescaleDB `trade_orders` table.
 
@@ -143,7 +156,7 @@ Autonomous paper execution bridge:
 - Consumes `trade-orders` and submits day limit orders for users with credentials in `user_alpaca_keys`. Frontend Clerk and credential setup remain operationally deferred.
 - Rate-limiting protection: Handles HTTP 429 with exponential backoff.
 - Circuit breaker: Halts automatic execution after consecutive failed orders.
-- Order safety cap: Enforces maximum order notional (default $100,000). No maximum-open-position check is implemented in the current consumer. Public daily demo deployment will exclude the executor.
+- Order safety cap: Enforces maximum order notional (default $100,000). No maximum-open-position check is implemented in the current consumer. Public daily demo deployment excludes the executor.
 
 ### 3.7 FastAPI Read Layer (`api/`)
 Exposes read-optimized endpoints and streaming for the frontend:
@@ -157,6 +170,7 @@ Exposes read-optimized endpoints and streaming for the frontend:
 - **Security Middleware**: Enforces `nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection`, and `Referrer-Policy`.
 
 ### 3.8 Frontend Dashboard (`frontend/`)
+Public static deployment excludes `/settings`; local pages below retain API-backed operation.
 Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
 - **Pages**:
   - `/`: Executive KPI overview and recent activity.
@@ -244,6 +258,8 @@ Multi-channel real-time catalyst alerting service:
 
 ---
 
+**Phase 51 — Public daily AWS deployment:** Static export and snapshot adapter, strict batch hunters, grounded-only AI with persistent request limits, explicit Kafka virtual threads, fresh-market halt, private CloudFront/S3 hosting, encrypted worker/SSM configuration, GitHub OIDC immutable releases, watchdogs and timezone scheduling. Provisioned October 4; first cloud scan validation is in progress. See `docs/PUBLIC_DEMO_OPERATIONS.md`. Current tests: 301 Python + 35 Java + 156 Vitest = 492.
+
 ## 5. Developer & Agent Guidelines
 
 ### 5.1 Python Environment & Testing
@@ -252,7 +268,7 @@ Multi-channel real-time catalyst alerting service:
   ```bash
   .venv/bin/pytest
   ```
-  *Current status: 294 passing tests.*
+  *Current status: 301 passing tests.*
 - **Linting & Code Style**:
   ```bash
   .venv/bin/ruff check .
@@ -265,7 +281,7 @@ Multi-channel real-time catalyst alerting service:
   ```bash
   npm --prefix frontend run test
   ```
-  *Current status: 153 passing tests across 26 test files.*
+  *Current status: 156 passing tests across 27 test files.*
 - **Type Checking**:
   ```bash
   npm --prefix frontend run typecheck
@@ -286,7 +302,7 @@ Multi-channel real-time catalyst alerting service:
   ```bash
   export JAVA_HOME=/Users/alesio/Library/Java/JavaVirtualMachines/temurin-21.0.11/Contents/Home && cd engine && mvn -B test
   ```
-  *Current status: 33 passing tests (0 failures).*
+  *Current status: 35 passing tests (0 failures).*
 
 - **React 19 & Next.js 16 Rules**:
   - Never mutate ref values (`ref.current = value`) during rendering. Use `useEffect` or lazy state initializers.
@@ -342,5 +358,5 @@ The repository provides specialized agent skills in `.agents/skills/`:
 3. **Kafka Consumer Offset Commit on Skipped Payloads**:
    - Both Gatekeeper and Persistence services commit offsets even when a payload is dropped or invalid to prevent endless poison-pill reprocessing loops.
 4. **AWS Deployment Cost Controls**:
-   - EventBridge rules are deployed **disabled** by default.
+   - Legacy EventBridge rules are disabled. New timezone-aware schedules are controlled by CDK `enableDailyScan` context; read the current operations record before changing them.
    - Always verify Lambda execution manually before enabling automated weekday schedules.

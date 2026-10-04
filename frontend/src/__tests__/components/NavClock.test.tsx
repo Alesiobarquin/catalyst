@@ -12,7 +12,7 @@ describe("NavClock", () => {
   });
 
   it("renders formatted time string after mounting", () => {
-    const fixedDate = new Date(2026, 8, 28, 14, 30, 45);
+    const fixedDate = new Date("2026-09-28T18:30:45Z");
     vi.setSystemTime(fixedDate);
 
     render(<NavClock />);
@@ -21,7 +21,7 @@ describe("NavClock", () => {
   });
 
   it("updates clock display every second", () => {
-    const fixedDate = new Date(2026, 8, 28, 9, 15, 0);
+    const fixedDate = new Date("2026-09-28T13:15:00Z");
     vi.setSystemTime(fixedDate);
 
     render(<NavClock />);

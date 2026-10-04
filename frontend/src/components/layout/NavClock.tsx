@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { PUBLIC_DEMO } from "@/lib/snapshot";
 
 export function NavClock() {
   const [time, setTime] = useState("");
@@ -34,7 +35,7 @@ export function NavClock() {
         whiteSpace: "nowrap",
       }}
     >
-      Data as of {time} ET
+      {PUBLIC_DEMO ? "New York" : "Data as of"} {time} ET
     </span>
   );
 }

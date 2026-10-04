@@ -11,7 +11,7 @@ This skill guides provisioning, configuring, and managing the Catalyst pipeline 
 
 ## Current public hosting target (October 2026)
 
-The accepted target is a public read-only dashboard available 24/7 over an AWS-provided HTTPS URL, with one weekday pipeline run and a hosting budget of at most $10/month. The S3/CloudFront snapshot site and scheduled EC2 worker are proposed, not implemented. Read [docs/PUBLIC_DEMO_DEPLOYMENT_PLAN.md](../../../docs/PUBLIC_DEMO_DEPLOYMENT_PLAN.md) and the current `AGENTS.md` before provisioning or activating schedules.
+The accepted target is a public read-only dashboard available 24/7 over an AWS-provided HTTPS URL, with one weekday pipeline run and a hosting budget of at most $10/month. The S3/CloudFront site, scheduled EC2 worker, encrypted SSM runtime, and GitHub OIDC publisher are provisioned. First cloud scan validation is in progress. Read [docs/PUBLIC_DEMO_OPERATIONS.md](../../../docs/PUBLIC_DEMO_OPERATIONS.md) and `AGENTS.md` for current CLI operations, safeguards, schedule state, and verification evidence. Deploy the new stack with `-c publicDemo=true`; schedule activation is explicitly controlled with `-c enableDailyScan=true`.
 
 The remaining instructions describe the **legacy single-instance prototype**. Stopping that instance also stops an instance-hosted dashboard. Do not present this legacy workflow as sufficient for the 24/7 public target. The existing instance is a running `t3.micro` / 8 GiB disk, while the CDK source's optional create path is `t3.medium` / 30 GiB; neither establishes a validated memory requirement for the full stack.
 
