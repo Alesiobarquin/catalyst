@@ -1,0 +1,66 @@
+{
+  "kind": "organic AWS batch evidence",
+  "public_url": "https://d36bndaw2y0rrh.cloudfront.net",
+  "snapshot_url": "https://d36bndaw2y0rrh.cloudfront.net/data/runs/20261004T230637Z/snapshot.json",
+  "run_id": "20261004T230637Z",
+  "commit": "2d1ecdbf2967236453f025040b3fb140dae1a28e",
+  "as_of": "2026-10-04T23:06:37.095002+00:00",
+  "status": "partial",
+  "hunters": [
+    {
+      "hunter": "squeeze",
+      "success": false,
+      "error": "RuntimeError",
+      "emitted_events": 0,
+      "duration_sec": 1.857
+    },
+    {
+      "hunter": "insider",
+      "success": true,
+      "error": null,
+      "duration_sec": 13.783,
+      "emitted_events": 29
+    },
+    {
+      "hunter": "whale",
+      "success": false,
+      "error": "TimeoutError",
+      "emitted_events": 0,
+      "duration_sec": 97.451
+    },
+    {
+      "hunter": "biotech",
+      "success": true,
+      "error": null,
+      "duration_sec": 14.371,
+      "emitted_events": 0
+    },
+    {
+      "hunter": "drifter",
+      "success": true,
+      "error": null,
+      "duration_sec": 0.592,
+      "emitted_events": 1
+    }
+  ],
+  "event_counts": {
+    "raw-events": 30,
+    "triage-priority": 0,
+    "validated-signals": 0
+  },
+  "regime": {
+    "captured_at": "1970-01-01T00:00:00Z",
+    "vix": 0.0,
+    "spy_200_sma": 0.0,
+    "spy": 0.0,
+    "fresh": false
+  },
+  "signals": 0,
+  "recommendations": 0,
+  "notes": [
+    "Real source data; no synthetic signal injection.",
+    "VIX was unavailable due to URI encoding; sizing halted correctly.",
+    "Worker shutdown observed after manifest publication.",
+    "Burst/throughput figures have not been inferred from whole-sweep averages."
+  ]
+}

@@ -1,7 +1,9 @@
 {
   "app": "python3 app.py",
   "watch": {
-    "include": ["**"],
+    "include": [
+      "**"
+    ],
     "exclude": [
       "README.md",
       "cdk*.json",
@@ -15,7 +17,12 @@
   "context": {
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
     "@aws-cdk/core:checkSecretUsage": true,
-    "@aws-cdk/core:target-partitions": ["aws", "aws-cn"],
-    "createEc2": "false"
+    "@aws-cdk/core:target-partitions": [
+      "aws",
+      "aws-cn"
+    ],
+    "createEc2": "false",
+    "publicDemo": "true",
+    "enableDailyScan": "true"
   }
 }

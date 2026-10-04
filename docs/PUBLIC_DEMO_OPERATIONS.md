@@ -1,6 +1,6 @@
 # Catalyst public deployment
 
-Provisioned October 4, 2026 in `us-east-1`. First cloud pipeline validation is in progress; validation results below will be updated after that run.
+Provisioned and verified October 4, 2026 in `us-east-1`. The public site is live, organic scans have published, and both weekday schedules are enabled. The first scheduled tick is October 5; activation has been verified, but that tick has not yet been observed.
 
 Public URL: **https://d36bndaw2y0rrh.cloudfront.net**. The public dashboard is read-only and available while the processing worker is stopped.
 
@@ -12,7 +12,7 @@ The worker Compose profile declares 12 services: ZooKeeper, Kafka, Redis, Timesc
 
 Public results expose the actual collection time, per-source success/failure, emitted events, per-run Kafka offsets, deployed commit, and fresh regime status. A provider failure is reported as partial. A successful sweep can yield no qualifying events. A failed publication leaves the previous manifest available; `/data/status.json` records attempt state independently and the banner identifies newer failures/running scans; the browser displays collection age and flags data older than 96 hours. Source failures and pipeline errors are also retained in private S3 logs.
 
-The public profile requires two distinct sources in a five-minute window. Gemini 3.8 Flash must supply Google Search grounding and conviction of at least 50; heuristic fallback is disabled. A persistent counter limits requests, including failures and retries, to **two per UTC day**. Prompts are bounded to 24,000 characters and output, including thinking, to 2,048 tokens. No Pro fallback is configured. Java's actual Kafka listener executor uses Project Loom virtual threads. An unavailable/stale regime, missing 200-session SMA, or VIX at least 40 halts new recommendations. Half-Kelly allocation is capped at 25% per recommendation on a modeled $100,000 book; this is not an aggregate portfolio exposure limit.
+The public profile requires two distinct sources in a five-minute window. Gemini 3.8 Flash must supply Google Search grounding and conviction of at least 50; heuristic fallback is disabled. A persistent counter limits requests, including failures and retries, to **two per UTC day**. Prompts are bounded to 24,000 characters and output, including thinking, to 2,048 tokens. No Pro fallback is configured. A transient failure can retry once; both attempts consume the same two-request daily limit. Java's actual Kafka listener executor uses Project Loom virtual threads. An unavailable/stale regime, missing 200-session SMA, or VIX at least 40 halts new recommendations. Half-Kelly allocation is capped at 25% per recommendation on a modeled $100,000 book; this is not an aggregate portfolio exposure limit.
 
 The resolver evaluates `ACTIVE` recommendations against sampled Yahoo prices, with a 14-calendar-day holding limit. Published PnL is modeled recommendation performance, not realized brokerage profit. Daily samples can miss intraday stop/target crossings. Price charts use exported market history; missing data is labeled unavailable rather than synthesized.
 
@@ -59,7 +59,7 @@ PATH="$PWD/.venv/bin:$PATH" npx --yes aws-cdk deploy -c publicDemo=true \
   -c enableDailyScan=true --require-approval never
 ```
 
-`publicDemo=true` selects the new stack. Omitting it selects the legacy stack. The explicit `enableDailyScan` context controls both new schedules. Before first activation, deploy without that setting to keep schedules disabled, configure encrypted runtime keys, publish a release, and verify a real run. Use `-c enableDailyScan=false` when deliberately pausing collection. The static site remains available.
+Repository defaults select the new public stack with enabled daily schedules. Explicit `publicDemo=false` selects the legacy stack. The explicit `enableDailyScan` context controls both new schedules. Before first activation, deploy with `-c enableDailyScan=false` to keep schedules disabled, configure encrypted runtime keys, publish a release, and verify a real run. Use `-c enableDailyScan=false` when deliberately pausing collection. The static site remains available.
 
 Worker bootstrap is declarative in `infra/worker_bootstrap.sh`; existing instances do not automatically rerun first-boot user data when that file changes. Runtime scripts inside the versioned worker archive update every boot. Manage the private worker through SSM, not SSH. Its security group has no inbound ports; temporary public IPv4 provides provider/API access without a NAT Gateway or retained Elastic IP.
 
@@ -104,8 +104,11 @@ The AWS account was a Free plan scheduled to expire October 21, 2026. It was upg
 
 ## Verification record
 
-- Local: 301 Python tests, 36 Java tests, 156 frontend tests (493 total); lint, Python formatting, TypeScript, and static export pass.
+- Local and fresh Linux release CI: 301 Python tests, 36 Java tests, 156 frontend tests (493 total); lint, Python formatting, TypeScript, and static export pass. Release [`ea5f3ef`](https://github.com/Alesiobarquin/catalyst/actions/runs/37242671992) built and published all three native x86 images successfully.
 - Public HTTPS routes `/`, `/signals`, `/analytics`, `/architecture` respond successfully. `/settings` and `/testing/inject` return 404. Direct S3 website content access returns 403.
 - Updated Gemini key passed a real Search-grounded 3.8 Flash request.
-- Cloud cold-start, actual daily scan, measured runtime/memory, shutdown, and schedule activation: in progress.
+- Latest organic run [`20261004T231915Z`](https://d36bndaw2y0rrh.cloudfront.net/data/runs/20261004T231915Z/snapshot.json): 30 raw events (29 SEC, one FMP), three completed hunters and two unavailable feeds (Finviz blocked, Barchart timeout). The concurrent hunter batch took about 97 seconds. Fresh SPY/200-session SMA/VIX data was exported. Zero events passed strict confluence; AI validation and sizing therefore produced no recommendations. No synthetic data or paper execution was used.
+- Cold-start migrations, both TimescaleDB hypertables, private FastAPI readiness, database backup before manifest publication, and automatic shutdown were observed. The first boot exposed a Flyway baseline error and the first publication exposed a double-encoded VIX URL; both were fixed and the latter covered by an HTTP regression test. During the batch, total memory use was about 2.4 GiB on the 8 GiB worker, with no OOM. The site remained available after shutdown.
+- Schedule readback confirms both `ENABLED`: 10:00 start and 11:30 hard stop, weekdays in `America/New_York`. Worker security-group ingress is empty; the latest backup is privately encrypted; the legacy worker is stopped and its schedules remain disabled. See the [sanitized deployment evidence](verification/2026-10-04-deployment.json) and [first publication](verification/2026-10-04-first-aws-run.json).
+- HTTPS routes and referenced production assets were checked by HTTP, and the frontend test suites passed. Interactive browser/visual verification was not completed because browser automation was unavailable in this session.
 - No live 50–100 events/min measurement has been established. The résumé figure is not presented as observed daily scan volume; any controlled throughput test must be separately labeled.

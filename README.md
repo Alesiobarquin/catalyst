@@ -16,7 +16,7 @@
 
 The portfolio dashboard is available continuously. To keep costs below the $10/month target, the full AWS Docker/Kafka pipeline collects once each weekday at 10:00 AM New York time, exports its FastAPI results, and shuts down. Collection timestamps and per-source run outcomes are displayed; zero qualifying signals and unavailable sources are reported honestly. The public profile uses strict two-source confluence, grounded Gemini 3.8 Flash, Java 21 virtual threads, Half-Kelly sizing, and TimescaleDB persistence. The static dashboard stays available between scans. Its PnL reflects modeled recommendations checked at sampled prices; public brokerage execution and notification dispatch are disabled.
 
-First AWS scan validation is in progress. The local API-backed development experience and optional execution services remain available in the repository. See the [historical hosting assessment](docs/PUBLIC_DEMO_DEPLOYMENT_PLAN.md) for the migration rationale.
+The verified October 4 AWS run collected 30 real events from SEC and FMP, published fresh SPY/VIX regime data, and stopped automatically. Finviz was blocked and Barchart timed out; both failures are visible. No events passed strict confluence, so no AI-validated recommendations were generated. The weekday schedule is enabled. See the [verification record](docs/verification/2026-10-04-deployment.json) and [historical hosting assessment](docs/PUBLIC_DEMO_DEPLOYMENT_PLAN.md). The local API-backed development experience and optional execution services remain available in the repository.
 
 ## Why Catalyst?
 

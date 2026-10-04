@@ -71,7 +71,7 @@ def configure(environment: Path, github: bool = True) -> None:
         "GEMINI_FALLBACK_MODEL": "",
         "GEMINI_THINKING_LEVEL": "low",
         "GEMINI_MAX_OUTPUT_TOKENS": "2048",
-        "GEMINI_MAX_RETRIES": "1",
+        "GEMINI_MAX_RETRIES": "2",
         "AI_ALLOW_HEURISTIC_FALLBACK": "false",
         "AI_REQUIRE_GROUNDING": "true",
         "AI_DAILY_REQUEST_LIMIT": "2",

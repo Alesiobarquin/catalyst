@@ -1,6 +1,6 @@
 # Public demo: 24/7 dashboard, one weekday pipeline run
 
-Historical assessment dated October 3, 2026. **Superseded by implementation on October 4:** AWS hosting, the private scheduled worker, encrypted configuration, and GitHub OIDC release infrastructure are provisioned; first publication and cloud validation are in progress. The findings below describe the pre-deployment baseline, not the current AWS state. Operational instructions are being recorded in `docs/PUBLIC_DEMO_OPERATIONS.md`.
+Historical assessment dated October 3, 2026. **Superseded by implementation on October 4:** AWS hosting, the private scheduled worker, encrypted configuration, and GitHub OIDC releases are deployed and verified; organic results have published and weekday schedules are enabled. The findings below describe the pre-deployment baseline, not the current AWS state. See the [current operations runbook](PUBLIC_DEMO_OPERATIONS.md) and [verification record](verification/2026-10-04-deployment.json).
 
 ## Accepted requirements
 

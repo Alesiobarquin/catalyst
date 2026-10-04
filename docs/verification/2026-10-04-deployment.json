@@ -1,0 +1,112 @@
+{
+  "kind": "organic AWS batch and deployment verification",
+  "verification_date": "2026-10-04",
+  "public_url": "https://d36bndaw2y0rrh.cloudfront.net",
+  "snapshot_url": "https://d36bndaw2y0rrh.cloudfront.net/data/runs/20261004T231915Z/snapshot.json",
+  "run_id": "20261004T231915Z",
+  "commit": "ea5f3ef3a937956344eb13c65fdee5f8e9d406b2",
+  "as_of": "2026-10-04T23:19:15.159094+00:00",
+  "status": "partial",
+  "hunters": [
+    {
+      "hunter": "squeeze",
+      "success": false,
+      "error": "RuntimeError",
+      "emitted_events": 0,
+      "duration_sec": 2.067
+    },
+    {
+      "hunter": "insider",
+      "success": true,
+      "error": null,
+      "duration_sec": 14.17,
+      "emitted_events": 29
+    },
+    {
+      "hunter": "whale",
+      "success": false,
+      "error": "TimeoutError",
+      "emitted_events": 0,
+      "duration_sec": 97.422
+    },
+    {
+      "hunter": "biotech",
+      "success": true,
+      "error": null,
+      "duration_sec": 14.541,
+      "emitted_events": 0
+    },
+    {
+      "hunter": "drifter",
+      "success": true,
+      "error": null,
+      "duration_sec": 0.813,
+      "emitted_events": 1
+    }
+  ],
+  "event_counts": {
+    "raw-events": 30,
+    "triage-priority": 0,
+    "validated-signals": 0
+  },
+  "regime": {
+    "fresh": true,
+    "spy": 769.64,
+    "spy_200_sma": 720.4709997558593,
+    "vix": 15.31,
+    "captured_at": "2026-10-04T23:16:24.315827115Z"
+  },
+  "signals": 0,
+  "recommendations": 0,
+  "worker": {
+    "instance_id": "i-0597d111f82782b5d",
+    "state_after_publication": "stopped",
+    "type": "m6a.large",
+    "ingress_rules": 0
+  },
+  "schedules": [
+    {
+      "name": "catalyst-daily-start",
+      "state": "ENABLED",
+      "expression": "cron(0 10 ? * MON-FRI *)",
+      "timezone": "America/New_York"
+    },
+    {
+      "name": "catalyst-daily-hard-stop",
+      "state": "ENABLED",
+      "expression": "cron(30 11 ? * MON-FRI *)",
+      "timezone": "America/New_York"
+    }
+  ],
+  "automated_tests": {
+    "python": 301,
+    "java": 36,
+    "frontend": 156,
+    "total": 493,
+    "release_run": "https://github.com/Alesiobarquin/catalyst/actions/runs/37242671992"
+  },
+  "checks": {
+    "private_fastapi_ready": true,
+    "timescaledb_hypertables": 2,
+    "backup_before_manifest": true,
+    "backup_encryption": "AES256",
+    "public_https_routes": true,
+    "production_assets_http_200": 12,
+    "direct_site_s3_access": "403",
+    "public_settings_and_testing": "404",
+    "site_available_after_worker_shutdown": true,
+    "observed_oom": false,
+    "approximate_worker_memory_gib": 2.4,
+    "gemini_key_real_search_grounding": true,
+    "interactive_browser_verification_completed": false
+  },
+  "limitations": [
+    "No synthetic signal injection or public brokerage execution.",
+    "Finviz blocked and Barchart timed out; the published run is partial.",
+    "No strict confluence, so organic AI validation and trade generation were not exercised in this scan.",
+    "Search-grounded key access was verified separately; empty private triage was correctly rejected.",
+    "Schedule activation verified; the first scheduled tick on October 5 has not yet been observed.",
+    "No live sustained 50\u2013100 events/min measurement has been established.",
+    "Interactive browser automation was unavailable; route/asset HTTP checks and frontend tests passed."
+  ]
+}
