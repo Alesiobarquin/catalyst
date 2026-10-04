@@ -13,7 +13,7 @@
 
 ### Current public deployment (October 4, 2026)
 
-- **Public site:** https://d36bndaw2y0rrh.cloudfront.net — read-only Next.js static export, private S3 with CloudFront OAC/HTTPS. The site and first verified GitHub OIDC release (`ed746b6`) are published; first cloud pipeline validation and schedule activation are in progress. First clean-volume boot exposed `baseline-on-migrate` defaulting to version 1 after Python created `validated_signals`, causing Flyway to skip V1 and fail V2 with missing `trade_orders`. The baseline is now explicitly zero in Java and public Compose; the failed empty trade-schema baseline will be repaired under a `trade_orders`-absent guard before retry. All 492 tests passed on fresh Linux CI, all three x86 images were pushed, and publication succeeded.
+- **Public site:** https://d36bndaw2y0rrh.cloudfront.net — read-only Next.js static export, private S3 with CloudFront OAC/HTTPS. The site and first verified GitHub OIDC release (`ed746b6`) are published; first cloud pipeline validation and schedule activation are in progress. First clean-volume boot exposed `baseline-on-migrate` defaulting to version 1 after Python created `validated_signals`, causing Flyway to skip V1 and fail V2 with missing `trade_orders`. The baseline is now explicitly zero in Java and public Compose; the failed empty trade-schema baseline was repaired from 1 to 0 under a `trade_orders`-absent guard through SSM. A temporary service override used for this repair was removed before retry, restoring automatic instance shutdown. All 493 tests passed on fresh Linux CI, all three x86 images were pushed, and publication succeeded.
 - **Daily worker:** `CatalystPublicDemoStack`, EC2 `i-0597d111f82782b5d`, `m6a.large`, encrypted 40 GiB gp3, SSM management and no ingress. Target cadence: 10:00 America/New_York on weekdays; normal completion stops it, boot watchdog is 80 minutes, independent scheduled hard stop is 11:30. Both new schedules remain disabled until validation finishes.
 - **Budget:** at most $10/month target, excluding domain/tax, with explicit runtime, AI, image/log retention controls. The $10 account-wide AWS Budget is console-visible and has no email subscription; it is not a hard billing cap. See [operations and cost model](docs/PUBLIC_DEMO_OPERATIONS.md).
 - **Provenance:** public strict confluence requires two distinct sources; grounded Gemini 3.8 Flash only, threshold 50, heuristic fallback disabled. Local fallback remains available and is explicitly tagged. PnL is modeled from sampled recommendation prices, not brokerage profit. Public executor/notifier are disabled.
@@ -34,6 +34,8 @@
 AI controls: `AI_ALLOW_HEURISTIC_FALLBACK=false`, `AI_REQUIRE_GROUNDING=true`, `AI_DAILY_REQUEST_LIMIT=2`, persistent `AI_BUDGET_FILE`, `GEMINI_MODEL=gemini-3.8-flash`, `GEMINI_THINKING_LEVEL=low`, `GEMINI_MAX_OUTPUT_TOKENS=2048`, no model fallback, one retry limit. All attempts reserve the persistent UTC-day budget before network access; prompt length is 24,000 characters. `analysis_method`/`analysis_model` are persisted and exposed through the signals API. The counter assumes one AI consumer. `GATEKEEPER_REQUIRE_CONFLUENCE=true` disables the technical single-source exception.
 
 `infra/public_demo_stack.py` is selected by `-c publicDemo=true`, separate from legacy `CatalystStack`; `-c enableDailyScan=true` activates both timezone schedules. The stack owns S3/CloudFront, worker, IAM/SSM, ECR, GitHub main-branch OIDC and budget. `infra/worker_bootstrap.sh` installs the boot/systemd job; runtime keys are an encrypted SSM SecureString `/catalyst/public-demo/runtime`. `scripts/public_demo.py configure` securely rotates local `.env` keys, preserves the database password, and sets GitHub variables. Release CI publishes only verified images/archives and does not replace the data manifest on ordinary releases; documentation-only changes do not rebuild images. Existing EC2 instances do not automatically rerun changed first-boot user data.
+
+Cloud verification exposed a double-encoded `%5EVIX` URL returning 404 while SPY succeeded. MarketDataService now passes an already-encoded URI to RestClient; an HTTP mock regression test verifies VIX retrieval, 200-session SMA, and a fresh snapshot.
 
 Java `GET /market-state` is private and reports actual regime acquisition/freshness. Yahoo calls have connect/read deadlines. Initial regime values are zero; sizing halts on missing/stale data or insufficient 200-session SMA, with no latest-price substitution. Persistence's standalone primary key includes time to satisfy hypertable constraints. Docker build contexts exclude local secrets and data.
 
@@ -258,7 +260,7 @@ Multi-channel real-time catalyst alerting service:
 
 ---
 
-**Phase 51 — Public daily AWS deployment:** Static export and snapshot adapter, strict batch hunters, grounded-only AI with persistent request limits, explicit Kafka virtual threads, fresh-market halt, private CloudFront/S3 hosting, encrypted worker/SSM configuration, GitHub OIDC immutable releases, watchdogs and timezone scheduling. Provisioned October 4; first cloud scan validation is in progress. See `docs/PUBLIC_DEMO_OPERATIONS.md`. Current tests: 301 Python + 35 Java + 156 Vitest = 492.
+**Phase 51 — Public daily AWS deployment:** Static export and snapshot adapter, strict batch hunters, grounded-only AI with persistent request limits, explicit Kafka virtual threads, fresh-market halt, private CloudFront/S3 hosting, encrypted worker/SSM configuration, GitHub OIDC immutable releases, watchdogs and timezone scheduling. Provisioned October 4; first cloud scan validation is in progress. See `docs/PUBLIC_DEMO_OPERATIONS.md`. Current tests: 301 Python + 36 Java + 156 Vitest = 493.
 
 ## 5. Developer & Agent Guidelines
 
@@ -302,7 +304,7 @@ Multi-channel real-time catalyst alerting service:
   ```bash
   export JAVA_HOME=/Users/alesio/Library/Java/JavaVirtualMachines/temurin-21.0.11/Contents/Home && cd engine && mvn -B test
   ```
-  *Current status: 35 passing tests (0 failures).*
+  *Current status: 36 passing tests (0 failures).*
 
 - **React 19 & Next.js 16 Rules**:
   - Never mutate ref values (`ref.current = value`) during rendering. Use `useEffect` or lazy state initializers.

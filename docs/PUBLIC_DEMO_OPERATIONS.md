@@ -104,7 +104,7 @@ The AWS account was a Free plan scheduled to expire October 21, 2026. It was upg
 
 ## Verification record
 
-- Local: 301 Python tests, 35 Java tests, 156 frontend tests (492 total); lint, Python formatting, TypeScript, and static export pass.
+- Local: 301 Python tests, 36 Java tests, 156 frontend tests (493 total); lint, Python formatting, TypeScript, and static export pass.
 - Public HTTPS routes `/`, `/signals`, `/analytics`, `/architecture` respond successfully. `/settings` and `/testing/inject` return 404. Direct S3 website content access returns 403.
 - Updated Gemini key passed a real Search-grounded 3.8 Flash request.
 - Cloud cold-start, actual daily scan, measured runtime/memory, shutdown, and schedule activation: in progress.

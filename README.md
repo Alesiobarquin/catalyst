@@ -5,7 +5,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16%20App%20Router-black.svg)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/Tests-492%20Passing-emerald.svg)](https://github.com/Alesiobarquin/catalyst)
+[![Tests](https://img.shields.io/badge/Tests-493%20Passing-emerald.svg)](https://github.com/Alesiobarquin/catalyst)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
 **Catalyst** is an event-driven quantitative trading and market signal discovery platform. It ingests volatile market events across disparate financial feeds (scrapers, SEC EDGAR Form 4 filings, unusual options flow, earnings surprises), filters them through a stateful Redis confluence gatekeeper, validates theses in real-time via Gemini with Google Search grounding, sizes orders via a Java Spring Boot quantitative engine (Half-Kelly criterion and SPY/VIX regime filtering), executes paper orders via Alpaca Markets, tracks closed-loop lifecycle PnL via an autonomous resolver daemon, broadcasts real-time alerts to Discord/Slack/Telegram, and provides an executive analytics dashboard built on Next.js 16 and FastAPI.
@@ -85,7 +85,7 @@ graph TD
 | **Hunters** (`hunters/`) | Python 3.12, Playwright, BeautifulSoup, HTTPX | ✅ 5 Active | Autonomous scrapers scanning Finviz (Squeeze), BioPharmCatalyst (FDA readouts), SEC EDGAR (Form 4 insider buys), Barchart (unusual options flow), and FMP (post-earnings beats). |
 | **Gatekeeper** (`gatekeeper/`) | Python 3.12, Redis 7, Kafka | ✅ Hardened | Stateful noise filter using Redis Sorted Sets (`gk:sources_zset:{ticker}`) for sliding 5-min confluence ($\ge 2$ sources) and atomic `SET NX EX` deduplication. Enforces volume ($\ge 50\text{k}$), RVOL ($\ge 1.5\times$), and price bounds. |
 | **AI Layer** (`ai_layer/`) | Python 3.12, Google GenAI SDK | ✅ Active | Synthesizes catalysts using Gemini with Google Search grounding. Generates structured JSON (catalyst type, conviction score, stop loss, profit target, trap indicators). Drops signals with conviction $< 50$. |
-| **Strategy Engine** (`engine/`) | Java 21, Spring Boot 3.4, JPA, Spring Kafka | ✅ 35 Tests | Quantitative risk engine. Assesses SPY versus its 200-day SMA and VIX to classify market regime (`PASS`, `SCALPER_ONLY`, `PASS_BEARISH`, `HALT`). Calculates position sizing via Half-Kelly criterion ($f^* = (bp - q) / 2b$), capped at 25% of a $100,000 book per recommendation by default. Routes to 4 specialized strategies (Supernova, Scalper, Drifter, Follower). |
+| **Strategy Engine** (`engine/`) | Java 21, Spring Boot 3.4, JPA, Spring Kafka | ✅ 36 Tests | Quantitative risk engine. Assesses SPY versus its 200-day SMA and VIX to classify market regime (`PASS`, `SCALPER_ONLY`, `PASS_BEARISH`, `HALT`). Calculates position sizing via Half-Kelly criterion ($f^* = (bp - q) / 2b$), capped at 25% of a $100,000 book per recommendation by default. Routes to 4 specialized strategies (Supernova, Scalper, Drifter, Follower). |
 | **Persistence** (`persistence/`) | Python 3.12, TimescaleDB / PostgreSQL 16 | ✅ Active | Consumes `validated-signals` and persists records into TimescaleDB hypertables with catalyst indexing and non-blocking offset commits on corrupt payloads. |
 | **Executor** (`executor/`) | Python 3.12, Alpaca REST API | ✅ Active | Consumes `trade-orders` and dispatches paper orders with exponential backoff on HTTP 429, execution circuit breakers, and notional trade caps. |
 | **Trade Resolver** (`resolver/`) | Python 3.12, TimescaleDB, Yahoo Finance | ✅ Active | Resolves `ACTIVE` recommendations against sampled Yahoo prices and a 14-calendar-day holding limit. Persists modeled recommendation PnL and `HIT_TARGET`, `HIT_STOP`, or `EXPIRED`; this daemon does not query broker fills or close positions. |
@@ -97,15 +97,15 @@ graph TD
 
 ## 3. Test Coverage & Quality Gates
 
-The codebase maintains rigorous multi-stack automated testing with **492 passing tests** across 3 language ecosystems:
+The codebase maintains rigorous multi-stack automated testing with **493 passing tests** across 3 language ecosystems:
 
 ```text
 ================================ TEST SUITE SUMMARY ================================
 ✅ Python Microservices (Pytest):   301 tests passed (0 failures, 100% pass rate)
-✅ Java Quantitative Engine (JUnit 5): 35 tests passed (0 failures, 100% pass rate)
+✅ Java Quantitative Engine (JUnit 5): 36 tests passed (0 failures, 100% pass rate)
 ✅ Next.js Frontend (Vitest):        156 tests passed (0 failures, 100% pass rate)
 ------------------------------------------------------------------------------------
-TOTAL VERIFIED AUTOMATED TESTS:      492 tests passing across stack
+TOTAL VERIFIED AUTOMATED TESTS:      493 tests passing across stack
 ====================================================================================
 ```
 

@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import java.net.http.HttpClient;
+import java.net.URI;
+import org.springframework.beans.factory.annotation.Autowired;
 import java.time.Duration;
 
 import java.time.Instant;
@@ -64,12 +66,21 @@ public class MarketDataService {
 
     private final Map<String, PriceCacheEntry> priceCache = new ConcurrentHashMap<>();
 
+    @Autowired
     public MarketDataService(ObjectMapper objectMapper) {
+        this(objectMapper, buildRestClient());
+    }
+
+    MarketDataService(ObjectMapper objectMapper, RestClient restClient) {
         this.objectMapper = objectMapper;
+        this.restClient = restClient;
+    }
+
+    private static RestClient buildRestClient() {
         var factory = new JdkClientHttpRequestFactory(HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10)).build());
         factory.setReadTimeout(Duration.ofSeconds(20));
-        this.restClient = RestClient.builder()
+        return RestClient.builder()
                 .requestFactory(factory)
                 .defaultHeader("User-Agent", USER_AGENT)
                 .defaultHeader("Accept", "application/json")
@@ -154,7 +165,7 @@ public class MarketDataService {
     private double fetchRawPrice(String encodedTicker) {
         try {
             String url = YAHOO_BASE + encodedTicker + "?range=1d&interval=1d";
-            String json = restClient.get().uri(url).retrieve().body(String.class);
+            String json = restClient.get().uri(URI.create(url)).retrieve().body(String.class);
 
             JsonNode root = objectMapper.readTree(json);
             return root.path("chart")
@@ -180,7 +191,7 @@ public class MarketDataService {
      */
     private double fetchSpy200Sma() throws Exception {
         String url = YAHOO_BASE + "SPY?range=1y&interval=1d";
-        String json = restClient.get().uri(url).retrieve().body(String.class);
+        String json = restClient.get().uri(URI.create(url)).retrieve().body(String.class);
 
         JsonNode root = objectMapper.readTree(json);
         JsonNode closes = root.path("chart")

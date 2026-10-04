@@ -63,6 +63,7 @@ def configure(environment: Path, github: bool = True) -> None:
         "TIMESCALE_DB": "catalyst_db",
         "DATABASE_URL": f"postgresql://catalyst_user:{password}@timescaledb:5432/catalyst_db",
         "ENGINE_HEALTH_URL": "http://engine:8081/actuator/health",
+        "SPRING_FLYWAY_BASELINE_VERSION": "0",
         "CORS_ORIGINS": "[]",
         "GEMINI_API_KEY": values["GEMINI_API_KEY"],
         "FMP_API_KEY": values.get("FMP_API_KEY") or "",

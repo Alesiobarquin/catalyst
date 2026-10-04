@@ -161,12 +161,12 @@ export default function ArchitecturePage() {
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
           <span style={{ fontSize: 32, fontWeight: 700, color: "#10B981", fontFamily: "var(--font-mono)", lineHeight: 1 }}>
-            492
+            493
           </span>
           <span style={{ fontSize: 16, fontWeight: 600, color: "#F8FAFC" }}>Automated Tests</span>
         </div>
         <p style={{ fontSize: 12, color: "#64748B", fontFamily: "var(--font-mono)", margin: 0 }}>
-          301 Python · 35 Java · 156 Vitest
+          301 Python · 36 Java · 156 Vitest
         </p>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
