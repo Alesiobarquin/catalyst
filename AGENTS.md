@@ -37,6 +37,8 @@ AI controls: `AI_ALLOW_HEURISTIC_FALLBACK=false`, `AI_REQUIRE_GROUNDING=true`, `
 
 Cloud verification exposed a double-encoded `%5EVIX` URL returning 404 while SPY succeeded. MarketDataService now passes an already-encoded URI to RestClient; an HTTP mock regression test verifies VIX retrieval, 200-session SMA, and a fresh snapshot.
 
+Final CI exposed an intermittent Next.js 16.3.8 Turbopack Google Fonts loader error (`next/font/google queries have exactly one entry`) in the static build. Inter and JetBrains Mono are now bundled as unmodified variable TTF files under `frontend/src/app/fonts/`, with their SIL OFL 1.1 licenses, pinned official Google Fonts source revisions, and SHA-256 hashes. Both layouts share `next/font/local`; builds no longer download Google Fonts. Validate both the ordinary build and public static build after changes to their shared layout.
+
 Java `GET /market-state` is private and reports actual regime acquisition/freshness. Yahoo calls have connect/read deadlines. Initial regime values are zero; sizing halts on missing/stale data or insufficient 200-session SMA, with no latest-price substitution. Persistence's standalone primary key includes time to satisfy hypertable constraints. Docker build contexts exclude local secrets and data.
 
 ---

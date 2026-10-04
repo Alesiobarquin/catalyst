@@ -49,6 +49,8 @@ curl -fsS https://d36bndaw2y0rrh.cloudfront.net/data/manifest.json
 
 Main-branch pushes touching runtime, frontend, or deployment files run release CI. Documentation-only changes do not rebuild images. Each release verifies Python, Java, and frontend tests, builds native x86 images on GitHub, pushes immutable commit tags to ECR, uploads the worker archive/release pointer, and publishes static assets. Data is initialized only when no public manifest exists; code releases preserve the latest scan. The worker downloads the latest successful release on each boot. A failed build does not replace the previous release pointer. Runtime package constraints are in `deploy/constraints.txt` and the frontend uses `npm ci`.
 
+Inter and JetBrains Mono are bundled locally with their SIL OFL licenses and pinned source hashes, eliminating a build-time Google Fonts dependency after final CI exposed a Turbopack font-loader failure. The local and static builds share the same layout and font files.
+
 ## Provision or update infrastructure
 
 ```bash
