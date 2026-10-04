@@ -1,0 +1,16 @@
+FROM python:3.12-slim
+WORKDIR /app
+COPY api/requirements.txt /tmp/api.txt
+COPY gatekeeper/requirements.txt /tmp/gatekeeper.txt
+COPY ai_layer/requirements.txt /tmp/ai.txt
+COPY persistence/requirements.txt /tmp/persistence.txt
+COPY resolver/requirements.txt /tmp/resolver.txt
+RUN pip install --no-cache-dir -r /tmp/api.txt -r /tmp/gatekeeper.txt -r /tmp/ai.txt -r /tmp/persistence.txt -r /tmp/resolver.txt
+COPY api /app/api
+COPY gatekeeper /app/gatekeeper
+COPY ai_layer /app/ai_layer
+COPY persistence /app/persistence
+COPY resolver /app/resolver
+COPY deploy /app/deploy
+ENV PYTHONPATH=/app PYTHONUNBUFFERED=1
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]

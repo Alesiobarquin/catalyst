@@ -95,7 +95,9 @@ def test_build_payloads_sell_action(sample_signal):
     assert fields["Risk / Reward"] == "2.0:1"
 
     slack = build_slack_payload(sample_signal)
-    slack_fields = {f["text"].split("\n")[0]: f["text"].split("\n")[1] for f in slack["blocks"][1]["fields"]}
+    slack_fields = {
+        f["text"].split("\n")[0]: f["text"].split("\n")[1] for f in slack["blocks"][1]["fields"]
+    }
     assert slack_fields["*Action:*"] == "SELL"
     assert slack_fields["*R:R Ratio:*"] == "2.0:1"
 

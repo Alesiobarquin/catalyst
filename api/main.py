@@ -118,9 +118,7 @@ def create_app() -> FastAPI:
             out["engine"] = "DOWN"
 
         ok = (
-            out["database"] == "ok"
-            and out["redis"] == "ok"
-            and out["engine"] in ("UP", "OK", "ok")
+            out["database"] == "ok" and out["redis"] == "ok" and out["engine"] in ("UP", "OK", "ok")
         )
         out["ready"] = ok
         return out

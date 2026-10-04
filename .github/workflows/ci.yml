@@ -32,6 +32,7 @@ jobs:
           pip install -r ai_layer/requirements.txt
           pip install -r hunters/requirements.txt
           pip install -r executor/requirements.txt
+          pip install -r persistence/requirements.txt -r resolver/requirements.txt -r notifier/requirements.txt
 
       - name: Ruff lint
         run: ruff check api gatekeeper ai_layer hunters persistence executor tests --output-format=github
@@ -72,6 +73,8 @@ jobs:
 
       - name: Frontend build
         run: npm run build
+      - name: Public static build
+        run: npm run build:public
 
   engine-test:
     runs-on: ubuntu-latest

@@ -317,7 +317,9 @@ class TestAIAnalysisServiceWorkflow:
         service.client = MagicMock()
 
         mock_fallback_resp = MagicMock()
-        mock_fallback_resp.text = '{"conviction_score": 75, "catalyst_type": "DRIFTER", "rationale": "Earnings surprise"}'
+        mock_fallback_resp.text = (
+            '{"conviction_score": 75, "catalyst_type": "DRIFTER", "rationale": "Earnings surprise"}'
+        )
 
         service.client.models.generate_content.side_effect = [
             RuntimeError("ResourceExhausted: Quota exceeded 429"),
@@ -380,7 +382,9 @@ class TestAIAnalysisServiceWorkflow:
             "timestamp_utc": "2026-09-29T12:00:00Z",
         }
 
-        with patch.object(service, "analyze_with_retry", side_effect=RuntimeError("API key invalid")):
+        with patch.object(
+            service, "analyze_with_retry", side_effect=RuntimeError("API key invalid")
+        ):
             service.process_event(payload)
 
         assert service.producer.send.called
@@ -389,5 +393,3 @@ class TestAIAnalysisServiceWorkflow:
         assert call_val["ticker"] == "NVDA"
         assert call_val["conviction_score"] >= 50
         assert call_val["catalyst_type"] == "SCALPER"
-
-

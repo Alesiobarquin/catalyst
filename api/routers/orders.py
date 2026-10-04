@@ -89,7 +89,11 @@ async def list_orders(
             )
 
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-    where_t = f"WHERE {' AND '.join(c.replace('status =', 't.status =').replace('ticker =', 't.ticker =').replace('strategy_used =', 't.strategy_used =').replace('timestamp_utc >=', 't.timestamp_utc >=') for c in clauses)}" if clauses else ""
+    where_t = (
+        f"WHERE {' AND '.join(c.replace('status =', 't.status =').replace('ticker =', 't.ticker =').replace('strategy_used =', 't.strategy_used =').replace('timestamp_utc >=', 't.timestamp_utc >=') for c in clauses)}"
+        if clauses
+        else ""
+    )
 
     total = await conn.fetchval(f"SELECT COUNT(*) FROM trade_orders {where}", *args)
 
@@ -618,15 +622,9 @@ async def get_order_detail(
         raw_factors["confluence_count"] = sig_row["confluence_count"]
 
     res_price = (
-        float(order_row["resolved_price"])
-        if order_row.get("resolved_price") is not None
-        else None
+        float(order_row["resolved_price"]) if order_row.get("resolved_price") is not None else None
     )
-    res_pnl = (
-        float(order_row["pnl_percent"])
-        if order_row.get("pnl_percent") is not None
-        else None
-    )
+    res_pnl = float(order_row["pnl_percent"]) if order_row.get("pnl_percent") is not None else None
 
     return SignalDetailResponse(
         ticker=ticker,

@@ -20,7 +20,9 @@ from notifier.config import (
 logger = logging.getLogger("notifier.dispatcher")
 
 
-def build_discord_payload(signal: dict[str, Any], dashboard_url: str = DASHBOARD_URL) -> dict[str, Any]:
+def build_discord_payload(
+    signal: dict[str, Any], dashboard_url: str = DASHBOARD_URL
+) -> dict[str, Any]:
     """Build a rich Discord embed matching Catalyst aesthetic."""
     ticker = (signal.get("ticker") or "UNKNOWN").upper()
     cat_type = (signal.get("catalyst_type") or "CATALYST").upper()
@@ -28,7 +30,11 @@ def build_discord_payload(signal: dict[str, Any], dashboard_url: str = DASHBOARD
     entry = float(signal.get("entry_price") or signal.get("price") or 0.0)
     stop = float(signal.get("stop_loss") or 0.0)
     target = float(signal.get("target_price") or 0.0)
-    thesis = signal.get("catalyst_summary") or signal.get("thesis") or "Multi-factor market confluence detected."
+    thesis = (
+        signal.get("catalyst_summary")
+        or signal.get("thesis")
+        or "Multi-factor market confluence detected."
+    )
     confluence_sources = signal.get("confluence_sources") or []
     if isinstance(confluence_sources, list):
         sources_str = ", ".join(confluence_sources) if confluence_sources else "Automated Scrapers"
@@ -48,7 +54,11 @@ def build_discord_payload(signal: dict[str, Any], dashboard_url: str = DASHBOARD
     fields = [
         {"name": "Conviction", "value": f"**{conviction}/100**", "inline": True},
         {"name": "Action", "value": action, "inline": True},
-        {"name": "Entry Price", "value": f"${entry:.2f}" if entry > 0 else "Market", "inline": True},
+        {
+            "name": "Entry Price",
+            "value": f"${entry:.2f}" if entry > 0 else "Market",
+            "inline": True,
+        },
     ]
 
     if target > 0 and stop > 0:
@@ -60,11 +70,13 @@ def build_discord_payload(signal: dict[str, Any], dashboard_url: str = DASHBOARD
             reward = target - entry
 
         rr_str = f"{reward / risk:.1f}:1" if risk > 0 else "—"
-        fields.extend([
-            {"name": "Target Price", "value": f"${target:.2f}", "inline": True},
-            {"name": "Stop Loss", "value": f"${stop:.2f}", "inline": True},
-            {"name": "Risk / Reward", "value": rr_str, "inline": True},
-        ])
+        fields.extend(
+            [
+                {"name": "Target Price", "value": f"${target:.2f}", "inline": True},
+                {"name": "Stop Loss", "value": f"${stop:.2f}", "inline": True},
+                {"name": "Risk / Reward", "value": rr_str, "inline": True},
+            ]
+        )
 
     fields.append({"name": "Confluence Sources", "value": sources_str, "inline": False})
     fields.append({"name": "Analysis & Thesis", "value": thesis[:1000], "inline": False})
@@ -88,7 +100,9 @@ def build_discord_payload(signal: dict[str, Any], dashboard_url: str = DASHBOARD
     }
 
 
-def build_slack_payload(signal: dict[str, Any], dashboard_url: str = DASHBOARD_URL) -> dict[str, Any]:
+def build_slack_payload(
+    signal: dict[str, Any], dashboard_url: str = DASHBOARD_URL
+) -> dict[str, Any]:
     """Build a Slack Block Kit message."""
     ticker = (signal.get("ticker") or "UNKNOWN").upper()
     cat_type = (signal.get("catalyst_type") or "CATALYST").upper()
@@ -102,7 +116,10 @@ def build_slack_payload(signal: dict[str, Any], dashboard_url: str = DASHBOARD_U
     fields = [
         {"type": "mrkdwn", "text": f"*Conviction:*\n{conviction}/100"},
         {"type": "mrkdwn", "text": f"*Action:*\n{action}"},
-        {"type": "mrkdwn", "text": f"*Entry Price:*\n${entry:.2f}" if entry > 0 else "*Entry Price:*\nMarket"},
+        {
+            "type": "mrkdwn",
+            "text": f"*Entry Price:*\n${entry:.2f}" if entry > 0 else "*Entry Price:*\nMarket",
+        },
     ]
     if target > 0 and stop > 0:
         if action == "SELL":
@@ -174,7 +191,9 @@ def build_telegram_message(signal: dict[str, Any], dashboard_url: str = DASHBOAR
             risk = entry - stop
             reward = target - entry
         rr_str = f"{reward / risk:.1f}:1" if risk > 0 else "—"
-        lines.append(f"<b>Target:</b> ${target:.2f} | <b>Stop:</b> ${stop:.2f} | <b>R:R:</b> {rr_str}")
+        lines.append(
+            f"<b>Target:</b> ${target:.2f} | <b>Stop:</b> ${stop:.2f} | <b>R:R:</b> {rr_str}"
+        )
 
     lines.append(f"\n<b>Thesis:</b>\n{thesis[:400]}")
     lines.append(f"\n<a href='{dashboard_url.rstrip('/')}/signals'>Open Catalyst Dashboard</a>")

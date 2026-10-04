@@ -395,7 +395,12 @@ class TestHunterOrchestrator:
         from hunters.main import main
 
         with patch("hunters.main.run_hunter", new_callable=AsyncMock) as mock_run:
-            mock_run.return_value = {"hunter": "test", "success": True, "error": None, "duration_sec": 0.1}
+            mock_run.return_value = {
+                "hunter": "test",
+                "success": True,
+                "error": None,
+                "duration_sec": 0.1,
+            }
             with patch("sys.argv", ["main.py", "all", "--timeout", "15"]):
                 results = await main()
 
@@ -410,13 +415,18 @@ class TestHunterOrchestrator:
         from hunters.main import main
 
         with patch("hunters.main.run_hunter", new_callable=AsyncMock) as mock_run:
-            mock_run.return_value = {"hunter": "drifter", "success": True, "error": None, "duration_sec": 0.2}
+            mock_run.return_value = {
+                "hunter": "drifter",
+                "success": True,
+                "error": None,
+                "duration_sec": 0.2,
+            }
             with patch("sys.argv", ["main.py", "drifter"]):
                 results = await main()
 
         assert len(results) == 1
         assert results[0]["hunter"] == "drifter"
-        mock_run.assert_called_once_with("drifter", timeout_sec=None)
+        mock_run.assert_called_once_with("drifter", timeout_sec=None, once=False)
 
 
 class TestBiotechScraper:
@@ -511,8 +521,10 @@ class TestDrifterSweep:
             },
         ]
 
-        with patch("hunters.drifter_hunter._fetch_calendar", new_callable=AsyncMock) as mock_fetch, \
-             patch("hunters.drifter_hunter.fetch_liquidity_metrics") as mock_liq:
+        with (
+            patch("hunters.drifter_hunter._fetch_calendar", new_callable=AsyncMock) as mock_fetch,
+            patch("hunters.drifter_hunter.fetch_liquidity_metrics") as mock_liq,
+        ):
             mock_fetch.return_value = sample_calendar
             mock_liq.return_value = {
                 "price": 180.0,
@@ -634,9 +646,11 @@ class TestWhaleSweep:
         mock_context.__aenter__.return_value = mock_browser
         mock_context.__aexit__.return_value = None
 
-        with patch("hunters.whale_hunter.BrowserContext", return_value=mock_context), \
-             patch("hunters.whale_hunter.scrape_whale", new_callable=AsyncMock) as mock_scrape, \
-             patch("hunters.whale_hunter.fetch_liquidity_metrics") as mock_liq:
+        with (
+            patch("hunters.whale_hunter.BrowserContext", return_value=mock_context),
+            patch("hunters.whale_hunter.scrape_whale", new_callable=AsyncMock) as mock_scrape,
+            patch("hunters.whale_hunter.fetch_liquidity_metrics") as mock_liq,
+        ):
             mock_scrape.return_value = mock_entries
             mock_liq.return_value = {
                 "price": 125.0,
@@ -667,9 +681,11 @@ class TestWhaleSweep:
         mock_context.__aenter__.return_value = mock_browser
         mock_context.__aexit__.return_value = None
 
-        with patch("hunters.whale_hunter.BrowserContext", return_value=mock_context), \
-             patch("hunters.whale_hunter.scrape_whale", new_callable=AsyncMock) as mock_scrape, \
-             patch("hunters.whale_hunter.fetch_liquidity_metrics", return_value=None):
+        with (
+            patch("hunters.whale_hunter.BrowserContext", return_value=mock_context),
+            patch("hunters.whale_hunter.scrape_whale", new_callable=AsyncMock) as mock_scrape,
+            patch("hunters.whale_hunter.fetch_liquidity_metrics", return_value=None),
+        ):
             mock_scrape.return_value = mock_entries
             pushed = await _one_sweep(mock_kafka)
 
@@ -688,11 +704,10 @@ class TestWhaleSweep:
         mock_context.__aenter__.return_value = mock_browser
         mock_context.__aexit__.return_value = None
 
-        with patch("hunters.whale_hunter.BrowserContext", return_value=mock_context), \
-             patch("hunters.whale_hunter.scrape_whale", new_callable=AsyncMock, return_value=[]):
+        with (
+            patch("hunters.whale_hunter.BrowserContext", return_value=mock_context),
+            patch("hunters.whale_hunter.scrape_whale", new_callable=AsyncMock, return_value=[]),
+        ):
             pushed = await _one_sweep(mock_kafka)
 
         assert pushed == 0
-
-
-

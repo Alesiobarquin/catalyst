@@ -83,6 +83,8 @@ class ValidatedSignalResponse(BaseModel):
     key_risks: list[str] = []
     suggested_entry_zone: str | None = None
     suggested_stop: str | None = None
+    analysis_method: str = "legacy"
+    analysis_model: str | None = None
 
 
 class SignalStatsResponse(BaseModel):
@@ -93,7 +95,6 @@ class SignalStatsResponse(BaseModel):
     trap_rate_percent: float
     high_conviction_count: int
     catalyst_breakdown: dict[str, int]
-
 
 
 # ── Price History ─────────────────────────────────────────────────

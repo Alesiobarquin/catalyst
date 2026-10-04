@@ -4,6 +4,7 @@ Catalyst AWS stack.
 Default mode (createEc2=false): wire Lambda + EventBridge to an existing EC2 instance.
 Optional mode (createEc2=true): also provision EC2, security group, and key pair reference.
 """
+
 from pathlib import Path
 
 import aws_cdk as cdk
@@ -87,7 +88,9 @@ class CatalystStack(Stack):
                 block_devices=[
                     ec2.BlockDevice(
                         device_name="/dev/sda1",
-                        volume=ec2.BlockDeviceVolume.ebs(30, volume_type=ec2.EbsDeviceVolumeType.GP3),
+                        volume=ec2.BlockDeviceVolume.ebs(
+                            30, volume_type=ec2.EbsDeviceVolumeType.GP3
+                        ),
                     )
                 ],
             )

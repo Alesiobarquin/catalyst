@@ -22,7 +22,6 @@ def make_test_client(mock_conn: AsyncMock | None = None) -> TestClient:
     return TestClient(app)
 
 
-
 class TestBatchPerformanceEndpoint:
     def test_batch_non_numeric_ids_returns_422(self):
         client = make_test_client()
@@ -456,4 +455,3 @@ class TestComputeTickerPerformanceHelper:
         assert result["current_price"] == 80.0
         assert result["pnl_pct"] == 20.0  # (100 - 80) / 100 * 100
         assert result["status"] == "RESOLVED_WIN"
-

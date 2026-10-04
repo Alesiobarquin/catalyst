@@ -113,4 +113,3 @@ async def delete_alpaca_keys(
     uid = _user["sub"]
     await conn.execute("DELETE FROM user_alpaca_keys WHERE clerk_user_id = $1", uid)
     return {"ok": True}
-

@@ -1,0 +1,109 @@
+name: catalyst-batch
+x-python: &python
+  image: ${PIPELINE_IMAGE:?Set PIPELINE_IMAGE}
+  env_file: .env
+  restart: "no"
+  mem_limit: 512m
+  logging: &logs
+    driver: json-file
+    options: {max-size: "10m", max-file: "2"}
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment: {ZOOKEEPER_CLIENT_PORT: 2181, ZOOKEEPER_TICK_TIME: 2000, KAFKA_HEAP_OPTS: "-Xms128m -Xmx128m"}
+    volumes: ["zk-data:/var/lib/zookeeper/data", "zk-log:/var/lib/zookeeper/log"]
+    mem_limit: 256m
+    logging: *logs
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on: [zookeeper]
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LOG_RETENTION_HOURS: 48
+      KAFKA_LOG_RETENTION_BYTES: 134217728
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+    volumes: ["kafka-data:/var/lib/kafka/data"]
+    mem_limit: 900m
+    healthcheck: {test: ["CMD-SHELL", "kafka-topics --bootstrap-server kafka:29092 --list"], interval: 10s, timeout: 10s, retries: 18}
+    logging: *logs
+  redis:
+    image: redis:7.4.2-alpine
+    command: [redis-server, --maxmemory, 80mb, --maxmemory-policy, allkeys-lru]
+    mem_limit: 128m
+    healthcheck: {test: [CMD, redis-cli, ping], interval: 5s, timeout: 3s, retries: 12}
+    logging: *logs
+  timescaledb:
+    image: timescale/timescaledb:2.17.2-pg16
+    environment:
+      POSTGRES_USER: ${TIMESCALE_USER}
+      POSTGRES_PASSWORD: ${TIMESCALE_PASSWORD}
+      POSTGRES_DB: ${TIMESCALE_DB}
+      TS_TUNE_MEMORY: 1GB
+      TS_TUNE_NUM_CPUS: 2
+    command: [postgres, -c, shared_buffers=128MB, -c, max_connections=40, -c, work_mem=4MB]
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    mem_limit: 1g
+    healthcheck: {test: [CMD-SHELL, "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"], interval: 5s, timeout: 3s, retries: 12}
+    logging: *logs
+  gatekeeper:
+    <<: *python
+    command: [python, -m, gatekeeper.gatekeeper]
+    mem_limit: 256m
+    depends_on: {kafka: {condition: service_healthy}, redis: {condition: service_healthy}}
+  ai-layer:
+    <<: *python
+    command: [python, -m, ai_layer.ai_service]
+    volumes: ["ai-state:/app/state"]
+    depends_on: {kafka: {condition: service_healthy}}
+  persistence:
+    <<: *python
+    command: [python, -m, persistence.consumer]
+    mem_limit: 256m
+    depends_on: {kafka: {condition: service_healthy}, timescaledb: {condition: service_healthy}}
+  engine:
+    image: ${ENGINE_IMAGE:?Set ENGINE_IMAGE}
+    env_file: .env
+    environment: {JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=65 -XX:ActiveProcessorCount=2"}
+    mem_limit: 900m
+    depends_on: {kafka: {condition: service_healthy}, timescaledb: {condition: service_healthy}}
+    healthcheck: {test: [CMD-SHELL, "wget -qO- http://localhost:8081/actuator/health"], interval: 10s, timeout: 5s, retries: 18, start_period: 30s}
+    logging: *logs
+  api:
+    <<: *python
+    command: [uvicorn, "api.main:app", --host, 0.0.0.0, --port, "8000"]
+    depends_on: {timescaledb: {condition: service_healthy}, redis: {condition: service_healthy}}
+    healthcheck: {test: [CMD-SHELL, "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""], interval: 10s, timeout: 5s, retries: 18}
+  hunters:
+    image: ${HUNTERS_IMAGE:?Set HUNTERS_IMAGE}
+    env_file: .env
+    mem_limit: 1700m
+    shm_size: 256m
+    init: true
+    volumes: ["./reports:/reports"]
+    profiles: [jobs]
+    logging: *logs
+  resolver:
+    <<: *python
+    command: [python, -m, resolver.trade_resolver]
+    depends_on: {timescaledb: {condition: service_healthy}, kafka: {condition: service_healthy}, engine: {condition: service_healthy}}
+  snapshot:
+    <<: *python
+    command: [python, -m, deploy.export_snapshot]
+    profiles: [jobs]
+    environment: {API_INTERNAL_URL: "http://api:8000"}
+    volumes: ["./reports:/reports", "./exports:/exports"]
+
+volumes:
+  zk-data:
+  zk-log:
+  kafka-data:
+  postgres-data:
+  ai-state:

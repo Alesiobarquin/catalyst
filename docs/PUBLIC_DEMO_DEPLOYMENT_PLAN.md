@@ -1,6 +1,6 @@
 # Public demo: 24/7 dashboard, one weekday pipeline run
 
-Assessment date: October 3, 2026. Status: evaluated and proposed; application changes and AWS publication have not been implemented.
+Historical assessment dated October 3, 2026. **Superseded by implementation on October 4:** AWS hosting, the private scheduled worker, encrypted configuration, and GitHub OIDC release infrastructure are provisioned; first publication and cloud validation are in progress. The findings below describe the pre-deployment baseline, not the current AWS state. Operational instructions are being recorded in `docs/PUBLIC_DEMO_OPERATIONS.md`.
 
 ## Accepted requirements
 

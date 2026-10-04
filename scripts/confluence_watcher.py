@@ -49,8 +49,7 @@ def inspect_confluence(
                 r.zremrangebyscore(key, "-inf", cutoff_ts)
                 zset_sources = r.zrange(key, 0, -1)
                 decoded_sources = {
-                    s.decode("utf-8") if isinstance(s, bytes) else str(s)
-                    for s in zset_sources
+                    s.decode("utf-8") if isinstance(s, bytes) else str(s) for s in zset_sources
                 }
                 if len(decoded_sources) >= min_sources:
                     ttl = r.ttl(key)

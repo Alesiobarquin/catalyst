@@ -19,7 +19,6 @@ logger = logging.getLogger("api.signals")
 router = APIRouter(prefix="/signals", tags=["signals"])
 
 
-
 def _format_signal_row(row: asyncpg.Record | dict) -> dict:
     d = dict(row)
     for field in ("confluence_sources", "key_risks"):
@@ -97,7 +96,7 @@ async def list_signals(
                ticker, time AS timestamp_utc, conviction_score,
                catalyst_type, rationale, is_trap,
                confluence_sources, confluence_count, key_risks,
-               suggested_entry_zone, suggested_stop
+               suggested_entry_zone, suggested_stop, analysis_method, analysis_model
         FROM validated_signals
         {where}
         ORDER BY time DESC

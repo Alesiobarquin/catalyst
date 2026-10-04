@@ -1,5 +1,7 @@
 "use client";
 
+import { PUBLIC_DEMO } from "@/lib/snapshot";
+
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Download, Filter } from "lucide-react";
@@ -355,7 +357,7 @@ export function SignalFilterBar({
             </button>
           )}
 
-          <a
+          {!PUBLIC_DEMO && <a
             aria-label="Export filtered signals as CSV"
             href={(() => {
               const exportQs = new URLSearchParams();
@@ -390,7 +392,7 @@ export function SignalFilterBar({
             title="Export filtered signals to CSV"
           >
             <Download size={12} />
-          </a>
+          </a>}
         </div>
       </div>
     </div>

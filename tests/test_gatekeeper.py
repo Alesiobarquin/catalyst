@@ -58,7 +58,6 @@ class TestGatekeeperStaticHelpers:
         assert GatekeeperService.normalize_ticker("BRK.B") == "BRK.B"
         assert GatekeeperService.normalize_ticker("BF.B") == "BF.B"
 
-
     def test_first_from_values(self):
         assert GatekeeperService.first_from_values(None, None, 5) == 5
         assert GatekeeperService.first_from_values(0, 1) == 0
@@ -466,4 +465,3 @@ class TestGatekeeperRedisAndWorkflow:
             gatekeeper.process_event(raw)
 
         gatekeeper.clear_sent.assert_called_once_with("NVDA")
-

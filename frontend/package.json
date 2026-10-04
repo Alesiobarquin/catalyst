@@ -17,7 +17,8 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "build:public": "NEXT_PUBLIC_DEMO_MODE=snapshot next build public-site"
   },
   "dependencies": {
     "clsx": "^2.1.1",

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -63,6 +64,12 @@ public class RegimeFilter {
         boolean spyAbove200Sma = spy200Sma > 0 && spyPrice > spy200Sma;
 
         RegimeStatus status = classify(vix, spyAbove200Sma);
+        if (market.getCapturedAt() == null ||
+                Duration.between(market.getCapturedAt(), Instant.now()).toMinutes() > 15 ||
+                spy200Sma <= 0 || spyPrice <= 0 || vix <= 0) {
+            status = RegimeStatus.HALT;
+            log.warn("REGIME HALT: market data unavailable or older than 15 minutes");
+        }
 
         RegimeSnapshot snapshot = RegimeSnapshot.builder()
                 .status(status)

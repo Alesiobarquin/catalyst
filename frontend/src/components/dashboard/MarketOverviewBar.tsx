@@ -14,13 +14,14 @@ const BENCHMARK_NAMES: Record<string, string> = {
 
 interface MarketOverviewBarProps {
   initialQuotes: MarketQuote[];
+  asOf?: string;
 }
 
-export function MarketOverviewBar({ initialQuotes }: MarketOverviewBarProps) {
+export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProps) {
   const [quotes, setQuotes] = useState<MarketQuote[]>(initialQuotes);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>(() =>
-    new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    asOf ? new Date(asOf).toLocaleString() : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
   );
 
   async function handleRefresh() {
@@ -77,7 +78,7 @@ export function MarketOverviewBar({ initialQuotes }: MarketOverviewBarProps) {
               boxShadow: "0 0 6px #22C55E",
               marginLeft: 4,
             }}
-            title="Live telemetry active"
+            title={asOf ? "Daily snapshot" : "Live telemetry active"}
           />
         </div>
 
@@ -88,7 +89,7 @@ export function MarketOverviewBar({ initialQuotes }: MarketOverviewBarProps) {
           >
             {lastUpdated ? `Updated: ${lastUpdated}` : "Market live"}
           </span>
-          <button
+          {!asOf && <button
             type="button"
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -115,7 +116,7 @@ export function MarketOverviewBar({ initialQuotes }: MarketOverviewBarProps) {
               }}
             />
             {isRefreshing ? "Syncing..." : "Sync"}
-          </button>
+          </button>}
         </div>
       </div>
 

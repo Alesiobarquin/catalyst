@@ -36,10 +36,18 @@ class RegimeFilterTest {
     }
 
     @Test
+    void haltsWhenOnlyInitialSampleMarketDataExists() {
+        marketDataService.setSnapshot(MarketDataService.MarketSnapshot.builder()
+                .spyPrice(500).spy200Sma(450).vix(15).capturedAt(java.time.Instant.EPOCH).build());
+        assertEquals(RegimeStatus.HALT, regimeFilter.getSnapshot().getStatus());
+    }
+
+    @Test
     void returnsHaltWhenVixAbove40() {
         MarketDataService.MarketSnapshot snapshot = MarketDataService.MarketSnapshot.builder()
                 .vix(40.5)
                 .spyPrice(500.0)
+                .capturedAt(java.time.Instant.now())
                 .spy200Sma(450.0)
                 .build();
         marketDataService.setSnapshot(snapshot);
@@ -53,6 +61,7 @@ class RegimeFilterTest {
         MarketDataService.MarketSnapshot snapshot = MarketDataService.MarketSnapshot.builder()
                 .vix(35.0)
                 .spyPrice(500.0)
+                .capturedAt(java.time.Instant.now())
                 .spy200Sma(450.0)
                 .build();
         marketDataService.setSnapshot(snapshot);
@@ -66,6 +75,7 @@ class RegimeFilterTest {
         MarketDataService.MarketSnapshot snapshot = MarketDataService.MarketSnapshot.builder()
                 .vix(25.0)
                 .spyPrice(440.0)
+                .capturedAt(java.time.Instant.now())
                 .spy200Sma(450.0)
                 .build();
         marketDataService.setSnapshot(snapshot);
@@ -79,6 +89,7 @@ class RegimeFilterTest {
         MarketDataService.MarketSnapshot snapshot = MarketDataService.MarketSnapshot.builder()
                 .vix(25.0)
                 .spyPrice(460.0)
+                .capturedAt(java.time.Instant.now())
                 .spy200Sma(450.0)
                 .build();
         marketDataService.setSnapshot(snapshot);
@@ -92,6 +103,7 @@ class RegimeFilterTest {
         MarketDataService.MarketSnapshot snapshot = MarketDataService.MarketSnapshot.builder()
                 .vix(40.0)
                 .spyPrice(500.0)
+                .capturedAt(java.time.Instant.now())
                 .spy200Sma(450.0)
                 .build();
         marketDataService.setSnapshot(snapshot);
@@ -105,6 +117,7 @@ class RegimeFilterTest {
         MarketDataService.MarketSnapshot snapshot = MarketDataService.MarketSnapshot.builder()
                 .vix(39.99)
                 .spyPrice(500.0)
+                .capturedAt(java.time.Instant.now())
                 .spy200Sma(450.0)
                 .build();
         marketDataService.setSnapshot(snapshot);
@@ -118,6 +131,7 @@ class RegimeFilterTest {
         MarketDataService.MarketSnapshot snapshot = MarketDataService.MarketSnapshot.builder()
                 .vix(30.0)
                 .spyPrice(500.0)
+                .capturedAt(java.time.Instant.now())
                 .spy200Sma(450.0)
                 .build();
         marketDataService.setSnapshot(snapshot);
@@ -131,6 +145,7 @@ class RegimeFilterTest {
         MarketDataService.MarketSnapshot snapshot = MarketDataService.MarketSnapshot.builder()
                 .vix(29.99)
                 .spyPrice(500.0)
+                .capturedAt(java.time.Instant.now())
                 .spy200Sma(450.0)
                 .build();
         marketDataService.setSnapshot(snapshot);

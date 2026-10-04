@@ -1,0 +1,108 @@
+name: Release public demo
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/public-demo.yml"
+      - "frontend/**"
+      - "deploy/**"
+      - "api/**"
+      - "ai_layer/**"
+      - "gatekeeper/**"
+      - "hunters/**"
+      - "persistence/**"
+      - "resolver/**"
+      - "engine/**"
+      - ".dockerignore"
+
+concurrency:
+  group: public-demo-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  release:
+    if: vars.AWS_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      AWS_REGION: us-east-1
+      SITE_BUCKET: ${{ vars.PUBLIC_SITE_BUCKET }}
+      ARTIFACT_BUCKET: ${{ vars.ARTIFACT_BUCKET }}
+      DISTRIBUTION_ID: ${{ vars.PUBLIC_DISTRIBUTION_ID }}
+      PIPELINE_REPOSITORY: ${{ vars.PIPELINE_REPOSITORY }}
+      HUNTERS_REPOSITORY: ${{ vars.HUNTERS_REPOSITORY }}
+      ENGINE_REPOSITORY: ${{ vars.ENGINE_REPOSITORY }}
+      RELEASE_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12", cache: pip}
+      - uses: actions/setup-node@v4
+        with: {node-version: "22", cache: npm, cache-dependency-path: frontend/package-lock.json}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: "21", cache: maven}
+      - name: Verify all runtimes
+        run: |
+          pip install pytest pytest-asyncio ruff -r api/requirements.txt -r hunters/requirements.txt -r gatekeeper/requirements.txt -r ai_layer/requirements.txt -r persistence/requirements.txt -r resolver/requirements.txt -r notifier/requirements.txt
+          ruff check .
+          ruff format --check .
+          PYTHONPATH=. pytest -q
+          mvn -B -q -f engine/pom.xml test
+          npm --prefix frontend ci
+          npm --prefix frontend run lint
+          npm --prefix frontend run typecheck
+          npm --prefix frontend run test
+          npm --prefix frontend run build:public
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Build immutable x86 worker images
+        run: |
+          set -euo pipefail
+          for image in pipeline hunters engine; do
+            case "$image" in
+              pipeline) repository="$PIPELINE_REPOSITORY"; file=deploy/Dockerfile.pipeline; context=. ;;
+              hunters) repository="$HUNTERS_REPOSITORY"; file=deploy/Dockerfile.hunters; context=. ;;
+              engine) repository="$ENGINE_REPOSITORY"; file=engine/Dockerfile; context=engine ;;
+            esac
+            if aws ecr describe-images --repository-name "catalyst-$image" --image-ids "imageTag=$RELEASE_COMMIT" >/dev/null 2>&1; then
+              continue
+            fi
+            docker build --platform linux/amd64 -f "$file" -t "$repository:$RELEASE_COMMIT" "$context"
+            docker push "$repository:$RELEASE_COMMIT"
+          done
+      - name: Publish release and frontend
+        run: |
+          tar --exclude=".env" --exclude="__pycache__" -czf worker.tgz deploy
+          aws s3 cp worker.tgz "s3://$ARTIFACT_BUCKET/releases/$RELEASE_COMMIT/worker.tgz" --only-show-errors
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          data={'commit':os.environ['RELEASE_COMMIT'],'archive_key':f"releases/{os.environ['RELEASE_COMMIT']}/worker.tgz"}
+          for image in ('pipeline','hunters','engine'):
+              data[image+'_image']=os.environ[image.upper()+'_REPOSITORY']+':'+os.environ['RELEASE_COMMIT']
+          Path('release.json').write_text(json.dumps(data))
+          PY
+          aws s3 cp release.json "s3://$ARTIFACT_BUCKET/release.json" --content-type application/json --only-show-errors
+          aws s3 sync frontend/public-site/out "s3://$SITE_BUCKET/" --cache-control 'public,max-age=300' --only-show-errors
+          if ! aws s3api head-object --bucket "$SITE_BUCKET" --key data/manifest.json >/dev/null 2>&1; then
+            python - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime, timezone
+          from deploy.export_snapshot import empty_snapshot
+          Path('initial.json').write_text(json.dumps(empty_snapshot('initial',datetime.now(timezone.utc).isoformat())))
+          Path('manifest.json').write_text(json.dumps({'schema_version':1,'run_id':'initial','data_path':'/data/runs/initial/snapshot.json'}))
+          PY
+            aws s3 cp initial.json "s3://$SITE_BUCKET/data/runs/initial/snapshot.json" --content-type application/json --only-show-errors
+            aws s3 cp manifest.json "s3://$SITE_BUCKET/data/manifest.json" --content-type application/json --cache-control 'no-store,max-age=0' --only-show-errors
+          fi
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths '/*' >/dev/null

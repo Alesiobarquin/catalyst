@@ -97,7 +97,6 @@ async def scrape_whale(page) -> list[dict]:
             }
         )
 
-
     return found
 
 
@@ -116,7 +115,7 @@ async def _one_sweep(kafka: KafkaClient) -> int:
         ticker = entry.get("ticker")
         if not ticker:
             continue
-        liq = fetch_liquidity_metrics(ticker)
+        liq = await asyncio.to_thread(fetch_liquidity_metrics, ticker)
         if not liq:
             logger.debug("Skipping %s: liquidity lookup failed", ticker)
             continue
@@ -134,7 +133,7 @@ async def _one_sweep(kafka: KafkaClient) -> int:
     return pushed
 
 
-async def run():
+async def run(once: bool = False):
     logger.info("Whale Hunter starting (interval=%ss)...", WHALE_INTERVAL_SECONDS)
     kafka = KafkaClient()
     while True:
@@ -143,7 +142,11 @@ async def run():
             logger.info("Whale sweep pushed %s signals.", n)
         except Exception as e:
             logger.error("Whale sweep failed: %s", e, exc_info=True)
+            if once:
+                raise
             await asyncio.sleep(60)
             continue
 
+        if once:
+            return
         await asyncio.sleep(WHALE_INTERVAL_SECONDS)

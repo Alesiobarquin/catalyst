@@ -44,6 +44,10 @@ export default function ArchitecturePage() {
         </p>
       </div>
 
+      <div className="glass-card" style={{ padding: 20, marginBottom: 24 }}>
+        <h2 style={{ fontSize: 15, color: "#38BDF8", marginBottom: 8 }}>Continuous access, daily collection</h2>
+        <p style={{ color: "#94A3B8", fontSize: 13, lineHeight: 1.7 }}>The public portfolio site runs on private S3 and CloudFront. At 10:00 AM New York time on weekdays, an AWS EC2 worker runs the Docker/Kafka pipeline, exports FastAPI results, and shuts down. The dashboard displays the latest published collection time and source outcomes. Processing capacity describes active runs; it does not imply continuous scraping. No broker execution is enabled. Outcomes use sampled prices and modeled allocations.</p>
+      </div>
       {/* Section 1: Hero */}
       <div style={{ marginBottom: 48 }}>
         <div
@@ -59,7 +63,7 @@ export default function ArchitecturePage() {
               The Noise Problem
             </h3>
             <p style={{ fontSize: 13, color: "#94A3B8", margin: 0, lineHeight: 1.5 }}>
-              Retail traders are overwhelmed by thousands of disconnected market feeds. Over 95% are low-liquidity noise or bull traps.
+              Retail traders are overwhelmed by thousands of disconnected market feeds. Many feeds contain low-liquidity noise or conflicting catalysts.
             </p>
           </div>
           <div className="glass-card" style={{ padding: 20 }}>
@@ -67,7 +71,7 @@ export default function ArchitecturePage() {
               The Cost Problem
             </h3>
             <p style={{ fontSize: 13, color: "#94A3B8", margin: 0, lineHeight: 1.5 }}>
-              Feeding raw events directly into an LLM with Google Search grounding costs hundreds of dollars per day in API tokens.
+              Sending every raw event to a grounded LLM adds unnecessary token and search costs. Confluence filtering and a persistent daily request cap keep the public demo bounded.
             </p>
           </div>
           <div className="glass-card" style={{ padding: 20 }}>
@@ -98,29 +102,29 @@ export default function ArchitecturePage() {
         <PipelineStage
           icon={<Filter size={20} color="#A855F7" />}
           title="2. Confluence Filter"
-          desc="Redis Sorted Set sliding window requires ≥2 independent sources within 5 minutes. Drops 95% of noise at zero AI cost."
+          desc="Redis Sorted Set sliding window requires ≥2 independent sources within 5 minutes. The public profile disables the single-source technical exception."
           tech={["Redis 7", "Kafka"]}
         />
         <PipelineConnector />
         <PipelineStage
           icon={<Brain size={20} color="#F59E0B" />}
           title="3. AI Validation"
-          desc="Gemini 2.5 with Google Search grounding synthesizes a structured catalyst thesis, conviction score, trap detection, and entry/exit parameters."
+          desc="Gemini 3.8 Flash with Google Search grounding synthesizes a structured catalyst thesis, conviction score, trap detection, and entry/exit parameters."
           tech={["Google GenAI SDK"]}
         />
         <PipelineConnector />
         <PipelineStage
           icon={<Calculator size={20} color="#10B981" />}
           title="4. Quantitative Sizing"
-          desc="Java Spring Boot engine classifies market regime (SPY 200 SMA, VIX), calculates Half-Kelly position size capped at 2% account equity."
+          desc="Java Spring Boot engine classifies market regime (SPY 200 SMA, VIX), calculates Half-Kelly position size capped at 25% allocated capital per recommendation on a $100k book."
           tech={["Java 21", "Spring Boot 3.4"]}
         />
         <PipelineConnector />
         <PipelineStage
           icon={<Target size={20} color="#F43F5E" />}
           title="5. Execution & Resolution"
-          desc="Alpaca paper execution with circuit breakers. Autonomous resolver daemon tracks fills, stop/target hits, and computes closed-loop realized PnL."
-          tech={["Alpaca REST API", "TimescaleDB"]}
+          desc="TimescaleDB persists sized recommendations for FastAPI snapshot export. A daily resolver samples prices for modeled outcomes. The optional local Alpaca executor is disabled in this public deployment."
+          tech={["FastAPI", "TimescaleDB", "S3 / CloudFront"]}
         />
       </div>
 
@@ -140,7 +144,7 @@ export default function ArchitecturePage() {
           Full Kelly maximizes geometric growth but exhibits extreme drawdown volatility in non-Gaussian market distributions. Half-Kelly retains ~75% of compound growth while cutting variance and max drawdown by ~50%.
         </ExpandableCard>
         <ExpandableCard title="Why scheduled EC2 via EventBridge?">
-          US equity markets are open 6.5 hours per day. Automated weekday scheduling (06:50–16:10 ET via Lambda + EventBridge) cuts AWS hosting costs ~70%, achieving $3–8/month.
+          EventBridge Scheduler starts the worker at 10:00 AM America/New_York on weekdays. It stops after publication, with boot and scheduler shutdown deadlines. S3 and CloudFront keep the dashboard online. A $10 AWS budget tracks spending; it is an alert threshold, not a hard spending cap.
         </ExpandableCard>
       </div>
 
@@ -157,12 +161,12 @@ export default function ArchitecturePage() {
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
           <span style={{ fontSize: 32, fontWeight: 700, color: "#10B981", fontFamily: "var(--font-mono)", lineHeight: 1 }}>
-            480
+            492
           </span>
           <span style={{ fontSize: 16, fontWeight: 600, color: "#F8FAFC" }}>Automated Tests</span>
         </div>
         <p style={{ fontSize: 12, color: "#64748B", fontFamily: "var(--font-mono)", margin: 0 }}>
-          294 Python · 33 Java · 153 Vitest
+          301 Python · 35 Java · 156 Vitest
         </p>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
@@ -199,7 +203,7 @@ export default function ArchitecturePage() {
           <strong style={{ color: "#F8FAFC" }}>Event-driven complexity vs. monolith simplicity</strong> — The overhead of Kafka topics, consumer groups, and offset management is real. But the ability to add the Notifier service as a new consumer of <code>validated-signals</code> without touching a single line of existing code proved the decoupling thesis.
         </p>
         <p>
-          <strong style={{ color: "#F8FAFC" }}>Confluence filtering as AI cost control</strong> — The Gatekeeper drops ~95% of raw events before they reach Gemini. This isn&apos;t just noise reduction — it&apos;s the difference between a $200/day API bill and a $3/day one.
+          <strong style={{ color: "#F8FAFC" }}>Confluence filtering as AI cost control</strong> — The Gatekeeper requires two distinct hunter sources before public signals reach Gemini. A persistent two-request daily cap bounds AI usage even across worker restarts. Published run reports expose observed event counts.
         </p>
         <p>
           <strong style={{ color: "#F8FAFC" }}>Deterministic math belongs in a typed language</strong> — Python is excellent for rapid prototyping, but Half-Kelly position sizing with regime-dependent caps requires the kind of strict numerical type safety that Java&apos;s type system naturally enforces.

@@ -154,7 +154,9 @@ def _send_order_request(
             if r.status_code == 429:
                 if attempt < max_retries:
                     retry_after_str = (
-                        r.headers.get("retry-after") if hasattr(r, "headers") and r.headers else None
+                        r.headers.get("retry-after")
+                        if hasattr(r, "headers") and r.headers
+                        else None
                     )
                     backoff = (
                         float(retry_after_str)
@@ -248,7 +250,6 @@ def place_alpaca_order(
         return _send_order_request(client, url, headers, body, ticker, max_retries)
     with httpx.Client(timeout=30.0) as default_client:
         return _send_order_request(default_client, url, headers, body, ticker, max_retries)
-
 
 
 def process_message(
@@ -396,4 +397,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

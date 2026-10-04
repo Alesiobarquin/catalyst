@@ -22,6 +22,7 @@ import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.util.backoff.FixedBackOff;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 
 import java.util.Map;
 
@@ -82,6 +83,9 @@ public class KafkaConfig {
         var factory = new ConcurrentKafkaListenerContainerFactory<String, ValidatedSignal>();
         factory.setConsumerFactory(consumerFactory);
         factory.setConcurrency(1);
+        var executor = new SimpleAsyncTaskExecutor("catalyst-kafka-vt-");
+        executor.setVirtualThreads(true);
+        factory.getContainerProperties().setListenerTaskExecutor(executor);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.RECORD);
 
         // Retry deserialization failures twice, then log-and-skip.

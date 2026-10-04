@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import type { PriceBar, SignalDetail, TradeOrder } from "@/types";
 import { getPriceHistory } from "@/lib/api";
+import { PUBLIC_DEMO } from "@/lib/snapshot";
 import { PriceChart } from "@/components/charts/PriceChart";
 import { formatPrice, formatPnL, safe } from "@/lib/signalDetailUtils";
 
@@ -537,6 +538,8 @@ export function SignalDetailPanel({
                         Loading price history…
                       </span>
                     </div>
+                  ) : PUBLIC_DEMO && bars.length === 0 ? (
+                    <p style={{ color: "#94A3B8", fontSize: 13, padding: 24 }}>Price history was unavailable for this published run.</p>
                   ) : (
                     <PriceChart
                       order={order}

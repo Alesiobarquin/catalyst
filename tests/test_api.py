@@ -482,7 +482,9 @@ def test_market_history_success():
 
 def test_save_alpaca_keys_requires_auth():
     with make_test_client() as client:
-        res = client.post("/settings/alpaca", json={"api_key": "PKTEST123456", "secret_key": "SKTEST123456"})
+        res = client.post(
+            "/settings/alpaca", json={"api_key": "PKTEST123456", "secret_key": "SKTEST123456"}
+        )
     assert res.status_code == 401
     assert "Bearer token required" in res.json()["detail"]
 
@@ -502,12 +504,19 @@ def test_save_alpaca_keys_invalid_credentials_returns_400():
     app.dependency_overrides[require_clerk_user] = lambda: {"sub": "user_12345"}
 
     with (
-        patch("api.routers.settings.verify_alpaca_credentials", return_value=(False, "Invalid Alpaca API Key ID or Secret Key (authentication failed)")),
+        patch(
+            "api.routers.settings.verify_alpaca_credentials",
+            return_value=(False, "Invalid Alpaca API Key ID or Secret Key (authentication failed)"),
+        ),
         TestClient(app) as client,
     ):
         res = client.post(
             "/settings/alpaca",
-            json={"api_key": "PKINVALIDKEY", "secret_key": "SKINVALIDSECRET", "validate_credentials": True},
+            json={
+                "api_key": "PKINVALIDKEY",
+                "secret_key": "SKINVALIDSECRET",
+                "validate_credentials": True,
+            },
         )
 
     assert res.status_code == 400
@@ -535,7 +544,11 @@ def test_save_alpaca_keys_valid_credentials_succeeds():
     ):
         res = client.post(
             "/settings/alpaca",
-            json={"api_key": "PKVALIDKEY123", "secret_key": "SKVALIDSECRET456", "validate_credentials": True},
+            json={
+                "api_key": "PKVALIDKEY123",
+                "secret_key": "SKVALIDSECRET456",
+                "validate_credentials": True,
+            },
         )
 
     assert res.status_code == 200
@@ -563,7 +576,11 @@ def test_save_alpaca_keys_skip_validation():
     ):
         res = client.post(
             "/settings/alpaca",
-            json={"api_key": "PKVALIDKEY123", "secret_key": "SKVALIDSECRET456", "validate_credentials": False},
+            json={
+                "api_key": "PKVALIDKEY123",
+                "secret_key": "SKVALIDSECRET456",
+                "validate_credentials": False,
+            },
         )
 
     assert res.status_code == 200
@@ -1019,5 +1036,3 @@ def test_signals_ticker_url_alias_success():
     assert signals[0]["ticker"] == "TSLA"
     assert signals[0]["conviction_score"] == 92
     assert signals[0]["confluence_sources"] == ["squeeze", "whale"]
-
-

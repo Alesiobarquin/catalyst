@@ -80,6 +80,8 @@ export interface TradeOrder {
 
 // Matches validated_signals table — raw Gemini output before strategy routing
 export interface ValidatedSignal {
+  analysis_method?: string;
+  analysis_model?: string | null;
   id: number;
   ticker: string;
   timestamp_utc: string;

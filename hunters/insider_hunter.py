@@ -237,7 +237,7 @@ def classify_signal(txn_code: str, total_value: float | None, roles: list[str]) 
     return "NEUTRAL"
 
 
-async def run():
+async def run(once: bool = False):
     logger.info("Insider Hunter starting...")
     processed_accessions_order: deque[str] = deque()
     processed_accessions: set[str] = set()
@@ -303,7 +303,7 @@ async def run():
 
                         for signal in signals:
                             t = signal.get("ticker")
-                            liq = fetch_liquidity_metrics(t) if t else None
+                            liq = await asyncio.to_thread(fetch_liquidity_metrics, t) if t else None
                             if not liq:
                                 logger.debug(
                                     "Skipping insider signal for %s: liquidity lookup failed", t
@@ -345,10 +345,16 @@ async def run():
 
                 else:
                     logger.error("SEC Feed Error: %s", response.status_code)
+                    if once:
+                        response.raise_for_status()
 
             except (httpx.HTTPError, ET.ParseError, OSError) as e:
                 logger.error("Error in RSS loop: %s", e)
+                if once:
+                    raise
 
+            if once:
+                return
             logger.debug("Sleeping for 60 seconds...")
             await asyncio.sleep(60)
 

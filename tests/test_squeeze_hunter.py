@@ -79,7 +79,6 @@ class TestComputeRelativeVolume:
         assert redis.set.call_args[1].get("ex") == 7 * 86400
 
 
-
 class TestSqueezeHunterRedisClient:
     def test_redis_client_success(self):
         from unittest.mock import patch

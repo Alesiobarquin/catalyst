@@ -116,7 +116,7 @@ async def search_tickers(
 
 @router.get("/overview", response_model=list[MarketQuoteResponse])
 async def market_overview(
-    symbols: str = Query("SPY,QQQ,DIA,IWM", description="Comma-separated ticker list")
+    symbols: str = Query("SPY,QQQ,DIA,IWM", description="Comma-separated ticker list"),
 ):
     """Return quote metrics for benchmark indices or custom symbols concurrently."""
     tickers = [s.strip().upper() for s in symbols.split(",") if s.strip()]
@@ -143,7 +143,7 @@ async def market_overview(
 @router.get("/{ticker}/quote", response_model=MarketQuoteResponse)
 @router.get("/quote/{ticker}", response_model=MarketQuoteResponse)
 async def ticker_quote(
-    ticker: str = Path(..., min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-\=\^]+$")
+    ticker: str = Path(..., min_length=1, max_length=10, pattern=r"^[A-Za-z0-9\.\-\=\^]+$"),
 ):
     """Return latest quote metrics (price, day range, volume, 52w range) via yfinance fast_info."""
     try:
@@ -205,4 +205,3 @@ async def price_history(
         )
 
     return bars
-

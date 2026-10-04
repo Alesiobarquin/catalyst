@@ -67,7 +67,6 @@ class TestConfluenceWatcher:
         mock_redis.zremrangebyscore.assert_called_once()
 
 
-
 class TestInjectSyntheticSignals:
     def test_create_squeeze_event(self):
         event = create_squeeze_event("aapl", price=150.0, volume=1_000_000, relative_volume=2.5)
@@ -89,7 +88,9 @@ class TestInjectSyntheticSignals:
         assert "timestamp_utc" in event
 
     def test_create_whale_event(self):
-        event = create_whale_event("amd", price=140.0, option_type="call", strike_price=145.0, option_volume=25000)
+        event = create_whale_event(
+            "amd", price=140.0, option_type="call", strike_price=145.0, option_volume=25000
+        )
         assert event["ticker"] == "AMD"
         assert event["hunter"] == "whale"
         assert event["source_hunter"] == "whale"
@@ -101,7 +102,9 @@ class TestInjectSyntheticSignals:
         assert "timestamp_utc" in event
 
     def test_create_biotech_event(self):
-        event = create_biotech_event("bmy", price=55.0, catalyst_type="FDA_APPROVAL", drug_name="TEST-55")
+        event = create_biotech_event(
+            "bmy", price=55.0, catalyst_type="FDA_APPROVAL", drug_name="TEST-55"
+        )
         assert event["ticker"] == "BMY"
         assert event["hunter"] == "biotech"
         assert event["source_hunter"] == "biotech"
@@ -156,8 +159,14 @@ class TestInjectSyntheticSignals:
         for scenario, expected_count in scenarios_expected:
             mock_producer.send.reset_mock()
             with (
-                patch("scripts.inject_synthetic_signals.get_kafka_producer", return_value=mock_producer),
-                patch("sys.argv", ["inject_synthetic_signals.py", "--scenario", scenario, "--ticker", "TEST"]),
+                patch(
+                    "scripts.inject_synthetic_signals.get_kafka_producer",
+                    return_value=mock_producer,
+                ),
+                patch(
+                    "sys.argv",
+                    ["inject_synthetic_signals.py", "--scenario", scenario, "--ticker", "TEST"],
+                ),
             ):
                 inject_main()
                 assert mock_producer.send.call_count == expected_count
@@ -168,7 +177,10 @@ class TestVerifyPipelineHealth:
         with patch("scripts.verify_pipeline_health.fetch_url") as mock_fetch:
             mock_fetch.side_effect = [
                 (200, '{"status": "ok", "uptime_seconds": 123.4, "pool": {"size": 4}}'),
-                (200, '{"api": "ok", "database": "ok", "redis": "ok", "engine": "UP", "ready": true}'),
+                (
+                    200,
+                    '{"api": "ok", "database": "ok", "redis": "ok", "engine": "UP", "ready": true}',
+                ),
             ]
             res = check_api("http://localhost:8000")
             assert res["status"] == "OK"
@@ -205,7 +217,13 @@ class TestVerifyPipelineHealth:
 
     def test_evaluate_overall_health(self):
         healthy = {
-            "api": {"status": "OK", "database": "ok", "redis": "ok", "engine_reported": "UP", "pipeline_ready": True},
+            "api": {
+                "status": "OK",
+                "database": "ok",
+                "redis": "ok",
+                "engine_reported": "UP",
+                "pipeline_ready": True,
+            },
             "redis": {"status": "UP", "latency_ms": 1.2, "active_confluence_keys": 3},
             "engine": {"status": "UP"},
         }

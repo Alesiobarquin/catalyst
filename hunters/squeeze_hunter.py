@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import io
+import os
 import random
 from datetime import datetime
 
@@ -100,7 +101,6 @@ def compute_relative_volume(redis_client, ticker, current_volume, avg_volume):
     return round(relative_volume, 4)
 
 
-
 async def fetch_squeeze_targets():
     """
     Scrapes Finviz for high short interest stocks using a headless browser.
@@ -117,13 +117,15 @@ async def fetch_squeeze_targets():
     async with BrowserContext() as context:
         page = await context.new_page()
 
-        while len(all_results) < max_results:
+        while len(all_results) < max_results and start_index <= 200:
             url = BASE_URL.format(start_index)
             logger.info("   -> Navigating to Finviz (Start Index: %s)...", start_index)
 
             try:
                 # 'domcontentloaded' is faster than 'networkidle'
-                await page.goto(url, wait_until="domcontentloaded")
+                response = await page.goto(url, wait_until="domcontentloaded")
+                if response and isinstance(response.status, int) and response.status >= 400:
+                    raise RuntimeError("Finviz returned an HTTP error")
 
                 # Extract the page HTML content
                 content = await page.content()
@@ -324,13 +326,15 @@ async def fetch_squeeze_targets():
                 import traceback
 
                 logger.error(traceback.format_exc())
+                if os.getenv("HUNTER_STRICT_DELIVERY") == "true":
+                    raise
                 break
 
     logger.info("   ✅ Success: Found total %s potential squeeze targets.", len(all_results))
     return all_results
 
 
-async def run():
+async def run(once: bool = False):
     while True:
         try:
             signals = await fetch_squeeze_targets()
@@ -344,6 +348,11 @@ async def run():
 
         except Exception as e:
             logger.error("Squeeze sweep failed: %s", e, exc_info=True)
+            if once:
+                raise
+
+        if once:
+            return
 
         logger.info(
             "Next squeeze sweep in %s seconds (~%.0f min).",

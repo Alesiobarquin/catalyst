@@ -147,7 +147,9 @@ class TestPersistenceConsumerLoop:
         mock_consumer.__iter__.return_value = [mock_message]
 
         with (
-            patch("persistence.consumer.get_db_conn", side_effect=[mock_conn_closed, mock_conn_new]) as mock_get_conn,
+            patch(
+                "persistence.consumer.get_db_conn", side_effect=[mock_conn_closed, mock_conn_new]
+            ) as mock_get_conn,
             patch("persistence.consumer.init_schema"),
             patch("persistence.consumer.KafkaConsumer", return_value=mock_consumer),
         ):
@@ -212,5 +214,3 @@ class TestPersistenceConsumerLoop:
             run()
 
             assert mock_conn.rollback.called
-
-

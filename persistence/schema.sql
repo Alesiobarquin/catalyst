@@ -38,7 +38,7 @@ CREATE INDEX IF NOT EXISTS idx_trade_orders_status
 -- ── validated_signals ─────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS validated_signals (
-    id                   BIGSERIAL        PRIMARY KEY,
+    id                   BIGSERIAL        NOT NULL,
     time TIMESTAMPTZ NOT NULL,
     ticker TEXT NOT NULL,
     conviction_score INT NOT NULL,
@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS validated_signals (
     key_risks JSONB,
     raw_signals_summary TEXT,
     suggested_entry_zone TEXT,
-    suggested_stop TEXT
+    suggested_stop TEXT,
+    PRIMARY KEY (id, time)
 );
 
 SELECT create_hypertable('validated_signals', 'time', if_not_exists => TRUE);

@@ -1,4 +1,5 @@
 import asyncio
+import os
 import re
 from datetime import datetime, timezone
 
@@ -71,7 +72,9 @@ async def scrape_biopharm(page):
         # 1. Navigate with a longer timeout and less strict 'wait_until'
         # 'networkidle' is often blocked or hangs on ad-heavy sites.
         logger.info("Navigating to %s", BIOPHARM_URL)
-        await page.goto(BIOPHARM_URL, wait_until="domcontentloaded", timeout=60000)
+        response = await page.goto(BIOPHARM_URL, wait_until="domcontentloaded", timeout=60000)
+        if response and isinstance(response.status, int) and response.status >= 400:
+            raise RuntimeError("Biotech provider returned an HTTP error")
 
         # 2. Give the JavaScript a few seconds to actually build the table
         await asyncio.sleep(5)
@@ -112,10 +115,11 @@ async def scrape_biopharm(page):
                         }
                     )
 
-
     except Exception as e:
         # await page.screenshot(path="debug_biotech.png")
         logger.error("Error during scraping: %s", e)
+        if os.getenv("HUNTER_STRICT_DELIVERY") == "true":
+            raise
 
     return catalysts
 
@@ -136,7 +140,7 @@ async def _one_sweep(kafka: KafkaClient) -> None:
             ticker = entry.get("ticker")
             if not ticker:
                 continue
-            liquidity = fetch_liquidity_metrics(ticker)
+            liquidity = await asyncio.to_thread(fetch_liquidity_metrics, ticker)
             if not liquidity:
                 logger.debug("Skipping %s: liquidity lookup failed", ticker)
                 continue
@@ -151,7 +155,7 @@ async def _one_sweep(kafka: KafkaClient) -> None:
         logger.info("Successfully pushed %d signals to Kafka.", pushed)
 
 
-async def run():
+async def run(once: bool = False):
     logger.info("Biotech Hunter starting (interval=%ss)...", BIOTECH_INTERVAL_SECONDS)
     kafka = KafkaClient()
 
@@ -160,9 +164,14 @@ async def run():
             await _one_sweep(kafka)
         except Exception as e:
             logger.error("Biotech sweep failed: %s", e, exc_info=True)
+            if once:
+                raise
             logger.info("Backing off 60s before retry...")
             await asyncio.sleep(60)
             continue
+
+        if once:
+            return
 
         logger.info(
             "Next biotech sweep in %s seconds (~%.0f min).",

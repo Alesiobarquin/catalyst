@@ -22,6 +22,7 @@ from gatekeeper.config import (
     REDIS_SIGNALS_KEY,
     REDIS_SOURCES_KEY,
     REDIS_SOURCES_ZSET_KEY,
+    REQUIRE_CONFLUENCE,
     ROLLING_WINDOW_SECONDS,
     TECHNICAL_SCORE_THRESHOLD,
     TRIAGE_PRIORITY_TOPIC,
@@ -151,8 +152,8 @@ class GatekeeperService:
         confluence_sources = self.get_sources(ticker)
         confluence_count = len(confluence_sources)
         technical_score = float(normalized.get("_technical_score") or 0.0)
-        should_trigger = (
-            confluence_count >= CONFLUENCE_THRESHOLD or technical_score >= TECHNICAL_SCORE_THRESHOLD
+        should_trigger = confluence_count >= CONFLUENCE_THRESHOLD or (
+            not REQUIRE_CONFLUENCE and technical_score >= TECHNICAL_SCORE_THRESHOLD
         )
 
         if not should_trigger:
@@ -490,8 +491,7 @@ class GatekeeperService:
             zset_sources = self.redis.zrange(zset_key, 0, -1)
             if zset_sources:
                 return sorted(
-                    s.decode("utf-8") if isinstance(s, bytes) else str(s)
-                    for s in zset_sources
+                    s.decode("utf-8") if isinstance(s, bytes) else str(s) for s in zset_sources
                 )
         except Exception as exc:
             logger.debug("Falling back to standard set for sources on %s: %s", ticker, exc)
@@ -499,10 +499,7 @@ class GatekeeperService:
         # Fallback to standard set (ensures backwards compatibility and mock resilience)
         source_key = REDIS_SOURCES_KEY.format(ticker=ticker)
         members = self.redis.smembers(source_key)
-        return sorted(
-            s.decode("utf-8") if isinstance(s, bytes) else str(s)
-            for s in members
-        )
+        return sorted(s.decode("utf-8") if isinstance(s, bytes) else str(s) for s in members)
 
     def get_accumulated_signals(self, ticker):
         signal_key = REDIS_SIGNALS_KEY.format(ticker=ticker)

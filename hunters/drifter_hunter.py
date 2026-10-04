@@ -27,7 +27,7 @@ from .common.topics import KAFKA_TOPIC_DRIFTER, RAW_EVENTS_TOPIC
 
 logger = get_logger("drifter_hunter")
 
-FMP_CALENDAR_URL = "https://financialmodelingprep.com/api/v3/earning_calendar"
+FMP_CALENDAR_URL = "https://financialmodelingprep.com/stable/earnings-calendar"
 
 _SEEN: deque[str] = deque(maxlen=2000)
 _SEEN_SET: set[str] = set()
@@ -101,9 +101,9 @@ async def _run_sweep(client: httpx.AsyncClient, kafka: KafkaClient) -> int:
         if not symbol:
             continue
 
-        eps = _num(row.get("eps"))
+        eps = _num(row.get("epsActual", row.get("eps")))
         eps_est = _num(row.get("epsEstimated"))
-        rev = _num(row.get("revenue"))
+        rev = _num(row.get("revenueActual", row.get("revenue")))
         rev_est = _num(row.get("revenueEstimated"))
 
         surp = _eps_surprise_pct(eps, eps_est)
@@ -115,7 +115,7 @@ async def _run_sweep(client: httpx.AsyncClient, kafka: KafkaClient) -> int:
         if not _remember(dedupe_key):
             continue
 
-        liq = fetch_liquidity_metrics(symbol)
+        liq = await asyncio.to_thread(fetch_liquidity_metrics, symbol)
         if not liq:
             logger.debug("Skipping %s: liquidity lookup failed", symbol)
             continue
@@ -156,8 +156,10 @@ async def _run_sweep(client: httpx.AsyncClient, kafka: KafkaClient) -> int:
     return pushed
 
 
-async def run() -> None:
+async def run(once: bool = False) -> None:
     if not FMP_API_KEY:
+        if once:
+            raise RuntimeError("FMP_API_KEY is unavailable")
         logger.warning(
             "FMP_API_KEY is empty — drifter hunter idle. Set it in .env and recreate hunter-drifter."
         )
@@ -182,8 +184,13 @@ async def run() -> None:
                     )
             except Exception as e:
                 logger.error("Drifter sweep failed: %s", e, exc_info=True)
+                if once:
+                    raise
                 await asyncio.sleep(60)
                 continue
+
+            if once:
+                return
 
             logger.info(
                 "Next drifter sweep in %s seconds (~%.0f min).",

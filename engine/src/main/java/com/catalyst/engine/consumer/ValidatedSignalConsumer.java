@@ -50,6 +50,7 @@ public class ValidatedSignalConsumer {
             containerFactory = "kafkaListenerContainerFactory"
     )
     public void consume(ValidatedSignal signal) {
+        log.info("Kafka callback virtual_thread={}", Thread.currentThread().isVirtual());
         log.info("[{}] Signal received — catalyst={}, conviction={}, trap={}",
                 signal.getTicker(), signal.getCatalystType(),
                 signal.getConvictionScore(), signal.isTrap());

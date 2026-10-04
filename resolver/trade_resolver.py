@@ -161,7 +161,11 @@ class TradeResolver:
             if ticker not in prices and ticker in self._price_cache:
                 fallback_price, _ = self._price_cache[ticker]
                 prices[ticker] = fallback_price
-                logger.info("Using cached fallback price %.4f for %s after lookup error", fallback_price, ticker)
+                logger.info(
+                    "Using cached fallback price %.4f for %s after lookup error",
+                    fallback_price,
+                    ticker,
+                )
 
         return prices
 

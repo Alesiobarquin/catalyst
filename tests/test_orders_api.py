@@ -211,7 +211,7 @@ def test_order_stats_success():
     assert data["total_orders"] == 10
     assert data["avg_conviction"] == 82.5
     assert data["hit_target_count"] == 6  # 4 + 2
-    assert data["hit_stop_count"] == 2    # 1 + 1
+    assert data["hit_stop_count"] == 2  # 1 + 1
     assert data["active_count"] == 2
     assert data["win_rate_percent"] == 75.0
     assert data["realized_pnl_percent"] == 14.5
@@ -512,6 +512,3 @@ def test_get_order_detail_resolved_loss():
     assert data["status"] == "Resolved Loss"
     assert data["currentPrice"] == 108.0
     assert data["pnlPercent"] == -10.0
-
-
-

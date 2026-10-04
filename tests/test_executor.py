@@ -322,7 +322,9 @@ class TestRateLimitAndSafetyGuards:
 
         resp_200 = MagicMock()
         resp_200.status_code = 200
-        resp_200.content = b'{"id": "order-retried-ok", "status": "filled", "filled_avg_price": "100.0"}'
+        resp_200.content = (
+            b'{"id": "order-retried-ok", "status": "filled", "filled_avg_price": "100.0"}'
+        )
         resp_200.json.return_value = {
             "id": "order-retried-ok",
             "status": "filled",

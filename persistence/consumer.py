@@ -80,6 +80,11 @@ def init_schema(conn: Connection) -> None:
             )
         """)
         conn.commit()
+        cur.execute(
+            "ALTER TABLE validated_signals ADD COLUMN IF NOT EXISTS analysis_method TEXT NOT NULL DEFAULT 'legacy'"
+        )
+        cur.execute("ALTER TABLE validated_signals ADD COLUMN IF NOT EXISTS analysis_model TEXT")
+        conn.commit()
         cur.execute("""
             SELECT create_hypertable('validated_signals', 'time', if_not_exists => TRUE)
         """)
@@ -104,10 +109,10 @@ INSERT INTO validated_signals (
     time, ticker, conviction_score, catalyst_type, is_trap, trap_reason, rationale,
     confluence_count, confluence_sources, liquidity_metrics, signals,
     news_sentiment, risk_level, suggested_timeframe, key_risks,
-    raw_signals_summary, suggested_entry_zone, suggested_stop
+    raw_signals_summary, suggested_entry_zone, suggested_stop, analysis_method, analysis_model
 ) VALUES (
     %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb,
-    %s, %s, %s, %s::jsonb, %s, %s, %s
+    %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s
 )
 """
 
@@ -142,13 +147,14 @@ def persist_signal(conn: Connection, payload: dict) -> bool:
                 payload.get("raw_signals_summary"),
                 payload.get("suggested_entry_zone"),
                 payload.get("suggested_stop"),
+                payload.get("analysis_method", "legacy"),
+                payload.get("analysis_model"),
             ),
         )
         conn.commit()
         return True
     finally:
         cur.close()
-
 
 
 def run():

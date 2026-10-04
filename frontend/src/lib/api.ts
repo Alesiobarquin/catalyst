@@ -13,6 +13,7 @@ import type {
   PipelineHealth,
 } from "@/types";
 import { MOCK_ORDERS, MOCK_SIGNALS, MOCK_STATS } from "./mock-data";
+import { PUBLIC_DEMO, loadSnapshot, filterRows, paginate } from "./snapshot";
 
 const USE_MOCK = false;
 
@@ -38,6 +39,13 @@ export async function getOrders(params?: {
   page?: number;
   per_page?: number;
 }): Promise<PaginatedResponse<TradeOrder>> {
+  if (PUBLIC_DEMO) {
+    const data = await loadSnapshot();
+    const rows = filterRows(data.orders, params).filter((o) =>
+      (!params?.strategy || params.strategy === "all" || o.strategy_used === params.strategy) &&
+      (!params?.status || params.status === "all" || o.status === params.status));
+    return paginate(rows, params?.page, params?.per_page);
+  }
   if (USE_MOCK) {
     let items = [...MOCK_ORDERS];
     if (params?.strategy && params.strategy !== "all") {
@@ -64,6 +72,7 @@ export async function getOrders(params?: {
 }
 
 export async function getOrdersByTicker(ticker: string): Promise<TradeOrder[]> {
+  if (PUBLIC_DEMO) return (await loadSnapshot()).orders.filter((o) => o.ticker === ticker.toUpperCase());
   if (USE_MOCK) return MOCK_ORDERS.filter((o) => o.ticker === ticker);
   const res = await fetch(`${apiBaseUrl()}/orders/${ticker}`, { next: { revalidate: 30 } });
   if (!res.ok) throw new Error(`Failed to fetch orders for ${ticker}`);
@@ -71,6 +80,7 @@ export async function getOrdersByTicker(ticker: string): Promise<TradeOrder[]> {
 }
 
 export async function getOrderStats(): Promise<OrderStats> {
+  if (PUBLIC_DEMO) return (await loadSnapshot()).order_stats;
   if (USE_MOCK) return MOCK_STATS;
   const res = await fetch(`${apiBaseUrl()}/orders/stats`, { next: { revalidate: 60 } });
   if (!res.ok) throw new Error("Failed to fetch order stats");
@@ -88,6 +98,13 @@ export async function getSignals(params?: {
   page?: number;
   per_page?: number;
 }): Promise<PaginatedResponse<ValidatedSignal>> {
+  if (PUBLIC_DEMO) {
+    const rows = filterRows((await loadSnapshot()).signals, params).filter((s) =>
+      (!params?.catalyst_type || params.catalyst_type === "all" || s.catalyst_type === params.catalyst_type) &&
+      (params?.min_conviction === undefined || s.conviction_score >= params.min_conviction) &&
+      (params?.is_trap === undefined || s.is_trap === params.is_trap));
+    return paginate(rows, params?.page, params?.per_page);
+  }
   if (USE_MOCK) return { items: MOCK_SIGNALS, total: MOCK_SIGNALS.length, page: 1, per_page: 20 };
   const qs = new URLSearchParams();
   if (params?.catalyst_type && params.catalyst_type !== "all") qs.set("catalyst_type", params.catalyst_type);
@@ -104,6 +121,7 @@ export async function getSignals(params?: {
 
 /** GET /signals/stats — aggregate statistics across validated signals */
 export async function getSignalStats(): Promise<SignalStats> {
+  if (PUBLIC_DEMO) return (await loadSnapshot()).signal_stats;
   const defaultStats: SignalStats = {
     total_signals: 0,
     avg_conviction: 0,
@@ -129,6 +147,7 @@ export async function getPriceHistory(
   ticker: string,
   fromTimestamp: string
 ): Promise<PriceBar[]> {
+  if (PUBLIC_DEMO) return (await loadSnapshot()).history[ticker] ?? [];
   if (USE_MOCK) {
     return [];
   }
@@ -145,6 +164,7 @@ export async function getPriceHistory(
 export async function getBatchPerformance(
   ids: number[]
 ): Promise<BatchPerformance[]> {
+  if (PUBLIC_DEMO) return (await loadSnapshot()).performance.filter((p) => ids.includes(p.order_id));
   if (USE_MOCK || ids.length === 0) return [];
   const res = await fetch(
     `${apiBaseUrl()}/performance/batch?ids=${ids.join(",")}`,
@@ -162,6 +182,11 @@ export async function getBatchPerformance(
 // response) so callers can gracefully degrade to the local mapper.
 
 export async function fetchSignalDetail(orderId: number): Promise<SignalDetail> {
+  if (PUBLIC_DEMO) {
+    const detail = (await loadSnapshot()).details[String(orderId)];
+    if (!detail) throw new Error("No exported detail for this recommendation");
+    return detail;
+  }
   const res = await fetch(`${apiBaseUrl()}/orders/${orderId}/detail`, {
     cache: "no-store",
   });
@@ -205,6 +230,7 @@ export async function getMyExecutionSummary(token: string): Promise<ExecutionSum
 
 /** GET /market/{ticker}/quote — real-time quote metrics */
 export async function getQuote(ticker: string): Promise<MarketQuote | null> {
+  if (PUBLIC_DEMO) return (await loadSnapshot()).quotes[ticker] ?? null;
   const res = await fetch(`${apiBaseUrl()}/market/${ticker}/quote`, {
     next: { revalidate: 15 },
   });
@@ -214,6 +240,7 @@ export async function getQuote(ticker: string): Promise<MarketQuote | null> {
 
 /** Fetch major market benchmark indices concurrently */
 export async function getMarketBenchmarks(): Promise<MarketQuote[]> {
+  if (PUBLIC_DEMO) return (await loadSnapshot()).benchmarks;
   const tickers = ["SPY", "QQQ", "DIA", "IWM"];
   if (USE_MOCK) {
     return tickers.map((t) => ({ ticker: t, price: 100 }));
@@ -295,6 +322,11 @@ export async function deleteAlpacaKeys(token: string): Promise<boolean> {
 
 /** GET /market/search?q= — autocomplete tickers */
 export async function searchTickers(query: string): Promise<Array<{ ticker: string }>> {
+  if (PUBLIC_DEMO) {
+    const data = await loadSnapshot();
+    return [...new Set([...data.signals, ...data.orders].map((s) => s.ticker))]
+      .filter((ticker) => query.trim() && ticker.startsWith(query.trim().toUpperCase())).slice(0, 10).map((ticker) => ({ ticker }));
+  }
   if (!query || query.trim().length === 0) return [];
   try {
     const res = await fetch(`${apiBaseUrl()}/market/search?q=${encodeURIComponent(query.trim())}`);
@@ -344,5 +376,4 @@ export async function injectSyntheticSignal(params: {
     return { success: false, detail: err instanceof Error ? err.message : "Network error" };
   }
 }
-
 

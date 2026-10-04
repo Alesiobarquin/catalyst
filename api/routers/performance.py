@@ -46,7 +46,10 @@ def _compute_ticker_performance(
 
     # Terminal resolved state fast-path: if order is closed and resolved in DB,
     # return the recorded resolution metrics without making redundant external market queries.
-    if db_status in ("HIT_TARGET", "HIT_STOP", "EXPIRED", "RESOLVED_WIN", "RESOLVED_LOSS") and resolved_price is not None:
+    if (
+        db_status in ("HIT_TARGET", "HIT_STOP", "EXPIRED", "RESOLVED_WIN", "RESOLVED_LOSS")
+        and resolved_price is not None
+    ):
         pnl_val = pnl_percent
         if pnl_val is None and entry_price > 0:
             if is_sell:
@@ -158,8 +161,14 @@ async def get_batch_performance(
     tasks = []
     for row in rows:
         row_dict = dict(row)
-        res_price = float(row_dict["resolved_price"]) if row_dict.get("resolved_price") is not None else None
-        pnl_val = float(row_dict["pnl_percent"]) if row_dict.get("pnl_percent") is not None else None
+        res_price = (
+            float(row_dict["resolved_price"])
+            if row_dict.get("resolved_price") is not None
+            else None
+        )
+        pnl_val = (
+            float(row_dict["pnl_percent"]) if row_dict.get("pnl_percent") is not None else None
+        )
         tasks.append(
             asyncio.to_thread(
                 _compute_ticker_performance,
@@ -215,11 +224,21 @@ async def get_order_performance(
     target_price = float(row_dict["target_price"])
     signal_dt = row_dict["timestamp_utc"]
     db_status = row_dict["status"]
-    resolved_price = float(row_dict["resolved_price"]) if row_dict.get("resolved_price") is not None else None
-    pnl_percent = float(row_dict["pnl_percent"]) if row_dict.get("pnl_percent") is not None else None
+    resolved_price = (
+        float(row_dict["resolved_price"]) if row_dict.get("resolved_price") is not None else None
+    )
+    pnl_percent = (
+        float(row_dict["pnl_percent"]) if row_dict.get("pnl_percent") is not None else None
+    )
 
     now = datetime.now(timezone.utc)
-    resolved_in_db = db_status in ("HIT_TARGET", "HIT_STOP", "EXPIRED", "RESOLVED_WIN", "RESOLVED_LOSS")
+    resolved_in_db = db_status in (
+        "HIT_TARGET",
+        "HIT_STOP",
+        "EXPIRED",
+        "RESOLVED_WIN",
+        "RESOLVED_LOSS",
+    )
 
     perf = await asyncio.to_thread(
         _compute_ticker_performance,

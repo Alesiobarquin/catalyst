@@ -1,6 +1,14 @@
 # Git & IDE
 .git
 .gitignore
+.env
+.env.*
+!.env.example
+.agents/
+.superset/
+.build/
+infra/.venv/
+infra/cdk.out/
 .DS_Store
 .idea
 .vscode
@@ -13,6 +21,8 @@ data/
 frontend/node_modules
 frontend/.next
 frontend/out
+frontend/public-site/out
+frontend/public-site/.next
 node_modules/
 
 # Java engine build artifacts

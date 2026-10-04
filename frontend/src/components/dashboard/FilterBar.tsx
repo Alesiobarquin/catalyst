@@ -1,5 +1,7 @@
 "use client";
 
+import { PUBLIC_DEMO } from "@/lib/snapshot";
+
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Download, Filter } from "lucide-react";
@@ -323,7 +325,7 @@ export function FilterBar({
             </button>
           )}
 
-          <a
+          {!PUBLIC_DEMO && <a
             href={(() => {
               const exportQs = new URLSearchParams();
               if (strategy && strategy !== "all") exportQs.set("strategy", strategy);
@@ -356,7 +358,7 @@ export function FilterBar({
           >
             <Download size={12} />
             Export CSV
-          </a>
+          </a>}
         </div>
       </div>
     </div>

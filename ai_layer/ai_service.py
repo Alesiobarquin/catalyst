@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import time
 
 from google import genai
@@ -21,6 +22,7 @@ from ai_layer.ai_config import (
     VALIDATED_SIGNALS_TOPIC,
 )
 from ai_layer.prompt_builder import build_analysis_prompt
+from ai_layer.request_budget import reserve_request
 from kafka import KafkaConsumer, KafkaProducer
 
 logging.basicConfig(
@@ -50,15 +52,21 @@ class AIAnalysisService:
 
         model_name = self.resolve_model_name(GEMINI_MODEL)
         fallback_model = (
-            self.resolve_model_name(GEMINI_FALLBACK_MODEL)
-            if GEMINI_FALLBACK_MODEL
-            else None
+            self.resolve_model_name(GEMINI_FALLBACK_MODEL) if GEMINI_FALLBACK_MODEL else None
         )
-        self.client = genai.Client(api_key=GEMINI_API_KEY)
+        self.client = genai.Client(api_key=GEMINI_API_KEY, http_options={"timeout": 120000})
         tools = [types.Tool(google_search=types.GoogleSearch())]
         self.generation_config = types.GenerateContentConfig(
             temperature=GEMINI_TEMPERATURE,
             tools=tools,
+            max_output_tokens=int(os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "2048")),
+            thinking_config=(
+                types.ThinkingConfig(thinking_level=os.environ["GEMINI_THINKING_LEVEL"])
+                if os.getenv("GEMINI_THINKING_LEVEL")
+                else types.ThinkingConfig(thinking_budget=0)
+                if os.getenv("GEMINI_DISABLE_THINKING") == "true"
+                else None
+            ),
         )
         self.model_name = model_name
         self.fallback_model = fallback_model
@@ -128,13 +136,25 @@ class AIAnalysisService:
         prompt = build_analysis_prompt(triage_payload)
         try:
             analysis = self.analyze_with_retry(prompt)
+            analysis["analysis_method"] = "gemini"
+            analysis["analysis_model"] = getattr(
+                self, "last_model", getattr(self, "model_name", "unknown")
+            )
         except (RuntimeError, ValueError, TypeError, KeyError) as exc:
+            if os.getenv("AI_ALLOW_HEURISTIC_FALLBACK", "true") != "true":
+                logger.error(
+                    "Grounded analysis unavailable for %s; dropping signal",
+                    triage_payload.get("ticker"),
+                )
+                return
             logger.warning(
                 "Gemini analysis failed for %s (%s). Engaging deterministic heuristic fallback.",
                 triage_payload.get("ticker", "unknown"),
                 exc,
             )
             analysis = self.synthesize_fallback_analysis(triage_payload)
+            analysis["analysis_method"] = "heuristic"
+            analysis["analysis_model"] = None
 
         conviction_score = analysis.get("conviction_score", 0)
         if conviction_score < MIN_CONVICTION_SCORE:
@@ -181,19 +201,31 @@ class AIAnalysisService:
                 current_model = fallback_model
 
             try:
+                reserve_request()
                 response = self.client.models.generate_content(
                     model=current_model,
-                    contents=prompt,
+                    contents=prompt[:24000],
                     config=self.generation_config,
                 )
                 raw_text = getattr(response, "text", "")
                 parsed = self.extract_json_object(raw_text)
+                if os.getenv("AI_REQUIRE_GROUNDING") == "true":
+                    candidates = getattr(response, "candidates", None) or []
+                    grounded = any(
+                        getattr(getattr(c, "grounding_metadata", None), "grounding_chunks", None)
+                        for c in candidates
+                    )
+                    if not grounded:
+                        raise ValueError("Response lacks search grounding sources")
+                self.last_model = current_model
                 return self.normalize_analysis(parsed)
             except Exception as exc:
                 last_error = exc
                 err_msg = str(exc)
                 if "API_KEY_INVALID" in err_msg or "API key not valid" in err_msg:
-                    logger.warning("Gemini API key is invalid or unconfigured. Skipping redundant retries.")
+                    logger.warning(
+                        "Gemini API key is invalid or unconfigured. Skipping redundant retries."
+                    )
                     break
                 if attempt == GEMINI_MAX_RETRIES:
                     break

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { LayoutDashboard, BarChart3, Zap, Settings, BookOpen } from "lucide-react";
 import { NavClock } from "./NavClock";
 import { PipelineStatus } from "./PipelineStatus";
+import { PUBLIC_DEMO } from "@/lib/snapshot";
 
 const NAV_LINKS = [
   { href: "/",          label: "Dashboard",  icon: LayoutDashboard },
@@ -95,7 +96,7 @@ export function Navbar() {
 
         {/* ── Nav links ─────────────────────────────────────── */}
         <nav style={{ display: "flex", alignItems: "stretch", gap: 0, height: "100%", flex: 1 }}>
-          {NAV_LINKS.map(({ href, label, icon: Icon }) => {
+          {NAV_LINKS.filter(({ href }) => !PUBLIC_DEMO || href !== "/settings").map(({ href, label, icon: Icon }) => {
             const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (
               <Link
@@ -139,7 +140,7 @@ export function Navbar() {
           {/* Clock */}
           <NavClock />
 
-          <PipelineStatus />
+          {PUBLIC_DEMO ? <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "#38BDF8" }}>DAILY DEMO</span> : <PipelineStatus />}
         </div>
       </div>
     </header>

@@ -77,7 +77,9 @@ def check_api(base_url: str = "http://localhost:8000", timeout: float = 3.0) -> 
     return res
 
 
-def check_engine(actuator_url: str = "http://localhost:8081/actuator/health", timeout: float = 3.0) -> dict[str, Any]:
+def check_engine(
+    actuator_url: str = "http://localhost:8081/actuator/health", timeout: float = 3.0
+) -> dict[str, Any]:
     """Probe Java Spring Boot Actuator health endpoint."""
     res: dict[str, Any] = {"status": "DOWN", "details": None}
     status_code, body = fetch_url(actuator_url, timeout=timeout)
@@ -91,7 +93,9 @@ def check_engine(actuator_url: str = "http://localhost:8081/actuator/health", ti
     return res
 
 
-def check_redis(host: str = "localhost", port: int = 6379, db: int = 0, timeout: float = 2.0) -> dict[str, Any]:
+def check_redis(
+    host: str = "localhost", port: int = 6379, db: int = 0, timeout: float = 2.0
+) -> dict[str, Any]:
     """Probe Redis directly for latency, key counts, and confluence state."""
     res: dict[str, Any] = {
         "status": "DOWN",
@@ -119,14 +123,16 @@ def evaluate_overall_health(results: dict[str, Any], require_engine: bool = True
     """Evaluate whether the pipeline satisfies minimum operational criteria."""
     api_ok = results.get("api", {}).get("status") in ("OK", "UP")
     db_ok = results.get("api", {}).get("database") == "ok"
-    redis_ok = results.get("redis", {}).get("status") == "UP" or results.get("api", {}).get("redis") == "ok"
+    redis_ok = (
+        results.get("redis", {}).get("status") == "UP"
+        or results.get("api", {}).get("redis") == "ok"
+    )
 
     engine_ok = True
     if require_engine:
-        engine_ok = (
-            results.get("engine", {}).get("status") == "UP"
-            or results.get("api", {}).get("engine_reported") in ("UP", "OK", "ok")
-        )
+        engine_ok = results.get("engine", {}).get("status") == "UP" or results.get("api", {}).get(
+            "engine_reported"
+        ) in ("UP", "OK", "ok")
 
     return bool(api_ok and db_ok and redis_ok and engine_ok)
 
@@ -158,12 +164,26 @@ def format_report(results: dict[str, Any], overall_ok: bool) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Catalyst Pipeline Health & Diagnostics Probe")
-    parser.add_argument("--api-url", default="http://localhost:8000", help="FastAPI base URL (default: http://localhost:8000)")
-    parser.add_argument("--engine-url", default="http://localhost:8081/actuator/health", help="Java Engine Actuator health URL")
+    parser.add_argument(
+        "--api-url",
+        default="http://localhost:8000",
+        help="FastAPI base URL (default: http://localhost:8000)",
+    )
+    parser.add_argument(
+        "--engine-url",
+        default="http://localhost:8081/actuator/health",
+        help="Java Engine Actuator health URL",
+    )
     parser.add_argument("--redis-host", default="localhost", help="Redis host (default: localhost)")
     parser.add_argument("--redis-port", type=int, default=6379, help="Redis port (default: 6379)")
-    parser.add_argument("--timeout", type=float, default=3.0, help="HTTP and socket timeout in seconds")
-    parser.add_argument("--ignore-engine", action="store_true", help="Don't fail if Java engine is down (API-only mode)")
+    parser.add_argument(
+        "--timeout", type=float, default=3.0, help="HTTP and socket timeout in seconds"
+    )
+    parser.add_argument(
+        "--ignore-engine",
+        action="store_true",
+        help="Don't fail if Java engine is down (API-only mode)",
+    )
     parser.add_argument("--json", action="store_true", help="Output machine-readable JSON")
 
     args = parser.parse_args()
