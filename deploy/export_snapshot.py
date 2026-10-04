@@ -4,8 +4,9 @@ import argparse
 import json
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import urlencode
 
 import httpx
 import psycopg
@@ -167,7 +168,8 @@ def export(output: Path) -> dict:
         tickers = list(dict.fromkeys(o["ticker"] for o in data["orders"]))[:12]
         for ticker in tickers:
             data["quotes"][ticker] = optional(f"/market/quote/{ticker}", {"ticker": ticker})
-            data["history"][ticker] = optional(f"/market/history/{ticker}", [])
+            query = urlencode({"from": (now - timedelta(days=90)).isoformat()})
+            data["history"][ticker] = optional(f"/market/history/{ticker}?{query}", [])
         ids = [str(o["id"]) for o in data["orders"][:20]]
         if ids:
             data["performance"] = optional(f"/performance/batch?ids={','.join(ids)}", [])

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { loadSnapshot, filterRows, paginate, downloadCsv, type PublicSnapshot } from "@/lib/snapshot";
+import { loadSnapshot, loadRunStatus, type RunStatus, filterRows, paginate, downloadCsv, type PublicSnapshot } from "@/lib/snapshot";
 import { StatsBar } from "@/components/dashboard/StatsBar";
 import { FilterBar } from "@/components/dashboard/FilterBar";
 import { TradeList } from "@/components/dashboard/TradeList";
@@ -24,11 +24,12 @@ function Content({ view }: { view: View }) {
   const [data, setData] = useState<PublicSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(0);
+  const [attempt, setAttempt] = useState<RunStatus | null>(null);
   const sp = useSearchParams();
   useEffect(() => {
     let active = true;
-    const refresh = () => loadSnapshot().then((value) => {
-      if (active) { setData(value); setError(null); setNow(Date.now()); }
+    const refresh = () => Promise.all([loadSnapshot(), loadRunStatus()]).then(([value, status]) => {
+      if (active) { setData(value); setAttempt(status); setError(null); setNow(Date.now()); }
     }).catch((reason: Error) => { if (active) setError(reason.message); });
     void refresh();
     const timer = setInterval(refresh, 300_000);
@@ -66,6 +67,7 @@ function Content({ view }: { view: View }) {
         The AWS pipeline scans once each weekday at 10:00 AM New York time. Results remain available while the worker is stopped. Quotes and analyses reflect collection time.
         Recommendation P&amp;L uses sampled prices; daily checks can miss intraday stop or target crossings. No brokerage trading is enabled.
       </p>
+      {attempt && Date.parse(attempt.updated_at) > Date.parse(data.as_of) && (attempt.status === "failed" || attempt.status === "running") && <p role="status" style={{ color: "#FBBF24", fontSize: 12 }}>{attempt.status === "running" ? "A new scan is running; the previous published dataset remains available." : "The latest run failed to publish. Previous results are retained; the next weekday scan retries automatically."}</p>}
       {error && <p role="alert">Refresh failed; retaining the previously loaded results. {error}</p>}
       {!waiting && <details style={{ marginTop: 10, fontSize: 12, color: "#CBD5E1" }}><summary>Scan report · {events} raw events · {data.hunters.filter((h) => h.success).length}/5 sweeps completed</summary>
         <div style={{ overflowX: "auto" }}><table style={{ marginTop: 12, width: "100%", textAlign: "left", borderCollapse: "collapse" }}><thead><tr><th>Source</th><th>Outcome</th><th>Events</th><th>Duration</th></tr></thead><tbody>

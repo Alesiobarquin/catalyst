@@ -79,3 +79,14 @@ export function downloadCsv(rows: object[], name: string) {
   link.href = url; link.download = name; link.click();
   URL.revokeObjectURL(url);
 }
+
+export interface RunStatus { status: "running" | "failed" | "completed" | "partial"; updated_at: string; }
+
+export async function loadRunStatus(): Promise<RunStatus | null> {
+  try {
+    const response = await fetch("/data/status.json", { cache: "no-store" });
+    if (!response.ok) return null;
+    const status = await response.json() as RunStatus;
+    return ["running", "failed", "completed", "partial"].includes(status.status) && Number.isFinite(Date.parse(status.updated_at)) ? status : null;
+  } catch { return null; }
+}
