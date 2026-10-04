@@ -33,6 +33,9 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
+    # Python persistence may create its table before this engine starts.
+    # Version zero ensures Flyway still runs V1 on a non-empty fresh schema.
+    baseline-version: 0
 
   # Kafka: consumer reads validated-signals, producer writes trade-orders.
   # Most deserialization config lives here to avoid magic in KafkaConfig.

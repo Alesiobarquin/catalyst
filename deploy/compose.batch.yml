@@ -71,7 +71,7 @@ services:
   engine:
     image: ${ENGINE_IMAGE:?Set ENGINE_IMAGE}
     env_file: .env
-    environment: {JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=65 -XX:ActiveProcessorCount=2"}
+    environment: {JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=65 -XX:ActiveProcessorCount=2", SPRING_FLYWAY_BASELINE_VERSION: "0"}
     mem_limit: 900m
     depends_on: {kafka: {condition: service_healthy}, timescaledb: {condition: service_healthy}}
     healthcheck: {test: [CMD-SHELL, "wget -qO- http://localhost:8081/actuator/health"], interval: 10s, timeout: 5s, retries: 18, start_period: 30s}
