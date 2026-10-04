@@ -34,6 +34,10 @@ docker compose up -d --build
 
 This builds and starts every service, including the **Next.js dashboard** (`catalyst_frontend` on port **3000**): Zookeeper, Kafka, Redis, TimescaleDB, hunters, Gatekeeper, AI layer, persistence, Java engine, FastAPI, frontend, Kafka UI, and RedisInsight.
 
+**Automated tests:** Compose builds images and starts containers; it does not run `pytest`, `npm test`, or `mvn test`. Container healthchecks verify infrastructure readiness, so run the project test commands separately as described below.
+
+**Frontend availability:** The frontend depends on a healthy API, rather than directly on Kafka. If `catalyst_frontend` is running, open **http://localhost:3000**. A Kafka failure can still prevent hunters and downstream processing from running; inspect `docker compose ps` and `docker logs catalyst_kafka`, resolve the broker failure, then run `docker compose up -d` again.
+
 #### Restarting after Docker was stopped cleanly
 
 If you stopped Docker or the containers exited days ago, Kafka's Zookeeper state can go stale and Kafka will refuse to start (`NodeExistsException`). The safe restart sequence is:

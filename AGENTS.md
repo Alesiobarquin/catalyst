@@ -266,6 +266,8 @@ Multi-channel real-time catalyst alerting service:
 
 **Phase 51 — Public daily AWS deployment:** Static export and snapshot adapter, strict batch hunters, grounded-only AI with persistent request limits, explicit Kafka virtual threads, fresh-market halt, private CloudFront/S3 hosting, encrypted worker/SSM configuration, GitHub OIDC immutable releases, watchdogs and timezone scheduling. Provisioned and verified October 4; organic scans published and stopped automatically, with enabled weekday schedules and disclosed provider failures. Public HTTPS and production assets passed HTTP checks; interactive visual/browser QA was unavailable. See `docs/PUBLIC_DEMO_OPERATIONS.md`. Current tests: 301 Python + 36 Java + 156 Vitest = 493.
 
+**Previous-session cleanup:** The working tree was clean at the initial audit. Two historical Git stashes were reviewed: the older frontend implementation's performance/order APIs, seed fixtures, hunter timestamps, and schema work are already implemented and superseded in current main. Its older code was not reapplied. The other stash's useful Compose-versus-test and frontend-readiness clarifications were incorporated into `docs/TESTING.md`. Both stashes remain available as recovery copies; public data never uses the local seed fixtures.
+
 ## 5. Developer & Agent Guidelines
 
 ### 5.1 Python Environment & Testing
