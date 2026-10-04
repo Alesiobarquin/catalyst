@@ -1,11 +1,12 @@
 FROM python:3.12-slim
 WORKDIR /app
+COPY deploy/constraints.txt /tmp/constraints.txt
 COPY api/requirements.txt /tmp/api.txt
 COPY gatekeeper/requirements.txt /tmp/gatekeeper.txt
 COPY ai_layer/requirements.txt /tmp/ai.txt
 COPY persistence/requirements.txt /tmp/persistence.txt
 COPY resolver/requirements.txt /tmp/resolver.txt
-RUN pip install --no-cache-dir -r /tmp/api.txt -r /tmp/gatekeeper.txt -r /tmp/ai.txt -r /tmp/persistence.txt -r /tmp/resolver.txt
+RUN pip install --no-cache-dir -c /tmp/constraints.txt -r /tmp/api.txt -r /tmp/gatekeeper.txt -r /tmp/ai.txt -r /tmp/persistence.txt -r /tmp/resolver.txt
 COPY api /app/api
 COPY gatekeeper /app/gatekeeper
 COPY ai_layer /app/ai_layer

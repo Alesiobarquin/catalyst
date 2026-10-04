@@ -1,7 +1,8 @@
 FROM python:3.12-slim
 WORKDIR /app
+COPY deploy/constraints.txt /tmp/constraints.txt
 COPY hunters/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt && playwright install --with-deps --only-shell chromium
+RUN pip install --no-cache-dir -c /tmp/constraints.txt -r /tmp/requirements.txt && playwright install --with-deps --only-shell chromium
 COPY hunters /app/hunters
 ENV PYTHONPATH=/app PYTHONUNBUFFERED=1
 CMD ["python", "-m", "hunters.main", "all", "--once", "--timeout", "180", "--report", "/reports/hunters.json"]

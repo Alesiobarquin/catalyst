@@ -26,13 +26,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-asyncio ruff redis kafka-python-ng pandas yfinance
-          pip install -r api/requirements.txt
-          pip install -r gatekeeper/requirements.txt
-          pip install -r ai_layer/requirements.txt
-          pip install -r hunters/requirements.txt
-          pip install -r executor/requirements.txt
-          pip install -r persistence/requirements.txt -r resolver/requirements.txt -r notifier/requirements.txt
+          pip install -c deploy/constraints.txt pytest pytest-asyncio ruff redis kafka-python-ng pandas yfinance
+          pip install -c deploy/constraints.txt -r api/requirements.txt
+          pip install -c deploy/constraints.txt -r gatekeeper/requirements.txt
+          pip install -c deploy/constraints.txt -r ai_layer/requirements.txt
+          pip install -c deploy/constraints.txt -r hunters/requirements.txt
+          pip install -c deploy/constraints.txt -r executor/requirements.txt
+          pip install -c deploy/constraints.txt -r persistence/requirements.txt -r resolver/requirements.txt -r notifier/requirements.txt
 
       - name: Ruff lint
         run: ruff check api gatekeeper ai_layer hunters persistence executor tests --output-format=github

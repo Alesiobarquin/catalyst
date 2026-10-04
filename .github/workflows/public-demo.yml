@@ -49,7 +49,7 @@ jobs:
         with: {distribution: temurin, java-version: "21", cache: maven}
       - name: Verify all runtimes
         run: |
-          pip install pytest pytest-asyncio ruff -r api/requirements.txt -r hunters/requirements.txt -r gatekeeper/requirements.txt -r ai_layer/requirements.txt -r persistence/requirements.txt -r resolver/requirements.txt -r notifier/requirements.txt
+          pip install -c deploy/constraints.txt pytest pytest-asyncio ruff -r api/requirements.txt -r hunters/requirements.txt -r gatekeeper/requirements.txt -r ai_layer/requirements.txt -r persistence/requirements.txt -r resolver/requirements.txt -r notifier/requirements.txt
           ruff check .
           ruff format --check .
           PYTHONPATH=. pytest -q

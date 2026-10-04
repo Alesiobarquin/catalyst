@@ -8,6 +8,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
+import java.net.http.HttpClient;
+import java.time.Duration;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -47,15 +50,14 @@ public class MarketDataService {
      * Reading three separate volatile fields would create a window where a
      * partial refresh is visible (new VIX, old SPY). AtomicReference eliminates that.
      *
-     * Default: benign starting values so the engine isn't in HALT mode before
-     * the first successful fetch. If the first fetch fails, we operate optimistically
-     * rather than blocking all signals. Appropriate for a recommendation system.
+     * Default: unavailable values. RegimeFilter halts until a successful, fresh
+     * market snapshot exists; a provider outage cannot create an order from placeholders.
      */
     private final AtomicReference<MarketSnapshot> marketSnapshot = new AtomicReference<>(
             MarketSnapshot.builder()
-                    .spyPrice(500.0)
-                    .spy200Sma(450.0)
-                    .vix(15.0)
+                    .spyPrice(0.0)
+                    .spy200Sma(0.0)
+                    .vix(0.0)
                     .capturedAt(Instant.EPOCH) // forces a refresh on first getSnapshot() call
                     .build()
     );
@@ -64,7 +66,11 @@ public class MarketDataService {
 
     public MarketDataService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
+        var factory = new JdkClientHttpRequestFactory(HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10)).build());
+        factory.setReadTimeout(Duration.ofSeconds(20));
         this.restClient = RestClient.builder()
+                .requestFactory(factory)
                 .defaultHeader("User-Agent", USER_AGENT)
                 .defaultHeader("Accept", "application/json")
                 .build();
@@ -87,7 +93,7 @@ public class MarketDataService {
             double spy200Sma = fetchSpy200Sma();
             double vix = fetchRawPrice("%5EVIX"); // ^VIX, URL-encoded
 
-            if (spyPrice <= 0 || vix <= 0) {
+            if (spyPrice <= 0 || spy200Sma <= 0 || vix <= 0) {
                 log.warn("Regime refresh: invalid data (SPY={}, VIX={}). Keeping previous snapshot.",
                         spyPrice, vix);
                 return;
@@ -191,9 +197,9 @@ public class MarketDataService {
         }
 
         if (prices.size() < 200) {
-            log.warn("Insufficient data for SPY 200 SMA: only {} points. Using last known price as proxy.",
+            log.warn("Insufficient data for SPY 200 SMA: only {} points. Regime remains unavailable.",
                     prices.size());
-            return prices.isEmpty() ? 0 : prices.get(prices.size() - 1);
+            return 0;
         }
 
         List<Double> last200 = prices.subList(prices.size() - 200, prices.size());
