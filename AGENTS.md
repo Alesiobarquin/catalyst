@@ -175,6 +175,8 @@ Exposes read-optimized endpoints and streaming for the frontend:
 
 ### 3.8 Frontend Dashboard (`frontend/`)
 Public static deployment excludes `/settings`; local pages below retain API-backed operation.
+
+**Requested UI refresh (October 5, 2026):** [UI_THEME_IMPLEMENTATION_PLAN.md](docs/UI_THEME_IMPLEMENTATION_PLAN.md) is the execution handoff for a light-first light/dark switch, persisted explicit preference, neutral typographic Catalyst branding, complete semantic color migration, and canvas chart updates. This is a plan only; themes and the replacement branding have not yet been implemented. The audit found roughly 740 hex/rgb occurrences in frontend source, including token definitions; the orange logo is a custom SVG in Navbar, with additional Zap icons in Navbar/LiveStreamBanner. Public routes reuse the shared layout but orders/signals/analytics render PublicDashboard, so implementations must cover both route trees. The executing agent must update this document with the actual theme storage key, behavior, chart approach, and test counts after implementation.
 Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
 - **Pages**:
   - `/`: Executive KPI overview and recent activity.
