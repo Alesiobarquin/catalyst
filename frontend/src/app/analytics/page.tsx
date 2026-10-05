@@ -18,10 +18,10 @@ export const metadata: Metadata = {
 };
 
 const CATALYST_COLORS: Record<string, string> = {
-  SUPERNOVA: "#F97316",
-  SCALPER:   "#0EA5E9",
-  FOLLOWER:  "#10B981",
-  DRIFTER:   "#A855F7",
+  SUPERNOVA: "var(--color-category-supernova)",
+  SCALPER:   "var(--color-category-scalper)",
+  FOLLOWER:  "var(--color-category-follower)",
+  DRIFTER:   "var(--color-category-drifter)",
 };
 
 export default async function AnalyticsPage() {
@@ -43,7 +43,7 @@ export default async function AnalyticsPage() {
           style={{
             fontSize: 24,
             fontWeight: 600,
-            color: "#F8FAFC",
+            color: "var(--color-text-primary)",
             letterSpacing: "-0.01em",
             marginBottom: 4,
             lineHeight: 1.25,
@@ -51,28 +51,23 @@ export default async function AnalyticsPage() {
         >
           Analytics
         </h1>
-        <p style={{ fontSize: 13, color: "#CBD5E1", margin: 0 }}>
+        <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: 0 }}>
           Pipeline performance · Signal quality · Strategy distribution
         </p>
       </div>
 
       {/* ── Executive KPI summary strip ──────────────── */}
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 12,
-          marginBottom: 20,
-        }}
+        className="stats-grid"
       >
         <div className="stat-card" style={{ padding: "16px 18px" }}>
           <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Total Pipeline Orders
           </span>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "#F8FAFC", margin: "6px 0 2px" }}>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "var(--color-text-primary)", margin: "6px 0 2px" }}>
             {stats.total_orders}
           </p>
-          <span style={{ fontSize: 11, color: "#64748B" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
             {stats.active_count} active in queue
           </span>
         </div>
@@ -81,10 +76,10 @@ export default async function AnalyticsPage() {
           <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Recommended Volume
           </span>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "#F8FAFC", margin: "6px 0 2px" }}>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "var(--color-text-primary)", margin: "6px 0 2px" }}>
             {stats.total_recommended_volume_usd ? `$${formatCompact(stats.total_recommended_volume_usd)}` : "—"}
           </p>
-          <span style={{ fontSize: 11, color: "#64748B" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
             Half-Kelly portfolio sizing
           </span>
         </div>
@@ -93,10 +88,10 @@ export default async function AnalyticsPage() {
           <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Historical Win Rate
           </span>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "#10B981", margin: "6px 0 2px" }}>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "var(--color-profit)", margin: "6px 0 2px" }}>
             {winRate}
           </p>
-          <span style={{ fontSize: 11, color: "#64748B" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
             {stats.hit_target_count} targets attained
           </span>
         </div>
@@ -105,10 +100,10 @@ export default async function AnalyticsPage() {
           <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Average Conviction
           </span>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "#38BDF8", margin: "6px 0 2px" }}>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "var(--color-link)", margin: "6px 0 2px" }}>
             {stats.avg_conviction.toFixed(0)}/100
           </p>
-          <span style={{ fontSize: 11, color: "#64748B" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
             Multi-source gatekeeper validated
           </span>
         </div>
@@ -116,12 +111,7 @@ export default async function AnalyticsPage() {
 
       {/* ── 2×2 analytics grid ──────────────────────── */}
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2, 1fr)",
-          gap: 16,
-          marginBottom: 16,
-        }}
+        className="analytics-grid"
       >
         <PerformanceSummary  stats={stats} />
         <StrategyBreakdown   stats={stats} />
@@ -141,7 +131,7 @@ export default async function AnalyticsPage() {
           style={{
             fontSize: 13,
             fontWeight: 600,
-            color: "#F8FAFC",
+            color: "var(--color-text-primary)",
             marginBottom: 18,
           }}
         >
@@ -149,7 +139,7 @@ export default async function AnalyticsPage() {
         </h3>
 
         {Object.values(stats.catalyst_breakdown).every((c) => c === 0) && (
-          <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>
+          <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: 0 }}>
             No catalyst data yet.
           </p>
         )}
@@ -158,7 +148,7 @@ export default async function AnalyticsPage() {
           {Object.entries(stats.catalyst_breakdown)
             .filter(([, v]) => v > 0)
             .map(([type, count]) => {
-              const col = CATALYST_COLORS[type] ?? "#64748B";
+              const col = CATALYST_COLORS[type] ?? "var(--color-category-fallback)";
               return (
                 <div
                   key={type}
@@ -187,14 +177,14 @@ export default async function AnalyticsPage() {
                       fontFamily: "var(--font-mono)",
                       fontSize: 28,
                       fontWeight: 700,
-                      color: "#F8FAFC",
+                      color: "var(--color-text-primary)",
                       margin: "0 0 2px",
                       lineHeight: 1,
                     }}
                   >
                     {count}
                   </p>
-                  <p style={{ fontSize: 11, color: "#64748B", margin: 0 }}>
+                  <p style={{ fontSize: 11, color: "var(--color-text-muted)", margin: 0 }}>
                     signals
                   </p>
                 </div>

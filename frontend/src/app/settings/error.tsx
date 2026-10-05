@@ -31,8 +31,8 @@ export default function SettingsError({ error, reset }: ErrorProps) {
           width: 48,
           height: 48,
           borderRadius: 12,
-          background: "rgba(239,68,68,0.12)",
-          border: "1px solid rgba(239,68,68,0.3)",
+          background: "var(--color-loss-bg)",
+          border: "1px solid var(--color-loss-border)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -58,20 +58,8 @@ export default function SettingsError({ error, reset }: ErrorProps) {
       </div>
 
       <button
+        className="button-secondary"
         onClick={reset}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "8px 16px",
-          borderRadius: 6,
-          background: "var(--color-surface-hover)",
-          border: "1px solid var(--color-border)",
-          color: "var(--color-text-primary)",
-          fontSize: 13,
-          fontWeight: 500,
-          cursor: "pointer",
-        }}
       >
         <RefreshCw size={13} />
         Try again

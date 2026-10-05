@@ -42,9 +42,9 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
   return (
     <div
       style={{
-        background: "linear-gradient(180deg, #161D2B 0%, #0F172A 100%)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        borderRadius: 8,
+        background: "var(--color-bg-card)",
+        border: "1px solid var(--color-border)",
+        borderRadius: 6,
         padding: "10px 16px",
         marginBottom: 20,
         display: "flex",
@@ -60,13 +60,11 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
           justifyContent: "space-between",
           fontSize: 11,
           color: "var(--color-text-muted)",
-          textTransform: "uppercase",
-          letterSpacing: "0.06em",
           fontWeight: 600,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <Activity size={13} color="#38BDF8" />
+          <Activity size={13} color="var(--color-link)" />
           <span>Market Benchmarks</span>
           <span
             style={{
@@ -74,8 +72,7 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
               width: 6,
               height: 6,
               borderRadius: "50%",
-              background: "#22C55E",
-              boxShadow: "0 0 6px #22C55E",
+              background: "var(--color-profit)",
               marginLeft: 4,
             }}
             title={asOf ? "Daily snapshot" : "Live telemetry active"}
@@ -85,7 +82,7 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span
             suppressHydrationWarning
-            style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "#64748B" }}
+            style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
           >
             {lastUpdated ? `Updated: ${lastUpdated}` : "Market live"}
           </span>
@@ -94,10 +91,10 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
             onClick={handleRefresh}
             disabled={isRefreshing}
             style={{
-              background: "rgba(255, 255, 255, 0.04)",
-              border: "1px solid rgba(255, 255, 255, 0.10)",
+              background: "var(--color-bg-row)",
+              border: "1px solid var(--color-border-subtle)",
               borderRadius: 4,
-              color: isRefreshing ? "#64748B" : "#94A3B8",
+              color: isRefreshing ? "var(--color-text-muted)" : "var(--color-text-muted)",
               cursor: isRefreshing ? "not-allowed" : "pointer",
               padding: "3px 8px",
               display: "flex",
@@ -132,19 +129,19 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
           const name = BENCHMARK_NAMES[q.ticker] ?? q.ticker;
           const isUp = (q.change ?? 0) >= 0;
           const isFlat = q.change === 0 || q.change === null || q.change === undefined;
-          const changeColor = isFlat ? "#94A3B8" : isUp ? "#22C55E" : "#EF4444";
+          const changeColor = isFlat ? "var(--color-text-muted)" : isUp ? "var(--color-profit)" : "var(--color-loss)";
           const changeBg = isFlat
-            ? "rgba(148, 163, 184, 0.10)"
+            ? "var(--color-neutral-bg)"
             : isUp
-            ? "rgba(34, 197, 94, 0.12)"
-            : "rgba(239, 68, 68, 0.12)";
+            ? "var(--color-profit-bg)"
+            : "var(--color-loss-bg)";
 
           return (
             <div
               key={q.ticker}
               style={{
-                background: "rgba(15, 23, 42, 0.6)",
-                border: "1px solid rgba(255, 255, 255, 0.05)",
+                background: "var(--color-bg-overlay)",
+                border: "1px solid var(--color-border-subtle)",
                 borderRadius: 6,
                 padding: "8px 12px",
                 display: "flex",
@@ -165,12 +162,12 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
                       fontFamily: "var(--font-mono)",
                       fontWeight: 700,
                       fontSize: 13,
-                      color: "#F8FAFC",
+                      color: "var(--color-text-primary)",
                     }}
                   >
                     {q.ticker}
                   </span>
-                  <span style={{ fontSize: 11, color: "#64748B" }}>{name}</span>
+                  <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{name}</span>
                 </div>
 
                 {q.change_percent !== null && q.change_percent !== undefined && (
@@ -210,7 +207,7 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
                     fontFamily: "var(--font-mono)",
                     fontSize: 16,
                     fontWeight: 600,
-                    color: "#F1F5F9",
+                    color: "var(--color-text-secondary)",
                   }}
                 >
                   {q.price !== null && q.price !== undefined ? `$${q.price.toFixed(2)}` : "—"}
@@ -224,7 +221,7 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
                       style={{
                         fontSize: 10,
                         fontFamily: "var(--font-mono)",
-                        color: "#64748B",
+                        color: "var(--color-text-muted)",
                       }}
                     >
                       L: ${q.day_low.toFixed(1)} H: ${q.day_high.toFixed(1)}

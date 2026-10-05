@@ -137,9 +137,9 @@ export function SignalFilterBar({
       fontSize: 12,
       fontWeight: 500,
       cursor: "pointer",
-      border: `1px solid ${active ? "#0EA5E9" : "rgba(255,255,255,0.10)"}`,
-      background: active ? "rgba(14,165,233,0.15)" : "transparent",
-      color: active ? "#38BDF8" : "var(--color-text-secondary)",
+      border: `1px solid ${active ? "var(--color-link)" : "var(--color-border-subtle)"}`,
+      background: active ? "var(--color-info-bg)" : "transparent",
+      color: active ? "var(--color-link)" : "var(--color-text-secondary)",
       transition: "all 120ms ease",
     };
   }
@@ -154,8 +154,8 @@ export function SignalFilterBar({
         gap: 12,
         marginBottom: 20,
         padding: "14px 16px",
-        background: "#0F172A",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "var(--color-bg-page)",
+        border: "1px solid var(--color-border-subtle)",
         borderRadius: 6,
       }}
     >
@@ -227,7 +227,7 @@ export function SignalFilterBar({
           gap: 20,
           flexWrap: "wrap",
           paddingTop: 8,
-          borderTop: "1px solid rgba(255,255,255,0.06)",
+          borderTop: "1px solid var(--color-border-subtle)",
         }}
       >
         {/* Min Conviction */}
@@ -345,7 +345,7 @@ export function SignalFilterBar({
                 gap: 4,
                 background: "none",
                 border: "none",
-                color: "#EF4444",
+                color: "var(--color-loss)",
                 fontSize: 12,
                 fontWeight: 500,
                 cursor: "pointer",
@@ -379,10 +379,10 @@ export function SignalFilterBar({
               display: "flex",
               alignItems: "center",
               gap: 5,
-              background: "rgba(255, 255, 255, 0.04)",
-              border: "1px solid rgba(255, 255, 255, 0.10)",
+              background: "var(--color-bg-row)",
+              border: "1px solid var(--color-border-subtle)",
               borderRadius: 4,
-              color: "#94A3B8",
+              color: "var(--color-text-muted)",
               fontSize: 11,
               fontWeight: 500,
               padding: "4px 8px",

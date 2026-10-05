@@ -91,7 +91,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
           style={{
             fontSize: 24,
             fontWeight: 600,
-            color: "#F8FAFC",
+            color: "var(--color-text-primary)",
             letterSpacing: "-0.01em",
             marginBottom: 4,
             lineHeight: 1.25,
@@ -99,7 +99,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
         >
           Validated signals
         </h1>
-        <p style={{ fontSize: 13, color: "#CBD5E1", margin: "0 0 6px" }}>
+        <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: "0 0 6px" }}>
           Raw Gemini output · Before strategy routing ·{" "}
           <code
             style={{
@@ -107,16 +107,16 @@ export default async function SignalsPage({ searchParams }: PageProps) {
               fontSize: 11,
               padding: "1px 6px",
               borderRadius: 3,
-              background: "#1E293B",
-              border: "1px solid rgba(255,255,255,0.08)",
-              color: "#94A3B8",
+              background: "var(--color-bg-row)",
+              border: "1px solid var(--color-border-subtle)",
+              color: "var(--color-text-muted)",
             }}
           >
             validated-signals
           </code>{" "}
           Kafka topic
         </p>
-        <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>
+        <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: 0 }}>
           {total} total signals {hasActiveFilters && "(filtered)"}
         </p>
       </div>
@@ -126,21 +126,16 @@ export default async function SignalsPage({ searchParams }: PageProps) {
 
       {/* ── Signal Stats KPI Ribbon ──────────────────────── */}
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 12,
-          marginBottom: 20,
-        }}
+        className="stats-grid"
       >
         <div className="stat-card" style={{ padding: "14px 16px" }}>
           <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Total Pipeline Signals
           </span>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "#F8FAFC", margin: "4px 0 2px" }}>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "var(--color-text-primary)", margin: "4px 0 2px" }}>
             {stats.total_signals}
           </p>
-          <span style={{ fontSize: 11, color: "#64748B" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
             {stats.clean_count} actionable
           </span>
         </div>
@@ -149,10 +144,10 @@ export default async function SignalsPage({ searchParams }: PageProps) {
           <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Average Conviction
           </span>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "#38BDF8", margin: "4px 0 2px" }}>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "var(--color-link)", margin: "4px 0 2px" }}>
             {stats.avg_conviction}/100
           </p>
-          <span style={{ fontSize: 11, color: "#64748B" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
             Gemini multi-factor
           </span>
         </div>
@@ -161,10 +156,10 @@ export default async function SignalsPage({ searchParams }: PageProps) {
           <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             High Conviction (≥80)
           </span>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "#10B981", margin: "4px 0 2px" }}>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "var(--color-profit)", margin: "4px 0 2px" }}>
             {stats.high_conviction_count}
           </p>
-          <span style={{ fontSize: 11, color: "#64748B" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
             Eligible for execution
           </span>
         </div>
@@ -173,10 +168,10 @@ export default async function SignalsPage({ searchParams }: PageProps) {
           <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Trap Protection
           </span>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "#F59E0B", margin: "4px 0 2px" }}>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "var(--color-warning)", margin: "4px 0 2px" }}>
             {stats.trap_count}
           </p>
-          <span style={{ fontSize: 11, color: "#64748B" }}>
+          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
             {stats.trap_rate_percent}% rejected
           </span>
         </div>
@@ -199,8 +194,8 @@ export default async function SignalsPage({ searchParams }: PageProps) {
           style={{
             padding: "48px 32px",
             textAlign: "center",
-            background: "#111827",
-            border: "1px solid rgba(255,255,255,0.12)",
+            background: "var(--color-bg-card)",
+            border: "1px solid var(--color-border)",
             borderRadius: 4,
             marginBottom: 24,
           }}
@@ -208,14 +203,14 @@ export default async function SignalsPage({ searchParams }: PageProps) {
           <Radio
             size={36}
             strokeWidth={1.25}
-            style={{ color: "#64748B", marginBottom: 14 }}
+            style={{ color: "var(--color-text-muted)", marginBottom: 14 }}
             aria-hidden
           />
           <h2
             style={{
               fontSize: 16,
               fontWeight: 600,
-              color: "#F8FAFC",
+              color: "var(--color-text-primary)",
               marginBottom: 8,
             }}
           >
@@ -224,7 +219,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
           <p
             style={{
               fontSize: 13,
-              color: "#CBD5E1",
+              color: "var(--color-text-secondary)",
               lineHeight: 1.6,
               maxWidth: 420,
               margin: "0 auto",
@@ -246,9 +241,9 @@ export default async function SignalsPage({ searchParams }: PageProps) {
                   borderRadius: 4,
                   fontSize: 12,
                   fontWeight: 500,
-                  background: "#1E293B",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  color: "#38BDF8",
+                  background: "var(--color-bg-row)",
+                  border: "1px solid var(--color-border)",
+                  color: "var(--color-link)",
                   textDecoration: "none",
                 }}
               >
@@ -271,9 +266,9 @@ export default async function SignalsPage({ searchParams }: PageProps) {
                 gridTemplateColumns: TABLE_COLS.map((c) => c.width).join(" "),
                 columnGap: 16,
                 minWidth: 900,
-                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                borderBottom: "1px solid var(--color-border-subtle)",
                 padding: "10px 20px",
-                background: "#0B1121",
+                background: "var(--color-bg-page)",
                 alignItems: "center",
               }}
             >
@@ -283,7 +278,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
                   style={{
                     fontSize: 11,
                     fontWeight: 500,
-                    color: "#64748B",
+                    color: "var(--color-text-muted)",
                     letterSpacing: "0.02em",
                   }}
                 >
@@ -319,12 +314,12 @@ export default async function SignalsPage({ searchParams }: PageProps) {
             style={{
               fontSize: 14,
               fontWeight: 600,
-              color: "#F8FAFC",
+              color: "var(--color-text-primary)",
               marginBottom: 12,
             }}
           >
             Key risks{" "}
-            <span style={{ fontSize: 12, color: "#64748B", fontWeight: 400 }}>
+            <span style={{ fontSize: 12, color: "var(--color-text-muted)", fontWeight: 400 }}>
               per signal
             </span>
           </h2>
@@ -358,12 +353,12 @@ export default async function SignalsPage({ searchParams }: PageProps) {
                         fontFamily: "var(--font-mono)",
                         fontSize: 13,
                         fontWeight: 700,
-                        color: "#F8FAFC",
+                        color: "var(--color-text-primary)",
                       }}
                     >
                       {signal.ticker}
                     </span>
-                    <span style={{ fontSize: 11, color: "#64748B" }}>
+                    <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
                       {getCatalystLabel(signal.catalyst_type)}
                     </span>
                     {signal.is_trap && (
@@ -373,9 +368,9 @@ export default async function SignalsPage({ searchParams }: PageProps) {
                           borderRadius: 3,
                           fontSize: 10,
                           fontWeight: 600,
-                          background: "rgba(239,68,68,0.10)",
-                          border: "1px solid rgba(239,68,68,0.25)",
-                          color: "#EF4444",
+                          background: "var(--color-loss-bg)",
+                          border: "1px solid var(--color-loss-border)",
+                          color: "var(--color-loss)",
                           letterSpacing: "0.04em",
                         }}
                       >
@@ -402,13 +397,13 @@ export default async function SignalsPage({ searchParams }: PageProps) {
                           display: "flex",
                           gap: 7,
                           fontSize: 12,
-                          color: "#CBD5E1",
+                          color: "var(--color-text-secondary)",
                           lineHeight: 1.5,
                         }}
                       >
                         <AlertTriangle
                           size={11}
-                          color="#EF4444"
+                          color="var(--color-loss)"
                           style={{ flexShrink: 0, marginTop: 2 }}
                           aria-label="Risk"
                         />

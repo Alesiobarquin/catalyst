@@ -4,4 +4,6 @@ import { cleanup } from "@testing-library/react";
 
 afterEach(() => {
   cleanup();
+  document.documentElement.dataset.theme = "light";
+  window.localStorage.removeItem("catalyst-theme");
 });

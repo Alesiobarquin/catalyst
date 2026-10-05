@@ -15,7 +15,7 @@ import { formatPrice, formatPnL, safe } from "@/lib/signalDetailUtils";
 const SECTION_TITLE: React.CSSProperties = {
   fontSize: 13,
   fontWeight: 600,
-  color: "#F8FAFC",
+  color: "var(--color-text-primary)",
   margin: "0 0 16px",
   letterSpacing: 0,
 };
@@ -23,7 +23,7 @@ const SECTION_TITLE: React.CSSProperties = {
 const SUB_HEADING: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
-  color: "#E2E8F0",
+  color: "var(--color-text-secondary)",
   margin: "0 0 12px",
   textTransform: "uppercase",
   letterSpacing: "0.04em",
@@ -31,20 +31,20 @@ const SUB_HEADING: React.CSSProperties = {
 
 const SECTION_DIVIDER: React.CSSProperties = {
   height: 1,
-  background: "rgba(255,255,255,0.06)",
+  background: "var(--color-bg-row)",
   margin: "0 0 0",
 };
 
 function strengthColor(s: "HIGH" | "MODERATE" | "LOW"): string {
-  if (s === "HIGH") return "#10B981";
-  if (s === "MODERATE") return "#F59E0B";
-  return "#64748B";
+  if (s === "HIGH") return "var(--color-profit)";
+  if (s === "MODERATE") return "var(--color-warning)";
+  return "var(--color-text-muted)";
 }
 
 function scenarioColor(type: "best" | "base" | "worst"): string {
-  if (type === "best") return "#10B981";
-  if (type === "worst") return "#EF4444";
-  return "#CBD5E1";
+  if (type === "best") return "var(--color-profit)";
+  if (type === "worst") return "var(--color-loss)";
+  return "var(--color-text-secondary)";
 }
 
 // ── Props ─────────────────────────────────────────────────────────
@@ -167,8 +167,8 @@ export function SignalDetailPanel({
   if (typeof document === "undefined") return null;
 
   const pnlColor =
-    signal.pnlPercent != null && signal.pnlPercent < 0 ? "#EF4444" : "#10B981";
-  const statusColor = signal.status === "Stopped" ? "#EF4444" : "#10B981";
+    signal.pnlPercent != null && signal.pnlPercent < 0 ? "var(--color-loss)" : "var(--color-profit)";
+  const statusColor = signal.status === "Stopped" ? "var(--color-loss)" : "var(--color-profit)";
 
   const panel = (
     <AnimatePresence>
@@ -186,7 +186,7 @@ export function SignalDetailPanel({
             style={{
               position: "fixed",
               inset: 0,
-              background: "rgba(0,0,0,0.4)",
+              background: "var(--color-scrim)",
               zIndex: 99,
             }}
           />
@@ -209,10 +209,10 @@ export function SignalDetailPanel({
               top: "7.5vh",
               width: "min(640px, 90vw)",
               height: "85vh",
-              background: "#0B1121",
-              border: "1px solid rgba(255,255,255,0.12)",
+              background: "var(--color-bg-page)",
+              border: "1px solid var(--color-border)",
               borderRadius: 4,
-              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
+              boxShadow: "0 25px 50px -12px var(--color-scrim)",
               zIndex: 100,
               overflowY: "auto",
               display: "flex",
@@ -227,9 +227,9 @@ export function SignalDetailPanel({
                 position: "sticky",
                 top: 0,
                 zIndex: 10,
-                background: "#0B1121",
+                background: "var(--color-bg-page)",
                 padding: "20px 24px 16px",
-                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                borderBottom: "1px solid var(--color-border-subtle)",
               }}
             >
               {/* Row 1: ticker + close button */}
@@ -246,7 +246,7 @@ export function SignalDetailPanel({
                   style={{
                     fontSize: 24,
                     fontWeight: 600,
-                    color: "#F8FAFC",
+                    color: "var(--color-text-primary)",
                     margin: 0,
                     letterSpacing: "0.01em",
                     lineHeight: 1,
@@ -255,6 +255,7 @@ export function SignalDetailPanel({
                   {safe(signal.ticker)}
                 </h1>
                 <button
+                  className="panel-close-button"
                   ref={closeButtonRef}
                   onClick={onClose}
                   aria-label="Close panel"
@@ -262,21 +263,12 @@ export function SignalDetailPanel({
                     background: "none",
                     border: "none",
                     cursor: "pointer",
-                    color: "#64748B",
+                    color: "var(--color-text-muted)",
                     fontSize: 13,
                     display: "flex",
                     alignItems: "center",
                     gap: 4,
                     padding: "4px 0",
-                    transition: "color 100ms ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.color =
-                      "#F8FAFC";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLButtonElement).style.color =
-                      "#64748B";
                   }}
                 >
                   <X size={16} strokeWidth={1.5} />
@@ -293,7 +285,7 @@ export function SignalDetailPanel({
                   marginBottom: 10,
                 }}
               >
-                <span style={{ fontSize: 12, color: "#64748B" }}>
+                <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                   {safe(signal.exchange)}&nbsp;·&nbsp;{safe(signal.sector)}
                 </span>
                 <span
@@ -323,35 +315,35 @@ export function SignalDetailPanel({
                       borderRadius: 3,
                       fontSize: 11,
                       fontWeight: 500,
-                      background: "#1E293B",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      color: "#CBD5E1",
+                      background: "var(--color-bg-row)",
+                      border: "1px solid var(--color-border-subtle)",
+                      color: "var(--color-text-secondary)",
                       letterSpacing: "0.04em",
                       whiteSpace: "nowrap",
                     }}
                   >
                     {safe(signal.action)}
                   </span>
-                  <span style={{ fontSize: 12, color: "#64748B" }}>
+                  <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                     {safe(signal.strategy)}
                     {signal.strategyDescription
                       ? ` · ${signal.strategyDescription}`
                       : ""}
                   </span>
-                  <span style={{ fontSize: 12, color: "#64748B" }}>
+                  <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                     Conviction&nbsp;
                     <span
                       style={{
                         fontFamily: "var(--font-mono)",
                         fontSize: 12,
                         fontWeight: 600,
-                        color: "#CBD5E1",
+                        color: "var(--color-text-secondary)",
                       }}
                     >
                       {safe(signal.convictionScore)}/{safe(signal.convictionMax)}
                     </span>
                     &nbsp;
-                    <span style={{ fontSize: 11, color: "#64748B" }}>
+                    <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
                       {safe(signal.convictionLabel)}
                     </span>
                   </span>
@@ -374,25 +366,25 @@ export function SignalDetailPanel({
                   {
                     label: "Entry",
                     value: formatPrice(signal.entryPrice),
-                    color: "#F8FAFC",
+                    color: "var(--color-text-primary)",
                   },
                   {
                     label: "Stop loss",
                     value: formatPrice(signal.stopLoss),
-                    color: "#F59E0B",
+                    color: "var(--color-warning)",
                   },
                   {
                     label: "Target",
                     value: formatPrice(signal.targetPrice),
-                    color: "#10B981",
+                    color: "var(--color-profit)",
                   },
                 ].map((p) => (
                   <div
                     key={p.label}
                     style={{
                       flex: 1,
-                      background: "#111827",
-                      border: "1px solid rgba(255,255,255,0.08)",
+                      background: "var(--color-bg-card)",
+                      border: "1px solid var(--color-border-subtle)",
                       borderRadius: 3,
                       padding: "10px 12px",
                     }}
@@ -401,7 +393,7 @@ export function SignalDetailPanel({
                       style={{
                         fontSize: 11,
                         fontWeight: 500,
-                        color: "#64748B",
+                        color: "var(--color-text-muted)",
                         marginBottom: 4,
                         letterSpacing: "0.02em",
                         margin: "0 0 4px",
@@ -433,39 +425,39 @@ export function SignalDetailPanel({
                   flexWrap: "wrap",
                 }}
               >
-                <span style={{ fontSize: 12, color: "#64748B" }}>
+                <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                   R:R&nbsp;
                   <span
                     style={{
                       fontFamily: "var(--font-mono)",
                       fontSize: 12,
-                      color: "#94A3B8",
+                      color: "var(--color-text-muted)",
                     }}
                   >
                     {safe(signal.riskReward)}
                   </span>
                 </span>
-                <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>
+                <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>
                   ·
                 </span>
-                <span style={{ fontSize: 12, color: "#64748B" }}>
+                <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                   Size&nbsp;
                   <span
                     style={{
                       fontFamily: "var(--font-mono)",
                       fontSize: 12,
-                      color: "#CBD5E1",
+                      color: "var(--color-text-secondary)",
                     }}
                   >
                     {safe(signal.positionSize)}
                   </span>
                 </span>
-                <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 12 }}>
+                <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>
                   ·
                 </span>
-                <span style={{ fontSize: 12, color: "#64748B" }}>
+                <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                   Horizon&nbsp;
-                  <span style={{ fontSize: 12, color: "#CBD5E1" }}>
+                  <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>
                     {safe(signal.timeHorizon)}
                   </span>
                 </span>
@@ -473,7 +465,7 @@ export function SignalDetailPanel({
                   style={{
                     marginLeft: "auto",
                     fontSize: 11,
-                    color: "#64748B",
+                    color: "var(--color-text-muted)",
                   }}
                 >
                   {safe(signal.age)}
@@ -492,7 +484,7 @@ export function SignalDetailPanel({
                     alignItems: "center",
                     gap: 8,
                     padding: "10px 0",
-                    borderBottom: "1px solid rgba(255,255,255,0.06)",
+                    borderBottom: "1px solid var(--color-border-subtle)",
                     marginBottom: -1,
                   }}
                 >
@@ -501,11 +493,11 @@ export function SignalDetailPanel({
                       width: 6,
                       height: 6,
                       borderRadius: "50%",
-                      background: "#D97706",
+                      background: "var(--color-link)",
                       flexShrink: 0,
                     }}
                   />
-                  <span style={{ fontSize: 12, color: "#64748B" }}>
+                  <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                     Fetching pipeline analysis…
                   </span>
                 </div>
@@ -517,7 +509,7 @@ export function SignalDetailPanel({
               <section
                 style={{
                   padding: "24px 0",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  borderBottom: "1px solid var(--color-border-subtle)",
                 }}
               >
                 <h2 style={SECTION_TITLE}>Price action</h2>
@@ -526,20 +518,20 @@ export function SignalDetailPanel({
                     <div
                       style={{
                         height: 280,
-                        background: "#0F172A",
-                        border: "1px solid rgba(255,255,255,0.06)",
+                        background: "var(--color-bg-page)",
+                        border: "1px solid var(--color-border-subtle)",
                         borderRadius: 3,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
                       }}
                     >
-                      <span style={{ fontSize: 13, color: "#64748B" }}>
+                      <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>
                         Loading price history…
                       </span>
                     </div>
                   ) : PUBLIC_DEMO && bars.length === 0 ? (
-                    <p style={{ color: "#94A3B8", fontSize: 13, padding: 24 }}>Price history was unavailable for this published run.</p>
+                    <p style={{ color: "var(--color-text-muted)", fontSize: 13, padding: 24 }}>Price history was unavailable for this published run.</p>
                   ) : (
                     <PriceChart
                       order={order}
@@ -552,15 +544,15 @@ export function SignalDetailPanel({
                   <div
                     style={{
                       height: 280,
-                      background: "#0F172A",
-                      border: "1px solid rgba(255,255,255,0.06)",
+                      background: "var(--color-bg-page)",
+                      border: "1px solid var(--color-border-subtle)",
                       borderRadius: 3,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
-                    <span style={{ fontSize: 13, color: "#64748B" }}>
+                    <span style={{ fontSize: 13, color: "var(--color-text-muted)" }}>
                       Price chart unavailable
                     </span>
                   </div>
@@ -578,7 +570,7 @@ export function SignalDetailPanel({
                       fontFamily: "var(--font-mono)",
                       fontSize: 15,
                       fontWeight: 600,
-                      color: "#F8FAFC",
+                      color: "var(--color-text-primary)",
                     }}
                   >
                     {signal.currentPrice != null
@@ -599,7 +591,7 @@ export function SignalDetailPanel({
                     style={{
                       marginLeft: "auto",
                       fontSize: 12,
-                      color: "#64748B",
+                      color: "var(--color-text-muted)",
                     }}
                   >
                     {safe(signal.age)}
@@ -613,7 +605,7 @@ export function SignalDetailPanel({
               <section
                 style={{
                   padding: "24px 0",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  borderBottom: "1px solid var(--color-border-subtle)",
                 }}
               >
                 <h2 style={SECTION_TITLE}>Signal confluence</h2>
@@ -628,7 +620,7 @@ export function SignalDetailPanel({
                     <thead>
                       <tr
                         style={{
-                          borderBottom: "1px solid rgba(255,255,255,0.12)",
+                          borderBottom: "1px solid var(--color-border)",
                         }}
                       >
                         {["Source", "Strength", "Data"].map((h) => (
@@ -637,7 +629,7 @@ export function SignalDetailPanel({
                             style={{
                               fontSize: 11,
                               fontWeight: 500,
-                              color: "#64748B",
+                              color: "var(--color-text-muted)",
                               textTransform: "uppercase",
                               letterSpacing: "0.05em",
                               textAlign: "left",
@@ -653,29 +645,19 @@ export function SignalDetailPanel({
                       {(signal.confluence?.factors ?? []).map((f, i) => (
                         <tr
                           key={i}
+                          className="factor-row"
                           style={{
                             borderBottom:
                               i < (signal.confluence.factors.length - 1)
-                                ? "1px solid rgba(255,255,255,0.06)"
+                                ? "1px solid var(--color-border)"
                                 : "none",
-                            transition: "background 80ms ease",
-                          }}
-                          onMouseEnter={(e) => {
-                            (
-                              e.currentTarget as HTMLTableRowElement
-                            ).style.background = "#1E293B";
-                          }}
-                          onMouseLeave={(e) => {
-                            (
-                              e.currentTarget as HTMLTableRowElement
-                            ).style.background = "transparent";
                           }}
                         >
                           <td
                             style={{
                               padding: "10px 20px 10px 0",
                               fontSize: 13,
-                              color: "#CBD5E1",
+                              color: "var(--color-text-secondary)",
                             }}
                           >
                             {safe(f.source)}
@@ -695,7 +677,7 @@ export function SignalDetailPanel({
                               padding: "10px 0",
                               fontFamily: "var(--font-mono)",
                               fontSize: 13,
-                              color: "#E2E8F0",
+                              color: "var(--color-text-secondary)",
                             }}
                           >
                             {safe(f.data)}
@@ -709,7 +691,7 @@ export function SignalDetailPanel({
                   <p
                     style={{
                       fontSize: 13,
-                      color: "#94A3B8",
+                      color: "var(--color-text-muted)",
                       margin: "16px 0 0",
                     }}
                   >
@@ -724,7 +706,7 @@ export function SignalDetailPanel({
               <section
                 style={{
                   padding: "24px 0",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  borderBottom: "1px solid var(--color-border-subtle)",
                 }}
               >
                 <h2 style={SECTION_TITLE}>Catalyst thesis</h2>
@@ -745,7 +727,7 @@ export function SignalDetailPanel({
                           height: 13,
                           width: `${w}%`,
                           borderRadius: 3,
-                          background: "#1E293B",
+                          background: "var(--color-bg-row)",
                         }}
                       />
                     ))}
@@ -756,7 +738,7 @@ export function SignalDetailPanel({
                       style={{
                         fontSize: 13,
                         fontWeight: 600,
-                        color: "#E2E8F0",
+                        color: "var(--color-text-secondary)",
                         margin: "0 0 16px",
                       }}
                     >
@@ -767,7 +749,7 @@ export function SignalDetailPanel({
                         key={i}
                         style={{
                           fontSize: 14,
-                          color: "#CBD5E1",
+                          color: "var(--color-text-secondary)",
                           lineHeight: 1.7,
                           margin:
                             i < (signal.thesis.bodyParagraphs.length - 1)
@@ -784,7 +766,7 @@ export function SignalDetailPanel({
                           style={{
                             fontSize: 13,
                             fontWeight: 600,
-                            color: "#E2E8F0",
+                            color: "var(--color-text-secondary)",
                             margin: "0 0 10px",
                           }}
                         >
@@ -798,7 +780,7 @@ export function SignalDetailPanel({
                                 position: "relative",
                                 paddingLeft: 16,
                                 fontSize: 14,
-                                color: "#94A3B8",
+                                color: "var(--color-text-muted)",
                                 lineHeight: 1.6,
                                 marginBottom:
                                   i < signal.thesis.counterArguments.length - 1
@@ -827,7 +809,7 @@ export function SignalDetailPanel({
               <section
                 style={{
                   padding: "24px 0",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  borderBottom: "1px solid var(--color-border-subtle)",
                 }}
               >
                 <h2 style={SECTION_TITLE}>Risk management</h2>
@@ -850,7 +832,7 @@ export function SignalDetailPanel({
                           style={{
                             fontSize: 13,
                             fontWeight: 500,
-                            color: "#CBD5E1",
+                            color: "var(--color-text-secondary)",
                             margin: "0 0 3px",
                           }}
                         >
@@ -861,7 +843,7 @@ export function SignalDetailPanel({
                             fontFamily: "var(--font-mono)",
                             fontSize: 14,
                             fontWeight: 600,
-                            color: "#F8FAFC",
+                            color: "var(--color-text-primary)",
                             margin: p.description ? "0 0 3px" : "0",
                           }}
                         >
@@ -871,7 +853,7 @@ export function SignalDetailPanel({
                           <p
                             style={{
                               fontSize: 13,
-                              color: "#94A3B8",
+                              color: "var(--color-text-muted)",
                               margin: 0,
                               lineHeight: 1.5,
                             }}
@@ -910,7 +892,7 @@ export function SignalDetailPanel({
                           style={{
                             fontSize: 13,
                             fontWeight: 700,
-                            color: "#F8FAFC",
+                            color: "var(--color-text-primary)",
                             minWidth: 18,
                             flexShrink: 0,
                           }}
@@ -922,13 +904,13 @@ export function SignalDetailPanel({
                             style={{
                               fontSize: 13,
                               fontWeight: 600,
-                              color: "#CBD5E1",
+                              color: "var(--color-text-secondary)",
                             }}
                           >
                             {safe(t.condition)}
                           </span>
                           <span
-                            style={{ fontSize: 13, color: "#94A3B8" }}
+                            style={{ fontSize: 13, color: "var(--color-text-muted)" }}
                           >
                             &nbsp;—&nbsp;{safe(t.action)}
                           </span>
@@ -982,7 +964,7 @@ export function SignalDetailPanel({
                           style={{
                             marginLeft: "auto",
                             fontSize: 12,
-                            color: "#94A3B8",
+                            color: "var(--color-text-muted)",
                           }}
                         >
                           {safe(s.probability)}
@@ -994,7 +976,7 @@ export function SignalDetailPanel({
                     style={{
                       fontSize: 13,
                       fontWeight: 700,
-                      color: "#F8FAFC",
+                      color: "var(--color-text-primary)",
                       margin: "16px 0 0",
                     }}
                   >
@@ -1009,7 +991,7 @@ export function SignalDetailPanel({
               <section
                 style={{
                   padding: "24px 0",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+                  borderBottom: "1px solid var(--color-border-subtle)",
                 }}
               >
                 <h2 style={SECTION_TITLE}>Pipeline data</h2>
@@ -1036,7 +1018,7 @@ export function SignalDetailPanel({
                         style={{
                           fontSize: 11,
                           fontWeight: 500,
-                          color: "#64748B",
+                          color: "var(--color-text-muted)",
                           textTransform: "uppercase",
                           letterSpacing: "0.05em",
                           margin: "0 0 3px",
@@ -1048,7 +1030,7 @@ export function SignalDetailPanel({
                         style={{
                           fontFamily: "var(--font-mono)",
                           fontSize: 12,
-                          color: "#E2E8F0",
+                          color: "var(--color-text-secondary)",
                           margin: 0,
                         }}
                       >
@@ -1071,7 +1053,7 @@ export function SignalDetailPanel({
                       <thead>
                         <tr
                           style={{
-                            borderBottom: "1px solid rgba(255,255,255,0.12)",
+                            borderBottom: "1px solid var(--color-border)",
                           }}
                         >
                           {["Stage", "Time", "Detail"].map((h) => (
@@ -1080,7 +1062,7 @@ export function SignalDetailPanel({
                               style={{
                                 fontSize: 11,
                                 fontWeight: 500,
-                                color: "#64748B",
+                                color: "var(--color-text-muted)",
                                 textTransform: "uppercase",
                                 letterSpacing: "0.05em",
                                 textAlign: "left",
@@ -1099,7 +1081,7 @@ export function SignalDetailPanel({
                             style={{
                               borderBottom:
                                 i < signal.pipeline.timeline.length - 1
-                                  ? "1px solid rgba(255,255,255,0.06)"
+                                  ? "1px solid var(--color-border)"
                                   : "none",
                             }}
                           >
@@ -1107,7 +1089,7 @@ export function SignalDetailPanel({
                               style={{
                                 padding: "8px 16px 8px 0",
                                 fontSize: 13,
-                                color: "#CBD5E1",
+                                color: "var(--color-text-secondary)",
                               }}
                             >
                               {safe(t.stage)}
@@ -1117,7 +1099,7 @@ export function SignalDetailPanel({
                                 padding: "8px 16px 8px 0",
                                 fontFamily: "var(--font-mono)",
                                 fontSize: 12,
-                                color: "#94A3B8",
+                                color: "var(--color-text-muted)",
                                 whiteSpace: "nowrap",
                               }}
                             >
@@ -1128,7 +1110,7 @@ export function SignalDetailPanel({
                                 padding: "8px 0",
                                 fontFamily: "var(--font-mono)",
                                 fontSize: 12,
-                                color: "#E2E8F0",
+                                color: "var(--color-text-secondary)",
                               }}
                             >
                               {safe(t.detail)}
@@ -1143,24 +1125,17 @@ export function SignalDetailPanel({
                 {/* Collapsible raw factors */}
                 <div>
                   <button
+                    className="text-action-link"
                     onClick={() => setRawFactorsOpen((v) => !v)}
                     style={{
                       background: "none",
                       border: "none",
                       cursor: "pointer",
                       fontSize: 13,
-                      color: "#0EA5E9",
+                      color: "var(--color-link)",
                       padding: 0,
                       marginBottom: rawFactorsOpen ? 8 : 0,
                       display: "block",
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.opacity =
-                        "0.72";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.opacity =
-                        "1";
                     }}
                   >
                     {rawFactorsOpen ? "Hide raw factors" : "Show raw factors"}
@@ -1168,13 +1143,13 @@ export function SignalDetailPanel({
                   {rawFactorsOpen && (
                     <pre
                       style={{
-                        background: "#111827",
-                        border: "1px solid rgba(255,255,255,0.06)",
+                        background: "var(--color-bg-card)",
+                        border: "1px solid var(--color-border-subtle)",
                         borderRadius: 3,
                         padding: "12px 16px",
                         fontFamily: "var(--font-mono)",
                         fontSize: 12,
-                        color: "#94A3B8",
+                        color: "var(--color-text-muted)",
                         overflowX: "auto",
                         margin: 0,
                         lineHeight: 1.6,

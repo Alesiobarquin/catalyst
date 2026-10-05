@@ -15,9 +15,9 @@ export function ExpandableCard({ title, children }: ExpandableCardProps) {
     <div
       className="glass-card"
       style={{
-        border: "1px solid rgba(255, 255, 255, 0.08)",
+        border: "1px solid var(--color-border-subtle)",
         borderRadius: 4,
-        background: "#111827",
+        background: "var(--color-bg-card)",
         overflow: "hidden",
         marginBottom: 12,
       }}
@@ -33,7 +33,7 @@ export function ExpandableCard({ title, children }: ExpandableCardProps) {
           background: "transparent",
           border: "none",
           cursor: "pointer",
-          color: "#F8FAFC",
+          color: "var(--color-text-primary)",
           fontSize: 14,
           fontWeight: 600,
           textAlign: "left",
@@ -41,9 +41,9 @@ export function ExpandableCard({ title, children }: ExpandableCardProps) {
       >
         {title}
         {isOpen ? (
-          <ChevronUp size={16} color="#94A3B8" />
+          <ChevronUp size={16} color="var(--color-text-muted)" />
         ) : (
-          <ChevronDown size={16} color="#94A3B8" />
+          <ChevronDown size={16} color="var(--color-text-muted)" />
         )}
       </button>
 
@@ -52,9 +52,9 @@ export function ExpandableCard({ title, children }: ExpandableCardProps) {
           style={{
             padding: "0 20px 20px",
             fontSize: 13,
-            color: "#CBD5E1",
+            color: "var(--color-text-secondary)",
             lineHeight: 1.6,
-            borderTop: "1px solid rgba(255, 255, 255, 0.04)",
+            borderTop: "1px solid var(--color-border-subtle)",
             paddingTop: 16,
           }}
         >

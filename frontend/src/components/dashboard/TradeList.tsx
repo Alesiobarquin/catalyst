@@ -82,9 +82,9 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
         style={{
           textAlign: "center",
           padding: "48px 24px",
-          border: "1px solid rgba(255,255,255,0.12)",
+          border: "1px solid var(--color-border)",
           borderRadius: 4,
-          background: "#111827",
+          background: "var(--color-bg-card)",
         }}
       >
         <p style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-secondary)", marginBottom: 8 }}>
@@ -108,7 +108,7 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
               marginBottom: 14,
               padding: "10px 16px",
               borderRadius: 4,
-              border: "1px solid rgba(255,255,255,0.12)",
+              border: "1px solid var(--color-border)",
               color: "var(--color-text-secondary)",
               fontSize: 12,
             }}

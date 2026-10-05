@@ -8,7 +8,7 @@ import type { Strategy } from "@/types";
 const SECTION_TITLE: React.CSSProperties = {
   fontSize: 13,
   fontWeight: 600,
-  color: "#F8FAFC",
+  color: "var(--color-text-primary)",
   letterSpacing: 0,
   marginBottom: 18,
 };
@@ -29,7 +29,7 @@ export function StrategyBreakdown({ stats }: StrategyBreakdownProps) {
       <h3 style={SECTION_TITLE}>Strategy breakdown</h3>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {entries.length === 0 && (
-          <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>
+          <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: 0 }}>
             No strategy data yet.
           </p>
         )}
@@ -58,7 +58,7 @@ export function StrategyBreakdown({ stats }: StrategyBreakdownProps) {
                   style={{
                     fontSize: 12,
                     fontFamily: "var(--font-mono)",
-                    color: "#64748B",
+                    color: "var(--color-text-muted)",
                   }}
                 >
                   {count}&nbsp;({pct.toFixed(0)}%)
@@ -68,7 +68,7 @@ export function StrategyBreakdown({ stats }: StrategyBreakdownProps) {
                 style={{
                   height: 4,
                   borderRadius: 2,
-                  background: "#1E293B",
+                  background: "var(--color-bg-row)",
                   overflow: "hidden",
                 }}
               >
@@ -111,12 +111,12 @@ export function ConvictionHistogram({ stats }: { stats: OrderStats }) {
           // Use the same color scale as getConvictionColor() in utils
           const barColor =
             bucket >= 80
-              ? "#10B981"
+              ? "var(--color-profit)"
               : bucket >= 60
-                ? "#F59E0B"
+                ? "var(--color-warning)"
                 : bucket >= 40
-                  ? "#CBD5E1"
-                  : "#EF4444";
+                  ? "var(--color-text-secondary)"
+                  : "var(--color-loss)";
           return (
             <div
               key={d.bucket}
@@ -131,7 +131,7 @@ export function ConvictionHistogram({ stats }: { stats: OrderStats }) {
               <span
                 style={{
                   fontSize: 10,
-                  color: "#64748B",
+                  color: "var(--color-text-muted)",
                   fontFamily: "var(--font-mono)",
                 }}
               >
@@ -151,7 +151,7 @@ export function ConvictionHistogram({ stats }: { stats: OrderStats }) {
               <span
                 style={{
                   fontSize: 9,
-                  color: "#64748B",
+                  color: "var(--color-text-muted)",
                   textAlign: "center",
                   letterSpacing: "-0.01em",
                 }}
@@ -201,14 +201,14 @@ export function SignalTimeline({ stats }: { stats: OrderStats }) {
                   width: "100%",
                   height: `${heightPct}%`,
                   minHeight: 4,
-                  background: "#64748B",
+                  background: "var(--color-text-muted)",
                   borderRadius: "2px 2px 0 0",
                 }}
               />
               <span
                 style={{
                   fontSize: 9,
-                  color: "#64748B",
+                  color: "var(--color-text-muted)",
                   whiteSpace: "nowrap",
                 }}
               >
@@ -234,7 +234,7 @@ export function PerformanceSummary({ stats }: { stats: OrderStats }) {
     {
       label: "Win rate",
       value: winRate,
-      color: "#10B981",
+      color: "var(--color-profit)",
     },
     {
       label: "Avg conviction",
@@ -244,22 +244,22 @@ export function PerformanceSummary({ stats }: { stats: OrderStats }) {
     {
       label: "Hit target",
       value: String(stats.hit_target_count),
-      color: "#10B981",
+      color: "var(--color-profit)",
     },
     {
       label: "Hit stop",
       value: String(stats.hit_stop_count),
-      color: "#EF4444",
+      color: "var(--color-loss)",
     },
     {
       label: "Active",
       value: String(stats.active_count),
-      color: "#F8FAFC",
+      color: "var(--color-text-primary)",
     },
     {
       label: "Total signals",
       value: String(stats.total_orders),
-      color: "#F8FAFC",
+      color: "var(--color-text-primary)",
     },
   ];
 
@@ -275,7 +275,7 @@ export function PerformanceSummary({ stats }: { stats: OrderStats }) {
               style={{
                 fontSize: 11,
                 fontWeight: 500,
-                color: "#64748B",
+                color: "var(--color-text-muted)",
                 margin: "0 0 3px",
                 letterSpacing: "0.02em",
               }}

@@ -19,11 +19,13 @@ describe("Navbar", () => {
     );
   });
 
-  it("renders brand logo, platform title, and subtitle", () => {
+  it("renders the typographic Catalyst brand, theme switch, and subtitle", () => {
     render(<Navbar />);
 
-    expect(screen.getByText("CATALYST")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Catalyst home" })).toBeInTheDocument();
+    expect(screen.getByText("Catalyst")).toBeInTheDocument();
     expect(screen.getByText("Signal intelligence platform")).toBeInTheDocument();
+    expect(screen.getByRole("switch", { name: "Dark mode" })).toBeInTheDocument();
   });
 
   it("renders all core navigation links including How It Works", () => {
@@ -42,27 +44,25 @@ describe("Navbar", () => {
     expect(settingsLink).toHaveAttribute("href", "/settings");
   });
 
-  it("highlights Dashboard when on root route", () => {
+  it("marks Dashboard as the current page on the root route", () => {
     mockPathname = "/";
     render(<Navbar />);
 
-    const dashboardLink = screen.getByText("Dashboard").closest("a");
-    expect(dashboardLink).toHaveStyle({ borderBottom: "2px solid #0EA5E9" });
+    expect(screen.getByText("Dashboard").closest("a")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByText("Signals").closest("a")).not.toHaveAttribute("aria-current");
   });
 
-  it("highlights How It Works when on /architecture route", () => {
+  it("marks How It Works as the current page on /architecture", () => {
     mockPathname = "/architecture";
     render(<Navbar />);
 
-    const howItWorksLink = screen.getByText("How It Works").closest("a");
-    expect(howItWorksLink).toHaveStyle({ borderBottom: "2px solid #0EA5E9" });
+    expect(screen.getByText("How It Works").closest("a")).toHaveAttribute("aria-current", "page");
   });
 
-  it("highlights Signals when on /signals route", () => {
+  it("marks Signals as the current page on /signals", () => {
     mockPathname = "/signals";
     render(<Navbar />);
 
-    const signalsLink = screen.getByText("Signals").closest("a");
-    expect(signalsLink).toHaveStyle({ borderBottom: "2px solid #0EA5E9" });
+    expect(screen.getByText("Signals").closest("a")).toHaveAttribute("aria-current", "page");
   });
 });

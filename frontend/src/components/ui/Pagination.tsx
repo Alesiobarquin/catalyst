@@ -46,7 +46,7 @@ export function Pagination({ page, total, perPage, basePath, query }: Pagination
         href={href(prev)}
         style={{
           fontSize: 13,
-          color: page <= 1 ? "var(--color-text-muted)" : "#0EA5E9",
+          color: page <= 1 ? "var(--color-text-muted)" : "var(--color-link)",
           pointerEvents: page <= 1 ? "none" : "auto",
           textDecoration: "none",
           fontWeight: 600,
@@ -62,7 +62,7 @@ export function Pagination({ page, total, perPage, basePath, query }: Pagination
         href={href(next)}
         style={{
           fontSize: 13,
-          color: page >= totalPages ? "var(--color-text-muted)" : "#0EA5E9",
+          color: page >= totalPages ? "var(--color-text-muted)" : "var(--color-link)",
           pointerEvents: page >= totalPages ? "none" : "auto",
           textDecoration: "none",
           fontWeight: 600,

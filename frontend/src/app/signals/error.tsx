@@ -31,8 +31,8 @@ export default function SignalsError({ error, reset }: ErrorProps) {
           width: 48,
           height: 48,
           borderRadius: 12,
-          background: "rgba(239,68,68,0.12)",
-          border: "1px solid rgba(239,68,68,0.3)",
+          background: "var(--color-loss-bg)",
+          border: "1px solid var(--color-loss-border)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -58,27 +58,8 @@ export default function SignalsError({ error, reset }: ErrorProps) {
       </div>
 
       <button
+        className="button-secondary"
         onClick={reset}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 7,
-          padding: "8px 18px",
-          borderRadius: 8,
-          fontSize: 13,
-          fontWeight: 500,
-          cursor: "pointer",
-          background: "rgba(245,158,11,0.1)",
-          border: "1px solid rgba(245,158,11,0.3)",
-          color: "var(--color-teal)",
-          transition: "background 150ms",
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.background = "rgba(245,158,11,0.18)";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.background = "rgba(245,158,11,0.1)";
-        }}
       >
         <RefreshCw size={13} />
         Try again

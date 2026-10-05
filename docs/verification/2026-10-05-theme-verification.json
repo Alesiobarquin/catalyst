@@ -1,0 +1,55 @@
+{
+  "kind": "frontend theme and visual refresh verification",
+  "verification_date": "2026-10-05",
+  "theme_storage_key": "catalyst-theme",
+  "default_theme": "light",
+  "tests": {
+    "vitest_frontend_tests": 174,
+    "vitest_frontend_test_files": 31,
+    "pytest_python_tests": 301,
+    "junit_java_tests": 36,
+    "total_automated_tests": 511
+  },
+  "playwright_browser_matrix": {
+    "test_1_first_visit_os_dark": "PASS",
+    "test_2_saved_dark_reload": "PASS",
+    "test_3_public_routes": "PASS",
+    "test_4_mobile_viewports": "PASS",
+    "test_5_populated_and_chart": "PASS",
+    "test_6_blocked_storage": "PASS",
+    "test_7_reduced_motion": "PASS"
+  },
+  "screenshots": [
+    "docs/verification/screenshots/01_first_visit_os_dark_defaults_to_light.png",
+    "docs/verification/screenshots/02_saved_dark_mode_reloaded.png",
+    "docs/verification/screenshots/route_dashboard_light.png",
+    "docs/verification/screenshots/route_dashboard_dark.png",
+    "docs/verification/screenshots/route_signals_light.png",
+    "docs/verification/screenshots/route_signals_dark.png",
+    "docs/verification/screenshots/route_analytics_light.png",
+    "docs/verification/screenshots/route_analytics_dark.png",
+    "docs/verification/screenshots/route_architecture_light.png",
+    "docs/verification/screenshots/route_architecture_dark.png",
+    "docs/verification/screenshots/mobile_390_light.png",
+    "docs/verification/screenshots/mobile_390_dark.png",
+    "docs/verification/screenshots/mobile_320_light.png",
+    "docs/verification/screenshots/populated_dashboard_light.png",
+    "docs/verification/screenshots/populated_dashboard_dark.png",
+    "docs/verification/screenshots/populated_chart_light.png",
+    "docs/verification/screenshots/populated_chart_dark.png",
+    "docs/verification/screenshots/populated_signals_light.png",
+    "docs/verification/screenshots/populated_signals_dark.png",
+    "docs/verification/screenshots/populated_analytics_light.png",
+    "docs/verification/screenshots/populated_analytics_dark.png",
+    "docs/verification/screenshots/mobile_320_dark.png"
+  ],
+  "additional_browser_checks": {
+    "200_percent_zoom_equivalent_720_css_px": "PASS",
+    "mobile_320_dark_screenshot": "PASS",
+    "keyboard_space_activation": "PASS",
+    "client_navigation_preference": "PASS",
+    "cross_tab_storage_sync": "PASS",
+    "blocked_local_storage_toggle": "PASS",
+    "reduced_motion_thumb_transition": "PASS"
+  }
+}

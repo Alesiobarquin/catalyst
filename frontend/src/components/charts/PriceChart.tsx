@@ -4,9 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   createChart,
   type IChartApi,
+  type IPriceLine,
+  type ISeriesApi,
   LineSeries,
 } from "lightweight-charts";
 import type { TradeOrder, PriceBar } from "@/types";
+import { getChartTheme, type ChartTheme } from "@/lib/chartTheme";
+import { useTheme } from "@/lib/theme-store";
 import { generateMockPriceBars } from "@/lib/mock-data";
 
 interface PriceChartProps {
@@ -17,36 +21,42 @@ interface PriceChartProps {
   dataSource?: "live" | "synthetic";
 }
 
+type SeriesColor = "price" | "entrySoft" | "stopSoft" | "targetSoft";
+type PriceLineColor = "entry" | "stop" | "target";
+
 export function PriceChart({ order, bars, height = 220, dataSource = "synthetic" }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef     = useRef<IChartApi | null>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const seriesRefs = useRef<Array<{ series: ISeriesApi<"Line">; color: SeriesColor }>>([]);
+  const priceLineRefs = useRef<Array<{ line: IPriceLine; color: PriceLineColor }>>([]);
   const [ready, setReady] = useState(false);
+  const theme = useTheme();
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     const el = containerRef.current;
-
+    const palette = getChartTheme();
     const chart = createChart(el, {
-      width:  el.clientWidth,
+      width: el.clientWidth,
       height,
       layout: {
-        background:  { color: "transparent" },
-        textColor:   "#64748B",
-        fontFamily:  "JetBrains Mono, monospace",
-        fontSize:    10,
+        background: { color: palette.background },
+        textColor: palette.axis,
+        fontFamily: "JetBrains Mono, monospace",
+        fontSize: 10,
       },
       grid: {
-        vertLines: { color: "rgba(255,255,255,0.04)" },
-        horzLines: { color: "rgba(255,255,255,0.04)" },
+        vertLines: { color: palette.grid },
+        horzLines: { color: palette.grid },
       },
       rightPriceScale: {
-        borderColor:  "rgba(255,255,255,0.08)",
+        borderColor: palette.border,
         scaleMargins: { top: 0.10, bottom: 0.14 },
       },
       timeScale: {
-        borderColor:    "rgba(255,255,255,0.08)",
-        timeVisible:    true,
+        borderColor: palette.border,
+        timeVisible: true,
         secondsVisible: false,
         tickMarkFormatter: (time: number) => {
           const d = new Date(time * 1000);
@@ -54,146 +64,133 @@ export function PriceChart({ order, bars, height = 220, dataSource = "synthetic"
         },
       },
       crosshair: {
-        vertLine: { color: "rgba(255,255,255,0.2)", labelBackgroundColor: "#1E293B" },
-        horzLine: { color: "rgba(255,255,255,0.2)", labelBackgroundColor: "#1E293B" },
+        vertLine: { color: palette.crosshair, labelBackgroundColor: palette.background },
+        horzLine: { color: palette.crosshair, labelBackgroundColor: palette.background },
       },
       handleScroll: true,
-      handleScale:  true,
+      handleScale: true,
     });
 
     chartRef.current = chart;
-
     const priceBars: PriceBar[] = bars?.length ? bars : generateMockPriceBars(order);
+    const seriesRefsForChart: Array<{ series: ISeriesApi<"Line">; color: SeriesColor }> = [];
+    const priceLineRefsForChart: Array<{ line: IPriceLine; color: PriceLineColor }> = [];
 
-    // ── Main price line (close values) ──────────────────────────
-    const priceLine = chart.addSeries(LineSeries, {
-      color:            "#CBD5E1",
-      lineWidth:        2,
+    const priceSeries = chart.addSeries(LineSeries, {
+      color: palette.price,
+      lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: true,
       crosshairMarkerVisible: true,
-      crosshairMarkerRadius:  3,
+      crosshairMarkerRadius: 3,
     });
-    priceLine.setData(
-      priceBars.map((b) => ({ time: b.time, value: b.close })) as Parameters<typeof priceLine.setData>[0]
+    seriesRefsForChart.push({ series: priceSeries, color: "price" });
+    priceSeries.setData(
+      priceBars.map((bar) => ({ time: bar.time, value: bar.close })) as Parameters<typeof priceSeries.setData>[0]
     );
 
     const signalTime = Math.floor(new Date(order.timestamp_utc).getTime() / 1000);
-    const lineBars   = priceBars.filter((b) => b.time >= signalTime);
+    const lineBars = priceBars.filter((bar) => bar.time >= signalTime);
 
-    // ── Horizontal price lines across full price scale ────────
-    if (order.limit_price > 0) {
-      priceLine.createPriceLine({
-        price: order.limit_price,
-        color: "rgba(56, 189, 248, 0.8)",
+    const addPriceLevel = (price: number, title: string, color: PriceLineColor, lineStyle: 1 | 2) => {
+      if (price <= 0) return;
+      const line = priceSeries.createPriceLine({
+        price,
+        color: palette[color],
         lineWidth: 1,
-        lineStyle: 1,
+        lineStyle,
         axisLabelVisible: true,
-        title: `Entry $${order.limit_price.toFixed(2)}`,
+        axisLabelColor: palette.background,
+        axisLabelTextColor: palette.primary,
+        title,
       });
-    }
+      priceLineRefsForChart.push({ line, color });
+    };
 
-    if (order.stop_loss > 0) {
-      priceLine.createPriceLine({
-        price: order.stop_loss,
-        color: "#F59E0B",
+    addPriceLevel(order.limit_price, `Entry $${order.limit_price.toFixed(2)}`, "entry", 1);
+    addPriceLevel(order.stop_loss, `Stop $${order.stop_loss.toFixed(2)}`, "stop", 2);
+    addPriceLevel(order.target_price, `Target $${order.target_price.toFixed(2)}`, "target", 2);
+
+    const addLevelSeries = (
+      value: number,
+      title: string,
+      color: SeriesColor,
+      lineStyle: 1 | 2,
+    ) => {
+      const series = chart.addSeries(LineSeries, {
+        color: palette[color],
         lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: true,
-        title: `Stop $${order.stop_loss.toFixed(2)}`,
+        lineStyle,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title,
       });
-    }
+      seriesRefsForChart.push({ series, color });
+      if (lineBars.length > 0) {
+        series.setData(
+          lineBars.map((bar) => ({ time: bar.time, value })) as Parameters<typeof series.setData>[0]
+        );
+      }
+    };
 
-    if (order.target_price > 0) {
-      priceLine.createPriceLine({
-        price: order.target_price,
-        color: "#10B981",
-        lineWidth: 1,
-        lineStyle: 2,
-        axisLabelVisible: true,
-        title: `Target $${order.target_price.toFixed(2)}`,
-      });
-    }
+    addLevelSeries(order.limit_price, `Entry ${order.limit_price.toFixed(2)}`, "entrySoft", 1);
+    addLevelSeries(order.stop_loss, `Stop ${order.stop_loss.toFixed(2)}`, "stopSoft", 2);
+    addLevelSeries(order.target_price, `Target ${order.target_price.toFixed(2)}`, "targetSoft", 2);
 
-    // ── Segmented line series for post-signal trajectory ──────
-    const entryLine = chart.addSeries(LineSeries, {
-      color:            "rgba(56, 189, 248, 0.45)",
-      lineWidth:        1,
-      lineStyle:        1,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      title:            `Entry ${order.limit_price.toFixed(2)}`,
-    });
-    if (lineBars.length > 0) {
-      entryLine.setData(
-        lineBars.map((b) => ({ time: b.time, value: order.limit_price })) as Parameters<typeof entryLine.setData>[0]
-      );
-    }
-
-    const stopLine = chart.addSeries(LineSeries, {
-      color:            "rgba(245, 158, 11, 0.45)",
-      lineWidth:        1,
-      lineStyle:        2,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      title:            `Stop ${order.stop_loss.toFixed(2)}`,
-    });
-    if (lineBars.length > 0) {
-      stopLine.setData(
-        lineBars.map((b) => ({ time: b.time, value: order.stop_loss })) as Parameters<typeof stopLine.setData>[0]
-      );
-    }
-
-    const targetLine = chart.addSeries(LineSeries, {
-      color:            "rgba(16, 185, 129, 0.45)",
-      lineWidth:        1,
-      lineStyle:        2,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      title:            `Target ${order.target_price.toFixed(2)}`,
-    });
-    if (lineBars.length > 0) {
-      targetLine.setData(
-        lineBars.map((b) => ({ time: b.time, value: order.target_price })) as Parameters<typeof targetLine.setData>[0]
-      );
-    }
+    seriesRefs.current = seriesRefsForChart;
+    priceLineRefs.current = priceLineRefsForChart;
 
     chart.timeScale().fitContent();
-
-    const ro = new ResizeObserver(() => {
+    const resizeObserver = new ResizeObserver(() => {
       if (el.clientWidth > 0) chart.resize(el.clientWidth, height);
     });
-    ro.observe(el);
-
+    resizeObserver.observe(el);
     setReady(true);
 
     return () => {
-      ro.disconnect();
+      resizeObserver.disconnect();
+      seriesRefs.current = [];
+      priceLineRefs.current = [];
+      chartRef.current = null;
       chart.remove();
     };
+    // Theme changes update the existing canvas objects in the effect below.
   }, [order, bars, dataSource, height]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const palette: ChartTheme = getChartTheme();
+
+    chart.applyOptions({
+      layout: { background: { color: palette.background }, textColor: palette.axis },
+      grid: { vertLines: { color: palette.grid }, horzLines: { color: palette.grid } },
+      rightPriceScale: { borderColor: palette.border },
+      timeScale: { borderColor: palette.border },
+      crosshair: {
+        vertLine: { color: palette.crosshair, labelBackgroundColor: palette.background },
+        horzLine: { color: palette.crosshair, labelBackgroundColor: palette.background },
+      },
+    });
+
+    seriesRefs.current.forEach(({ series, color }) => series.applyOptions({ color: palette[color] }));
+    priceLineRefs.current.forEach(({ line, color }) =>
+      line.applyOptions({
+        color: palette[color],
+        axisLabelColor: palette.background,
+        axisLabelTextColor: palette.primary,
+      })
+    );
+  }, [theme]);
 
   return (
     <div>
       {dataSource === "synthetic" && (
-        <p
-          style={{
-            fontSize: 11,
-            color: "var(--color-text-muted)",
-            marginBottom: 8,
-            padding: "5px 10px",
-            borderRadius: 4,
-            background: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.08)",
-          }}
-        >
+        <p className="chart-data-note">
           Illustrative price data — no historical OHLC available for this window.
         </p>
       )}
-      <div
-        className="chart-wrapper"
-        style={{ height, opacity: ready ? 1 : 0 }}
-      >
+      <div className="chart-wrapper" style={{ height, opacity: ready ? 1 : 0 }}>
         <div ref={containerRef} style={{ width: "100%", height }} />
       </div>
     </div>

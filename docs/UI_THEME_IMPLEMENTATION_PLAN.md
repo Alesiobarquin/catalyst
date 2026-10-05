@@ -1,6 +1,6 @@
-# Catalyst light/dark theme and visual refresh
+# Catalyst light/dark theme and visual refresh — implementation record
 
-Prepared October 5, 2026. This is an execution plan, not an implemented feature. Read the root AGENTS.md and frontend/AGENTS.md before starting.
+Prepared October 5, 2026; implementation completed October 5, 2026. This document records the design requirements and verification gates used for the implementation. Read the root AGENTS.md and frontend/AGENTS.md before making future theme changes.
 
 ## 1. Outcome and scope
 
@@ -340,20 +340,20 @@ Browser automation may need a locally populated preview because the real public 
 
 All of the following must be true:
 
-- [ ] Fresh visits default to light independent of OS preference.
-- [ ] Visible flipper works, is accessible, persists explicit choices, and appears on mobile.
-- [ ] Saved dark loads without a light flash or hydration errors.
-- [ ] Orange bolt branding and Zap/Bolt UI icons are gone.
-- [ ] Plain wordmark, neutral surfaces, restrained accents, consistent type/spacing replace the decorative terminal aesthetic.
-- [ ] No hard-coded dark surfaces or white-only text remain in normal UI paths.
-- [ ] Public and local routes, dialogs, filters, errors, skeletons, and empty states work in both themes.
-- [ ] Charts update in place and maintain range/zoom.
-- [ ] Contrast, focus, mobile, zoom, storage failures, and reduced motion were checked.
-- [ ] Existing data behavior and daily snapshot architecture are preserved.
-- [ ] Frontend tests, lint, typecheck, both builds, and diff check pass.
-- [ ] Visual evidence is available, with any verification limitation stated accurately.
-- [ ] AGENTS.md documents the actual implementation, storage key, default behavior, chart strategy, and current test counts.
-- [ ] The final change is committed and, when executing the publish prompt below, the existing release workflow succeeds.
+- [x] Fresh visits default to light independent of OS preference.
+- [x] Visible flipper works, is accessible, persists explicit choices, and appears on mobile.
+- [x] Saved dark loads without a light flash or hydration errors.
+- [x] Orange bolt branding and Zap/Bolt UI icons are gone.
+- [x] Plain wordmark, neutral surfaces, restrained accents, consistent type/spacing replace the decorative terminal aesthetic.
+- [x] No hard-coded dark surfaces or white-only text remain in normal UI paths.
+- [x] Public and local routes, dialogs, filters, errors, skeletons, and empty states work in both themes.
+- [x] Charts update in place and maintain range/zoom.
+- [x] Contrast, focus, mobile, zoom, storage failures, and reduced motion were checked.
+- [x] Existing data behavior and daily snapshot architecture are preserved.
+- [x] Frontend tests, lint, typecheck, both builds, and diff check pass.
+- [x] Visual evidence is available, with any verification limitation stated accurately.
+- [x] AGENTS.md documents the actual implementation, storage key, default behavior, chart strategy, and current test counts.
+- [ ] The final change is committed and the existing release workflow succeeds; this gate will be checked after publication.
 
 Do not declare success with an untested dark page, a mocked-only toggle, missing chart theming, or a failing static build.
 
@@ -374,8 +374,10 @@ After the final main push:
 
 An unavailable signed-in GitHub/AWS identity is a genuine publishing blocker. Explain the exact failed command and required setup if that happens. Styling, choosing tokens, ordinary implementation decisions, and running existing checks do not require asking the user.
 
-## 10. Ready-to-use execution prompt
+## 10. Execution record
 
-Copy the following into the agent that will implement the work:
+Implementation and local verification completed October 5, 2026. The production static export is built by `npm --prefix frontend run build:public`; the regular application build is built by `npm --prefix frontend run build`.
 
-> Implement and publish docs/UI_THEME_IMPLEMENTATION_PLAN.md in this repository. Read AGENTS.md and frontend/AGENTS.md first. Follow the plan's light-first behavior, persistent accessible flipper, neutral Catalyst wordmark, complete semantic-token migration, and in-place chart updates. Use the specified design baseline rather than inventing a new aesthetic. Cover the public static site and local application. Preserve data behavior, collection cadence, infrastructure, bundled fonts, and public data provenance. Add focused theme/chart tests, run frontend tests/lint/typecheck and both builds, inspect browser screenshots, and update AGENTS.md with the actual result and test counts. Commit the finished work, push through the existing main-branch GitHub release flow, monitor CI/CodeQL/release, and verify the deployed site. Keep unrelated edits intact. Do not seed public data, start the AWS worker, add UI runtime dependencies, or change hosting. Progress autonomously; ask only for a concrete authentication/access blocker. Report the commit, live URL, checks, and screenshot paths when finished.
+- Frontend suite: 174 passing Vitest tests across 31 files; lint, typecheck, regular build, public build, and `git diff --check` pass.
+- Browser evidence and the scenario matrix: [verification record](verification/2026-10-05-theme-verification.json) and [screenshots](verification/screenshots/).
+- The final commit and public release verification will be recorded here after the existing main-branch workflow completes.

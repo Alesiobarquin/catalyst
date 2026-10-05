@@ -128,17 +128,17 @@ export function TickerSearchInput({
           display: "flex",
           alignItems: "center",
           gap: 6,
-          background: "#1E293B",
-          border: isOpen ? "1px solid #38BDF8" : "1px solid rgba(255,255,255,0.12)",
+          background: "var(--color-bg-row)",
+          border: isOpen ? "1px solid var(--color-link)" : "1px solid var(--color-border)",
           borderRadius: 4,
           padding: "4px 8px",
           transition: "border-color 150ms ease",
         }}
       >
         {isLoading ? (
-          <Loader2 size={14} color="#94A3B8" className="animate-spin" />
+          <Loader2 size={14} color="var(--color-text-muted)" className="animate-spin" />
         ) : (
-          <Search size={14} color="#94A3B8" />
+          <Search size={14} color="var(--color-text-muted)" />
         )}
         <input
           ref={inputRef}
@@ -156,7 +156,7 @@ export function TickerSearchInput({
             background: "transparent",
             border: "none",
             outline: "none",
-            color: "#F8FAFC",
+            color: "var(--color-text-primary)",
             fontSize: 12,
             fontFamily: "var(--font-mono)",
             width,
@@ -180,7 +180,7 @@ export function TickerSearchInput({
               padding: 0,
               display: "flex",
               alignItems: "center",
-              color: "#94A3B8",
+              color: "var(--color-text-muted)",
             }}
             title="Clear search"
           >
@@ -198,10 +198,10 @@ export function TickerSearchInput({
             left: 0,
             right: 0,
             minWidth: 180,
-            background: "#0F172A",
-            border: "1px solid rgba(255,255,255,0.15)",
+            background: "var(--color-bg-page)",
+            border: "1px solid var(--color-border)",
             borderRadius: 6,
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5)",
+            boxShadow: "0 10px 25px -5px var(--color-scrim), 0 8px 10px -6px var(--color-scrim)",
             zIndex: 60,
             overflow: "hidden",
             padding: "4px 0",
@@ -213,7 +213,7 @@ export function TickerSearchInput({
               fontSize: 10,
               textTransform: "uppercase",
               letterSpacing: "0.05em",
-              color: "#64748B",
+              color: "var(--color-text-muted)",
               fontWeight: 600,
             }}
           >
@@ -235,8 +235,8 @@ export function TickerSearchInput({
                   justifyContent: "space-between",
                   padding: "6px 10px",
                   cursor: "pointer",
-                  background: isHighlighted ? "#1E293B" : "transparent",
-                  color: isHighlighted ? "#38BDF8" : "#E2E8F0",
+                  background: isHighlighted ? "var(--color-bg-row)" : "transparent",
+                  color: isHighlighted ? "var(--color-link)" : "var(--color-text-secondary)",
                   fontFamily: "var(--font-mono)",
                   fontSize: 12,
                   fontWeight: 600,
@@ -247,8 +247,8 @@ export function TickerSearchInput({
                 <span
                   style={{
                     fontSize: 9,
-                    color: "#94A3B8",
-                    background: "rgba(255,255,255,0.06)",
+                    color: "var(--color-text-muted)",
+                    background: "var(--color-bg-row)",
                     padding: "2px 5px",
                     borderRadius: 3,
                     fontWeight: 500,

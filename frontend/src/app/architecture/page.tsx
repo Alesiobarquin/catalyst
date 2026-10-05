@@ -12,10 +12,10 @@ const SectionHeading = ({ title }: { title: string }) => (
     style={{
       fontSize: 18,
       fontWeight: 600,
-      color: "#F8FAFC",
+      color: "var(--color-text-primary)",
       marginBottom: 20,
       marginTop: 48,
-      borderBottom: "1px solid rgba(255,255,255,0.08)",
+      borderBottom: "1px solid var(--color-border-subtle)",
       paddingBottom: 12,
     }}
   >
@@ -31,7 +31,7 @@ export default function ArchitecturePage() {
           style={{
             fontSize: 24,
             fontWeight: 600,
-            color: "#F8FAFC",
+            color: "var(--color-text-primary)",
             letterSpacing: "-0.01em",
             marginBottom: 4,
             lineHeight: 1.25,
@@ -39,14 +39,14 @@ export default function ArchitecturePage() {
         >
           How It Works
         </h1>
-        <p style={{ fontSize: 13, color: "#CBD5E1", margin: 0 }}>
+        <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: 0 }}>
           The engineering behind Catalyst&apos;s market signal pipeline
         </p>
       </div>
 
       <div className="glass-card" style={{ padding: 20, marginBottom: 24 }}>
-        <h2 style={{ fontSize: 15, color: "#38BDF8", marginBottom: 8 }}>Continuous access, daily collection</h2>
-        <p style={{ color: "#94A3B8", fontSize: 13, lineHeight: 1.7 }}>The public portfolio site runs on private S3 and CloudFront. At 10:00 AM New York time on weekdays, an AWS EC2 worker runs the Docker/Kafka pipeline, exports FastAPI results, and shuts down. The dashboard displays the latest published collection time and source outcomes. Processing capacity describes active runs; it does not imply continuous scraping. No broker execution is enabled. Outcomes use sampled prices and modeled allocations.</p>
+        <h2 style={{ fontSize: 15, color: "var(--color-link)", marginBottom: 8 }}>Continuous access, daily collection</h2>
+        <p style={{ color: "var(--color-text-muted)", fontSize: 13, lineHeight: 1.7 }}>The public portfolio site runs on private S3 and CloudFront. At 10:00 AM New York time on weekdays, an AWS EC2 worker runs the Docker/Kafka pipeline, exports FastAPI results, and shuts down. The dashboard displays the latest published collection time and source outcomes. Processing capacity describes active runs; it does not imply continuous scraping. No broker execution is enabled. Outcomes use sampled prices and modeled allocations.</p>
       </div>
       {/* Section 1: Hero */}
       <div style={{ marginBottom: 48 }}>
@@ -59,31 +59,31 @@ export default function ArchitecturePage() {
           }}
         >
           <div className="glass-card" style={{ padding: 20 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: "#F8FAFC", marginBottom: 8 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 8 }}>
               The Noise Problem
             </h3>
-            <p style={{ fontSize: 13, color: "#94A3B8", margin: 0, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 13, color: "var(--color-text-muted)", margin: 0, lineHeight: 1.5 }}>
               Retail traders are overwhelmed by thousands of disconnected market feeds. Many feeds contain low-liquidity noise or conflicting catalysts.
             </p>
           </div>
           <div className="glass-card" style={{ padding: 20 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: "#F8FAFC", marginBottom: 8 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 8 }}>
               The Cost Problem
             </h3>
-            <p style={{ fontSize: 13, color: "#94A3B8", margin: 0, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 13, color: "var(--color-text-muted)", margin: 0, lineHeight: 1.5 }}>
               Sending every raw event to a grounded LLM adds unnecessary token and search costs. Confluence filtering and a persistent daily request cap keep the public demo bounded.
             </p>
           </div>
           <div className="glass-card" style={{ padding: 20 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: "#F8FAFC", marginBottom: 8 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 8 }}>
               The Math Problem
             </h3>
-            <p style={{ fontSize: 13, color: "#94A3B8", margin: 0, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 13, color: "var(--color-text-muted)", margin: 0, lineHeight: 1.5 }}>
               LLMs excel at qualitative thesis synthesis but hallucinate on portfolio math — stop-loss calculations, position sizing, and risk management.
             </p>
           </div>
         </div>
-        <p style={{ fontSize: 14, color: "#CBD5E1", lineHeight: 1.6, padding: "0 8px" }}>
+        <p style={{ fontSize: 14, color: "var(--color-text-secondary)", lineHeight: 1.6, padding: "0 8px" }}>
           Catalyst solves this with a funnel of increasing cognitive depth. Signals are first triaged via cheap, high-speed deterministic filters (Python + Redis) before advancing to expensive, high-latency qualitative reasoning (Gemini AI), and finally passing to strict capital-risk models (Java).
         </p>
       </div>
@@ -93,35 +93,35 @@ export default function ArchitecturePage() {
       <div style={{ position: "relative", paddingLeft: 16, paddingRight: 16, maxWidth: 800, margin: "0 auto" }}>
         {/* Stages */}
         <PipelineStage
-          icon={<Radar size={20} color="#38BDF8" />}
+          icon={<Radar size={20} color="var(--color-link)" />}
           title="1. Ingestion"
           desc="5 autonomous hunters scan Finviz, SEC EDGAR Form 4, BioPharmCatalyst, Barchart options flow, and FMP earnings."
           tech={["Python 3.12", "Playwright", "HTTPX", "BeautifulSoup"]}
         />
         <PipelineConnector />
         <PipelineStage
-          icon={<Filter size={20} color="#A855F7" />}
+          icon={<Filter size={20} color="var(--color-category-follower)" />}
           title="2. Confluence Filter"
           desc="Redis Sorted Set sliding window requires ≥2 independent sources within 5 minutes. The public profile disables the single-source technical exception."
           tech={["Redis 7", "Kafka"]}
         />
         <PipelineConnector />
         <PipelineStage
-          icon={<Brain size={20} color="#F59E0B" />}
+          icon={<Brain size={20} color="var(--color-warning)" />}
           title="3. AI Validation"
           desc="Gemini 3.8 Flash with Google Search grounding synthesizes a structured catalyst thesis, conviction score, trap detection, and entry/exit parameters."
           tech={["Google GenAI SDK"]}
         />
         <PipelineConnector />
         <PipelineStage
-          icon={<Calculator size={20} color="#10B981" />}
+          icon={<Calculator size={20} color="var(--color-profit)" />}
           title="4. Quantitative Sizing"
           desc="Java Spring Boot engine classifies market regime (SPY 200 SMA, VIX), calculates Half-Kelly position size capped at 25% allocated capital per recommendation on a $100k book."
           tech={["Java 21", "Spring Boot 3.4"]}
         />
         <PipelineConnector />
         <PipelineStage
-          icon={<Target size={20} color="#F43F5E" />}
+          icon={<Target size={20} color="var(--color-loss)" />}
           title="5. Execution & Resolution"
           desc="TimescaleDB persists sized recommendations for FastAPI snapshot export. A daily resolver samples prices for modeled outcomes. The optional local Alpaca executor is disabled in this public deployment."
           tech={["FastAPI", "TimescaleDB", "S3 / CloudFront"]}
@@ -160,13 +160,13 @@ export default function ArchitecturePage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-          <span style={{ fontSize: 32, fontWeight: 700, color: "#10B981", fontFamily: "var(--font-mono)", lineHeight: 1 }}>
-            493
+          <span style={{ fontSize: 32, fontWeight: 700, color: "var(--color-profit)", fontFamily: "var(--font-mono)", lineHeight: 1 }}>
+            511
           </span>
-          <span style={{ fontSize: 16, fontWeight: 600, color: "#F8FAFC" }}>Automated Tests</span>
+          <span style={{ fontSize: 16, fontWeight: 600, color: "var(--color-text-primary)" }}>Automated Tests</span>
         </div>
-        <p style={{ fontSize: 12, color: "#64748B", fontFamily: "var(--font-mono)", margin: 0 }}>
-          301 Python · 36 Java · 156 Vitest
+        <p style={{ fontSize: 12, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)", margin: 0 }}>
+          301 Python · 36 Java · 174 Vitest
         </p>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
@@ -184,10 +184,10 @@ export default function ArchitecturePage() {
               style={{
                 fontSize: 12,
                 padding: "6px 12px",
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.1)",
+                background: "var(--color-bg-row)",
+                border: "1px solid var(--color-border-subtle)",
                 borderRadius: 4,
-                color: "#CBD5E1",
+                color: "var(--color-text-secondary)",
               }}
             >
               {tag}
@@ -198,18 +198,18 @@ export default function ArchitecturePage() {
 
       {/* Section 5: What I Learned */}
       <SectionHeading title="What I Learned" />
-      <div style={{ display: "flex", flexDirection: "column", gap: 20, color: "#CBD5E1", fontSize: 14, lineHeight: 1.6 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20, color: "var(--color-text-secondary)", fontSize: 14, lineHeight: 1.6 }}>
         <p>
-          <strong style={{ color: "#F8FAFC" }}>Event-driven complexity vs. monolith simplicity</strong> — The overhead of Kafka topics, consumer groups, and offset management is real. But the ability to add the Notifier service as a new consumer of <code>validated-signals</code> without touching a single line of existing code proved the decoupling thesis.
+          <strong style={{ color: "var(--color-text-primary)" }}>Event-driven complexity vs. monolith simplicity</strong> — The overhead of Kafka topics, consumer groups, and offset management is real. But the ability to add the Notifier service as a new consumer of <code>validated-signals</code> without touching a single line of existing code proved the decoupling thesis.
         </p>
         <p>
-          <strong style={{ color: "#F8FAFC" }}>Confluence filtering as AI cost control</strong> — The Gatekeeper requires two distinct hunter sources before public signals reach Gemini. A persistent two-request daily cap bounds AI usage even across worker restarts. Published run reports expose observed event counts.
+          <strong style={{ color: "var(--color-text-primary)" }}>Confluence filtering as AI cost control</strong> — The Gatekeeper requires two distinct hunter sources before public signals reach Gemini. A persistent two-request daily cap bounds AI usage even across worker restarts. Published run reports expose observed event counts.
         </p>
         <p>
-          <strong style={{ color: "#F8FAFC" }}>Deterministic math belongs in a typed language</strong> — Python is excellent for rapid prototyping, but Half-Kelly position sizing with regime-dependent caps requires the kind of strict numerical type safety that Java&apos;s type system naturally enforces.
+          <strong style={{ color: "var(--color-text-primary)" }}>Deterministic math belongs in a typed language</strong> — Python is excellent for rapid prototyping, but Half-Kelly position sizing with regime-dependent caps requires the kind of strict numerical type safety that Java&apos;s type system naturally enforces.
         </p>
         <p>
-          <strong style={{ color: "#F8FAFC" }}>Closed-loop validation changes everything</strong> — Building the Resolver daemon to track actual trade outcomes (wins, losses, stops, expirations) transformed Catalyst from a signal generator into a system that can measure its own accuracy.
+          <strong style={{ color: "var(--color-text-primary)" }}>Closed-loop validation changes everything</strong> — Building the Resolver daemon to track actual trade outcomes (wins, losses, stops, expirations) transformed Catalyst from a signal generator into a system that can measure its own accuracy.
         </p>
       </div>
 
@@ -225,12 +225,12 @@ export default function ArchitecturePage() {
             key={tech}
             style={{
               padding: "10px 16px",
-              background: "#111827",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "var(--color-bg-card)",
+              border: "1px solid var(--color-border-subtle)",
               borderRadius: 6,
               fontSize: 13,
               fontWeight: 500,
-              color: "#F8FAFC",
+              color: "var(--color-text-primary)",
             }}
           >
             {tech}
@@ -262,20 +262,20 @@ function PipelineStage({ icon, title, desc, tech }: { icon: React.ReactNode, tit
             width: 40,
             height: 40,
             borderRadius: 8,
-            background: "rgba(255,255,255,0.04)",
+            background: "var(--color-bg-row)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            border: "1px solid rgba(255,255,255,0.08)"
+            border: "1px solid var(--color-border-subtle)"
           }}
         >
           {icon}
         </div>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: "#F8FAFC", margin: 0 }}>
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--color-text-primary)", margin: 0 }}>
           {title}
         </h3>
       </div>
-      <p style={{ fontSize: 14, color: "#94A3B8", margin: 0, lineHeight: 1.5 }}>
+      <p style={{ fontSize: 14, color: "var(--color-text-muted)", margin: 0, lineHeight: 1.5 }}>
         {desc}
       </p>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
@@ -285,8 +285,8 @@ function PipelineStage({ icon, title, desc, tech }: { icon: React.ReactNode, tit
             style={{
               fontSize: 11,
               fontFamily: "var(--font-mono)",
-              color: "#D97706",
-              background: "rgba(217, 119, 6, 0.1)",
+              color: "var(--color-link)",
+              background: "var(--color-category-supernova-bg)",
               padding: "4px 8px",
               borderRadius: 3,
             }}
@@ -305,7 +305,7 @@ function PipelineConnector() {
       style={{
         width: 2,
         height: 32,
-        background: "rgba(255,255,255,0.12)",
+        background: "var(--color-bg-row)",
         margin: "0 auto",
       }}
     />

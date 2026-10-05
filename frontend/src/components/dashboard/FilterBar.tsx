@@ -129,16 +129,16 @@ export function FilterBar({
     (status && status !== "all") ||
     tickerInput.trim().length > 0;
 
-  function pillStyle(active: boolean, color = "#D97706"): React.CSSProperties {
+  function pillStyle(active: boolean, color = "var(--color-link)"): React.CSSProperties {
     return {
       padding: "5px 12px",
       borderRadius: 4,
       fontSize: 12,
       fontWeight: 500,
       cursor: "pointer",
-      border: `1px solid ${active ? color : "rgba(255,255,255,0.12)"}`,
+      border: `1px solid ${active ? color : "var(--color-border)"}`,
       background: active ? color : "transparent",
-      color: active ? "#ffffff" : "var(--color-text-secondary)",
+      color: active ? "var(--color-on-accent)" : "var(--color-text-secondary)",
       transition: "border-color 100ms ease, background 100ms ease",
     };
   }
@@ -151,8 +151,8 @@ export function FilterBar({
         gap: 12,
         marginBottom: 20,
         padding: "14px 16px",
-        background: "#0F172A",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "var(--color-bg-page)",
+        border: "1px solid var(--color-border-subtle)",
         borderRadius: 6,
       }}
     >
@@ -228,7 +228,7 @@ export function FilterBar({
           gap: 20,
           flexWrap: "wrap",
           paddingTop: 8,
-          borderTop: "1px solid rgba(255,255,255,0.06)",
+          borderTop: "1px solid var(--color-border-subtle)",
         }}
       >
         {/* Status Pills */}
@@ -257,7 +257,7 @@ export function FilterBar({
                     setStatus(st.value);
                     updateQuery({ nextStatus: st.value });
                   }}
-                  style={pillStyle(active, "#0EA5E9")}
+                  style={pillStyle(active, "var(--color-link)")}
                 >
                   {st.label}
                 </button>
@@ -292,7 +292,7 @@ export function FilterBar({
                     setDateRange(d.value);
                     updateQuery({ nextDateRange: d.value });
                   }}
-                  style={pillStyle(active, "#3B82F6")}
+                  style={pillStyle(active, "var(--color-link)")}
                 >
                   {d.label}
                 </button>
@@ -313,7 +313,7 @@ export function FilterBar({
                 gap: 4,
                 background: "none",
                 border: "none",
-                color: "#EF4444",
+                color: "var(--color-loss)",
                 fontSize: 12,
                 fontWeight: 500,
                 cursor: "pointer",
@@ -343,10 +343,10 @@ export function FilterBar({
               display: "flex",
               alignItems: "center",
               gap: 5,
-              background: "rgba(255, 255, 255, 0.04)",
-              border: "1px solid rgba(255, 255, 255, 0.10)",
+              background: "var(--color-bg-row)",
+              border: "1px solid var(--color-border-subtle)",
               borderRadius: 4,
-              color: "#94A3B8",
+              color: "var(--color-text-muted)",
               fontSize: 11,
               fontWeight: 500,
               padding: "4px 8px",

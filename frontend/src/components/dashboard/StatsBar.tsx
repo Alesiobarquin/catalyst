@@ -6,21 +6,23 @@ interface StatsBarProps {
 }
 
 export function StatsBar({ stats }: StatsBarProps) {
-  const closedTotal = stats.hit_target_count + stats.hit_stop_count;
+  const hitTarget = stats.hit_target_count ?? 0;
+  const hitStop = stats.hit_stop_count ?? 0;
+  const closedTotal = hitTarget + hitStop;
   const winRate = closedTotal > 0
-    ? `${((stats.hit_target_count / closedTotal) * 100).toFixed(0)}%`
+    ? `${((hitTarget / closedTotal) * 100).toFixed(0)}%`
     : "—";
 
   const cards = [
     {
       label:  "Active signals",
-      value:  stats.total_orders.toString(),
-      sub:    `${stats.active_count} currently open`,
+      value:  (stats.total_orders ?? 0).toString(),
+      sub:    `${stats.active_count ?? 0} currently open`,
       icon:   Activity,
     },
     {
       label:  "Avg confidence",
-      value:  `${stats.avg_conviction.toFixed(0)}/100`,
+      value:  `${(stats.avg_conviction ?? 0).toFixed(0)}/100`,
       sub:    "out of 100",
       icon:   Target,
     },
@@ -41,19 +43,12 @@ export function StatsBar({ stats }: StatsBarProps) {
   ];
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gap: 12,
-        marginBottom: 24,
-      }}
-    >
+    <div className="stats-grid">
       {cards.map((card) => (
         <div
           key={card.label}
           className="stat-card"
-          style={{ padding: "20px 24px" }}
+          style={{ padding: "16px 18px" }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
             <p

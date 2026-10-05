@@ -84,9 +84,9 @@ describe("ArchitecturePage", () => {
   it("renders the engineering quality section with test count", () => {
     render(<ArchitecturePage />);
 
-    expect(screen.getByText("493")).toBeInTheDocument();
+    expect(screen.getByText("511")).toBeInTheDocument();
     expect(screen.getByText("Automated Tests")).toBeInTheDocument();
-    expect(screen.getByText("301 Python · 36 Java · 156 Vitest")).toBeInTheDocument();
+    expect(screen.getByText("301 Python · 36 Java · 174 Vitest")).toBeInTheDocument();
   });
 
   it("renders the resilience pattern tags", () => {

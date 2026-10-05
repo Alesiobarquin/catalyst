@@ -11,12 +11,7 @@ export default function DashboardLoading() {
 
       {/* Stats bar — 4 cards */}
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 16,
-          marginBottom: 24,
-        }}
+        className="stats-grid"
       >
         {Array.from({ length: 4 }).map((_, i) => (
           <div

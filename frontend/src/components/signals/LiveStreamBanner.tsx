@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, RefreshCw, Volume2, VolumeX, Zap } from "lucide-react";
+import { Activity, BellRing, RefreshCw, Volume2, VolumeX } from "lucide-react";
 
 interface StreamSignalPayload {
   ticker: string;
@@ -161,10 +161,10 @@ export function LiveStreamBanner() {
 
   const statusColor =
     status === "connected"
-      ? "#10B981"
+      ? "var(--color-profit)"
       : status === "connecting"
-        ? "#F59E0B"
-        : "#64748B";
+        ? "var(--color-warning)"
+        : "var(--color-text-muted)";
 
   const statusText =
     status === "connected"
@@ -183,8 +183,8 @@ export function LiveStreamBanner() {
         gap: 10,
         padding: "8px 14px",
         marginBottom: 16,
-        background: "#0F172A",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
+        background: "var(--color-bg-page)",
+        border: "1px solid var(--color-border-subtle)",
         borderRadius: 4,
         fontSize: 12,
       }}
@@ -235,8 +235,8 @@ export function LiveStreamBanner() {
         >
           {statusText}
         </span>
-        <span style={{ color: "#475569", fontSize: 11 }}>•</span>
-        <span style={{ color: "#94A3B8", fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}>
+        <span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>•</span>
+        <span style={{ color: "var(--color-text-muted)", fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}>
           <Activity size={12} />
           SSE /signals/stream
         </span>
@@ -250,21 +250,21 @@ export function LiveStreamBanner() {
               display: "flex",
               alignItems: "center",
               gap: 10,
-              background: "rgba(14, 165, 233, 0.12)",
-              border: "1px solid rgba(14, 165, 233, 0.35)",
+              background: "var(--color-info-bg)",
+              border: "1px solid var(--color-info-border)",
               padding: "3px 10px",
               borderRadius: 4,
             }}
           >
-            <span style={{ color: "#38BDF8", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-              <Zap size={13} />
+            <span style={{ color: "var(--color-link)", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+              <BellRing size={13} aria-hidden="true" />
               {newCount} new signal{newCount > 1 ? "s" : ""}
             </span>
-            <span style={{ fontFamily: "var(--font-mono)", color: "#F8FAFC", fontWeight: 700 }}>
+            <span style={{ fontFamily: "var(--font-mono)", color: "var(--color-text-primary)", fontWeight: 700 }}>
               {latestSignal.ticker}
             </span>
             {latestSignal.conviction_score !== undefined && (
-              <span style={{ color: "#94A3B8", fontSize: 11 }}>
+              <span style={{ color: "var(--color-text-muted)", fontSize: 11 }}>
                 {latestSignal.conviction_score}% conv.
               </span>
             )}
@@ -275,8 +275,8 @@ export function LiveStreamBanner() {
                 display: "flex",
                 alignItems: "center",
                 gap: 4,
-                background: "#0284C7",
-                color: "#FFFFFF",
+                background: "var(--color-link)",
+                color: "var(--color-on-accent)",
                 border: "none",
                 borderRadius: 3,
                 padding: "2px 8px",
@@ -290,7 +290,7 @@ export function LiveStreamBanner() {
             </button>
           </div>
         ) : (
-          <span style={{ color: "#64748B", fontSize: 11, fontFamily: "var(--font-mono)" }}>
+          <span style={{ color: "var(--color-text-muted)", fontSize: 11, fontFamily: "var(--font-mono)" }}>
             Listening for live engine triggers...
           </span>
         )}
@@ -310,9 +310,9 @@ export function LiveStreamBanner() {
               borderRadius: 4,
               fontSize: 11,
               fontFamily: "var(--font-mono)",
-              background: autoReload ? "rgba(16, 185, 129, 0.12)" : "rgba(255, 255, 255, 0.04)",
-              border: `1px solid ${autoReload ? "rgba(16, 185, 129, 0.3)" : "rgba(255, 255, 255, 0.08)"}`,
-              color: autoReload ? "#34D399" : "#94A3B8",
+              background: autoReload ? "var(--color-profit-bg)" : "var(--color-bg-row)",
+              border: `1px solid ${autoReload ? "var(--color-profit-border)" : "var(--color-border-subtle)"}`,
+              color: autoReload ? "var(--color-profit)" : "var(--color-text-muted)",
               cursor: "pointer",
               transition: "all 120ms ease",
             }}
@@ -322,7 +322,7 @@ export function LiveStreamBanner() {
                 width: 5,
                 height: 5,
                 borderRadius: "50%",
-                background: autoReload ? "#10B981" : "#64748B",
+                background: autoReload ? "var(--color-profit)" : "var(--color-text-muted)",
               }}
             />
             Auto-sync
@@ -340,9 +340,9 @@ export function LiveStreamBanner() {
               padding: "3px 8px",
               borderRadius: 4,
               fontSize: 11,
-              background: soundEnabled ? "rgba(56, 189, 248, 0.15)" : "rgba(255, 255, 255, 0.04)",
-              border: `1px solid ${soundEnabled ? "rgba(56, 189, 248, 0.35)" : "rgba(255, 255, 255, 0.08)"}`,
-              color: soundEnabled ? "#38BDF8" : "#64748B",
+              background: soundEnabled ? "var(--color-info-bg)" : "var(--color-bg-row)",
+              border: `1px solid ${soundEnabled ? "var(--color-info-border)" : "var(--color-border-subtle)"}`,
+              color: soundEnabled ? "var(--color-link)" : "var(--color-text-muted)",
               cursor: "pointer",
               transition: "all 120ms ease",
             }}

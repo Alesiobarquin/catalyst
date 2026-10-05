@@ -51,11 +51,11 @@ function formatExecutionLabel(ex: TradeExecution): string {
 const TAG: React.CSSProperties = {
   padding: "1px 6px",
   borderRadius: 2,
-  background: "#1E293B",
-  border: "1px solid rgba(255,255,255,0.08)",
+  background: "var(--color-bg-row)",
+  border: "1px solid var(--color-border-subtle)",
   fontSize: 11,
   fontWeight: 500,
-  color: "#CBD5E1",
+  color: "var(--color-text-secondary)",
   whiteSpace: "nowrap" as const,
 };
 
@@ -65,7 +65,7 @@ const ACTION_LINK: React.CSSProperties = {
   gap: 4,
   fontSize: 13,
   fontWeight: 500,
-  color: "#0284C7",           /* slightly darker sky blue — less "web app" */
+  color: "var(--color-link)",
   background: "none",
   border: "none",
   cursor: "pointer",
@@ -104,7 +104,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
   const status    = order.status ?? "ACTIVE";
   const statusCfg = getStatusConfig(status);
   const pnlPct    = order.pnl_percent ?? order.pnl_pct;
-  const pnlColor  = pnlPct !== undefined && pnlPct < 0 ? "#EF4444" : "#10B981";
+  const pnlColor  = pnlPct !== undefined && pnlPct < 0 ? "var(--color-loss)" : "var(--color-profit)";
 
   const stopPct   = signedPct(order.stop_loss   - order.limit_price, order.limit_price);
   const targetPct = signedPct(order.target_price - order.limit_price, order.limit_price);
@@ -119,19 +119,10 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
 
   return (
     <div
+      className="trade-card"
       style={{
-        background: "#111827",
-        border: "1px solid rgba(255,255,255,0.12)",
-        borderRadius: 4,
         marginBottom: 16,
         overflow: "hidden",
-        transition: "border-color 100ms ease",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.20)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.12)";
       }}
     >
       <div style={{ padding: "20px 24px" }}>
@@ -152,7 +143,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
                 style={{
                   fontSize: 20,
                   fontWeight: 600,
-                  color: "#F8FAFC",
+                  color: "var(--color-text-primary)",
                   letterSpacing: "0.01em",
                   lineHeight: 1,
                 }}
@@ -166,9 +157,9 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
                   borderRadius: 3,
                   fontSize: 11,
                   fontWeight: 500,
-                  background: "#1E293B",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  color: "#CBD5E1",
+                  background: "var(--color-bg-row)",
+                  border: "1px solid var(--color-border)",
+                  color: "var(--color-text-secondary)",
                   letterSpacing: "0.04em",
                 }}
               >
@@ -183,21 +174,21 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
             {/* Right: current price + P&L */}
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               {(order.current_price !== undefined || order.resolved_price != null) && (
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 500, color: "#CBD5E1" }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 14, fontWeight: 500, color: "var(--color-text-secondary)" }}>
                   {formatCurrency(order.resolved_price ?? order.current_price ?? 0)}
                 </span>
               )}
               {pnlPct !== undefined ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                   {pnlPct >= 0
-                    ? <TrendingUp size={12} color="#10B981" strokeWidth={2} />
-                    : <TrendingDown size={12} color="#EF4444" strokeWidth={2} />}
+                    ? <TrendingUp size={12} color="var(--color-profit)" strokeWidth={2} />
+                    : <TrendingDown size={12} color="var(--color-loss)" strokeWidth={2} />}
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 600, color: pnlColor }}>
                     {pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%
                   </span>
                 </div>
               ) : (
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 600, color: "#64748B" }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 600, color: "var(--color-text-muted)" }}>
                   —
                 </span>
               )}
@@ -206,38 +197,38 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
 
           {/* Row 2: strategy on left, R:R · age on right */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <span style={{ fontSize: 12, color: "#64748B" }}>
+            <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
               {order.strategy_used}
             </span>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "#64748B" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--color-text-muted)" }}>
               R:R 1:{rr}&nbsp;&nbsp;·&nbsp;&nbsp;{formatRelative(order.timestamp_utc)}
             </span>
           </div>
         </div>
 
         {/* ── Separator ──────────────────────────────────── */}
-        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 14 }} />
+        <div style={{ height: 1, background: "var(--color-bg-row)", marginBottom: 14 }} />
 
         {/* ════════════════════════════════════════════════
             EXECUTION PARAMETERS — three boxes
         ════════════════════════════════════════════════ */}
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
           {[
-            { label: "Entry",        value: formatCurrency(order.limit_price),  color: "#F8FAFC" },
-            { label: "Stop loss",    value: formatCurrency(order.stop_loss),    color: "#F59E0B" },
-            { label: "Price target", value: formatCurrency(order.target_price), color: "#10B981" },
+            { label: "Entry",        value: formatCurrency(order.limit_price),  color: "var(--color-text-primary)" },
+            { label: "Stop loss",    value: formatCurrency(order.stop_loss),    color: "var(--color-warning)" },
+            { label: "Price target", value: formatCurrency(order.target_price), color: "var(--color-profit)" },
           ].map((p) => (
             <div
               key={p.label}
               style={{
                 flex: 1,
-                background: "#0B1121",
-                border: "1px solid rgba(255,255,255,0.08)",
+                background: "var(--color-bg-page)",
+                border: "1px solid var(--color-border-subtle)",
                 borderRadius: 3,
                 padding: "12px 14px",
               }}
             >
-              <p style={{ fontSize: 11, fontWeight: 500, color: "#64748B", marginBottom: 6, letterSpacing: "0.02em" }}>
+              <p style={{ fontSize: 11, fontWeight: 500, color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.02em" }}>
                 {p.label}
               </p>
               <p style={{ fontFamily: "var(--font-mono)", fontSize: 16, fontWeight: 600, color: p.color, margin: 0 }}>
@@ -252,38 +243,38 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
           {/* Conviction with bar */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <div style={{ display: "flex", gap: 5, alignItems: "baseline" }}>
-              <span style={{ fontSize: 11, color: "#64748B" }}>Conviction</span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "#CBD5E1" }}>
+              <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>Conviction</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)" }}>
                 {order.conviction_score}/100
               </span>
             </div>
-            <div style={{ width: 72, height: 3, borderRadius: 2, background: "#1E293B", overflow: "hidden" }}>
+            <div style={{ width: 72, height: 3, borderRadius: 2, background: "var(--color-bg-row)", overflow: "hidden" }}>
               <div
                 style={{
                   width: `${order.conviction_score}%`,
                   height: "100%",
                   borderRadius: 2,
-                  background: "#64748B",
+                  background: "var(--color-text-muted)",
                 }}
               />
             </div>
           </div>
 
-          <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.08)", alignSelf: "center" }} />
+          <div style={{ width: 1, height: 28, background: "var(--color-bg-row)", alignSelf: "center" }} />
 
           <div style={{ display: "flex", gap: 5, alignItems: "baseline" }}>
-            <span style={{ fontSize: 11, color: "#64748B" }}>Size</span>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "#CBD5E1" }}>
+            <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>Size</span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)" }}>
               ${(order.recommended_size_usd / 1000).toFixed(0)}K
             </span>
           </div>
 
           {order.execution && (
             <>
-              <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.08)", alignSelf: "center" }} />
+              <div style={{ width: 1, height: 28, background: "var(--color-bg-row)", alignSelf: "center" }} />
               <div style={{ display: "flex", gap: 5, alignItems: "baseline" }}>
-                <span style={{ fontSize: 11, color: "#64748B" }}>Execution</span>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "#CBD5E1" }}>
+                <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>Execution</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)" }}>
                   {formatExecutionLabel(order.execution)}
                 </span>
               </div>
@@ -292,19 +283,19 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
         </div>
 
         {/* ── Separator ──────────────────────────────────── */}
-        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 14 }} />
+        <div style={{ height: 1, background: "var(--color-bg-row)", marginBottom: 14 }} />
 
         {/* ════════════════════════════════════════════════
             BODY — 4 lines max
         ════════════════════════════════════════════════ */}
 
         {/* Line 1: catalyst label */}
-        <p style={{ fontSize: 12, fontWeight: 600, color: "#CBD5E1", margin: "0 0 5px", lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)", margin: "0 0 5px", lineHeight: 1.5 }}>
           Primary catalyst: {getCatalystLabel(order.catalyst_type)}
         </p>
 
         {/* Line 2: thesis */}
-        <p style={{ fontSize: 13, color: "#CBD5E1", margin: "0 0 9px", lineHeight: 1.5 }}>
+        <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: "0 0 9px", lineHeight: 1.5 }}>
           {truncateThesis(order.rationale)}
         </p>
 
@@ -316,7 +307,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
         </div>
 
         {/* Line 4: risk line */}
-        <p style={{ fontSize: 12, color: "#64748B", margin: 0, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: 0, lineHeight: 1.5 }}>
           Risk: {riskLine}
         </p>
 
@@ -327,25 +318,23 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
             gap: 16,
             marginTop: 14,
             paddingTop: 12,
-            borderTop: "1px solid rgba(255,255,255,0.06)",
+            borderTop: "1px solid var(--color-border-subtle)",
           }}
         >
           <button
+            className="text-action-link"
             onClick={handleToggleChart}
             aria-expanded={expanded}
             style={ACTION_LINK}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.72"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
           >
             {expanded ? <ChevronUp size={13} strokeWidth={2} /> : <ChevronDown size={13} strokeWidth={2} />}
             View chart
           </button>
           {onViewAnalysis && (
             <button
+              className="text-action-link"
               onClick={(e) => onViewAnalysis(order, e.currentTarget as HTMLButtonElement)}
               style={ACTION_LINK}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "0.72"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = "1"; }}
             >
               View analysis
             </button>
@@ -357,7 +346,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
       <div
         style={{
           padding: "7px 24px",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
+          borderTop: "1px solid var(--color-border-subtle)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -365,10 +354,10 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
           flexWrap: "wrap",
         }}
       >
-        <span style={{ fontSize: 11, color: "#64748B" }}>
+        <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
           Source: Gemini · Options flow · SEC filings
         </span>
-        <span style={{ fontSize: 11, color: "#64748B" }}>
+        <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
           Generated: {formatDateTime(order.timestamp_utc)}
         </span>
       </div>
@@ -385,16 +374,16 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
           >
             <div
               style={{
-                borderTop: "1px solid rgba(255,255,255,0.06)",
+                borderTop: "1px solid var(--color-border-subtle)",
                 padding: "16px 24px",
-                background: "#0B1121",
+                background: "var(--color-bg-page)",
               }}
             >
               <div style={{ display: "flex", gap: 16, marginBottom: 10 }}>
                 {[
-                  { color: "rgba(255,255,255,0.4)", label: "Entry",  dashed: false },
-                  { color: "#F59E0B",               label: "Stop",   dashed: true  },
-                  { color: "#10B981",               label: "Target", dashed: true  },
+                  { color: "var(--color-text-muted)", label: "Entry",  dashed: false },
+                  { color: "var(--color-warning)",               label: "Stop",   dashed: true  },
+                  { color: "var(--color-profit)",               label: "Target", dashed: true  },
                 ].map((l) => (
                   <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
                     <div
@@ -404,17 +393,17 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
                         borderTop: l.dashed ? `1px dashed ${l.color}` : `2px solid ${l.color}`,
                       }}
                     />
-                    <span style={{ fontSize: 10, color: "#64748B" }}>{l.label}</span>
+                    <span style={{ fontSize: 10, color: "var(--color-text-muted)" }}>{l.label}</span>
                   </div>
                 ))}
-                <span style={{ marginLeft: "auto", fontSize: 10, color: "#64748B" }}>
+                <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--color-text-muted)" }}>
                   Signal: {formatDateTime(order.timestamp_utc)}
                 </span>
               </div>
 
               {historyStatus === "loading" && (
                 <div style={{ height: 140, display: "flex", alignItems: "center" }}>
-                  <p style={{ fontSize: 11, color: "#64748B" }}>Fetching price data…</p>
+                  <p style={{ fontSize: 11, color: "var(--color-text-muted)" }}>Fetching price data…</p>
                 </div>
               )}
               {(historyStatus === "live" || historyStatus === "synthetic") && (
@@ -432,5 +421,3 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
     </div>
   );
 }
-
-

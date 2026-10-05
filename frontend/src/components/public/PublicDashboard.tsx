@@ -14,7 +14,7 @@ import { StrategyBreakdown, ConvictionHistogram, SignalTimeline, PerformanceSumm
 import { KellySimulator } from "@/components/analytics/KellySimulator";
 
 type View = "orders" | "signals" | "analytics";
-const buttonStyle = { background: "#1E293B", border: "1px solid #334155", padding: "8px 14px", borderRadius: 4, color: "#38BDF8", cursor: "pointer", fontSize: 12 };
+const buttonStyle = { background: "var(--color-bg-row)", border: "1px solid var(--color-border)", padding: "8px 14px", borderRadius: 4, color: "var(--color-link)", cursor: "pointer", fontSize: 12 };
 
 export function PublicDashboard({ view }: { view: View }) {
   return <Suspense fallback={<p>Loading daily results…</p>}><Content view={view} /></Suspense>;
@@ -55,21 +55,21 @@ function Content({ view }: { view: View }) {
   const events = data.event_counts["raw-events"] ?? 0;
   const waiting = data.status === "awaiting_first_run";
   return <>
-    <div className="glass-card" style={{ padding: "16px 20px", marginBottom: 24, borderColor: stale || error ? "#92400E" : "#1E3A5F" }}>
+    <div className="glass-card" style={{ padding: "16px 20px", marginBottom: 24, borderColor: stale || error ? "var(--color-warning)" : "var(--color-link-bg)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <strong style={{ color: "#38BDF8", fontSize: 13 }}>DAILY PORTFOLIO DEMO · READ ONLY</strong>
-        <span style={{ fontSize: 12, color: "#CBD5E1" }}>
+        <strong style={{ color: "var(--color-link)", fontSize: 13 }}>DAILY PORTFOLIO DEMO · READ ONLY</strong>
+        <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>
           {waiting ? "Waiting for the first completed scan" : `Last scan: ${new Date(data.as_of).toLocaleString("en-US", { timeZone: "America/New_York" })} ET`}
           {!waiting && (stale ? " · STALE" : data.status === "partial" ? " · Some sources unavailable" : " · Published")}
         </span>
       </div>
-      <p style={{ color: "#94A3B8", fontSize: 12, lineHeight: 1.7, margin: "8px 0 0" }}>
+      <p style={{ color: "var(--color-text-muted)", fontSize: 12, lineHeight: 1.7, margin: "8px 0 0" }}>
         The AWS pipeline scans once each weekday at 10:00 AM New York time. Results remain available while the worker is stopped. Quotes and analyses reflect collection time.
         Recommendation P&amp;L uses sampled prices; daily checks can miss intraday stop or target crossings. No brokerage trading is enabled.
       </p>
-      {attempt && Date.parse(attempt.updated_at) > Date.parse(data.as_of) && (attempt.status === "failed" || attempt.status === "running") && <p role="status" style={{ color: "#FBBF24", fontSize: 12 }}>{attempt.status === "running" ? "A new scan is running; the previous published dataset remains available." : "The latest run failed to publish. Previous results are retained; the next weekday scan retries automatically."}</p>}
+      {attempt && Date.parse(attempt.updated_at) > Date.parse(data.as_of) && (attempt.status === "failed" || attempt.status === "running") && <p role="status" style={{ color: "var(--color-warning)", fontSize: 12 }}>{attempt.status === "running" ? "A new scan is running; the previous published dataset remains available." : "The latest run failed to publish. Previous results are retained; the next weekday scan retries automatically."}</p>}
       {error && <p role="alert">Refresh failed; retaining the previously loaded results. {error}</p>}
-      {!waiting && <details style={{ marginTop: 10, fontSize: 12, color: "#CBD5E1" }}><summary>Scan report · {events} raw events · {data.hunters.filter((h) => h.success).length}/5 sweeps completed</summary>
+      {!waiting && <details style={{ marginTop: 10, fontSize: 12, color: "var(--color-text-secondary)" }}><summary>Scan report · {events} raw events · {data.hunters.filter((h) => h.success).length}/5 sweeps completed</summary>
         <div style={{ overflowX: "auto" }}><table style={{ marginTop: 12, width: "100%", textAlign: "left", borderCollapse: "collapse" }}><thead><tr><th>Source</th><th>Outcome</th><th>Events</th><th>Duration</th></tr></thead><tbody>
           {data.hunters.map((h) => <tr key={h.hunter}><td style={{ padding: "6px 0" }}>{h.hunter}</td><td>{h.success ? "Sweep completed" : h.error ?? "Unavailable"}</td><td>{h.emitted_events ?? "—"}</td><td>{h.duration_sec.toFixed(1)}s</td></tr>)}
         </tbody></table></div>
@@ -78,7 +78,7 @@ function Content({ view }: { view: View }) {
       </details>}
     </div>
     <h1 style={{ fontSize: 24, fontWeight: 600, marginBottom: 8 }}>{view === "orders" ? "Signal Dashboard" : view === "signals" ? "Validated signals" : "Analytics"}</h1>
-    <p style={{ fontSize: 13, color: "#94A3B8", marginBottom: 20 }}>{view === "analytics" ? "Modeled recommendation outcomes · Signal quality · Strategy distribution" : "Gemini search grounding · Half-Kelly sizing · VIX/SPY regime filtering"}</p>
+    <p style={{ fontSize: 13, color: "var(--color-text-muted)", marginBottom: 20 }}>{view === "analytics" ? "Modeled recommendation outcomes · Signal quality · Strategy distribution" : "Gemini search grounding · Half-Kelly sizing · VIX/SPY regime filtering"}</p>
     {view === "orders" && <>
       <MarketOverviewBar key={data.run_id} initialQuotes={data.benchmarks} asOf={data.as_of} />
       <StatsBar stats={data.order_stats} />
@@ -88,10 +88,10 @@ function Content({ view }: { view: View }) {
       <Pagination page={page} total={rows.length} perPage={15} basePath="/" query={query} />
     </>}
     {view === "signals" && <>
-      <p style={{ color: "#CBD5E1", fontSize: 13 }}>{data.signal_stats.total_signals} grounded signals · {data.signal_stats.avg_conviction.toFixed(0)}/100 average conviction · {data.signal_stats.trap_count} flagged traps</p>
+      <p style={{ color: "var(--color-text-secondary)", fontSize: 13 }}>{data.signal_stats.total_signals} grounded signals · {data.signal_stats.avg_conviction.toFixed(0)}/100 average conviction · {data.signal_stats.trap_count} flagged traps</p>
       <SignalFilterBar key={sp.toString()} initialCatalyst={catalyst} initialMinConviction={conviction} initialTrap={trap === "true" ? "trap" : trap === "false" ? "clean" : "all"} initialTicker={ticker} initialDateRange={dateRange as "all"} />
       <button style={{ ...buttonStyle, marginBottom: 18 }} disabled={!signals.length} onClick={() => downloadCsv(signals, "catalyst-signals.csv")}>Export filtered CSV</button>
-      {!signals.length ? <div className="glass-card" style={{ padding: 32 }}><h2>No qualifying signals in this snapshot</h2><p style={{ color: "#94A3B8", fontSize: 13 }}>A scan can finish without a catalyst passing confluence, liquidity, grounding, and conviction checks. See the scan report above for source outcomes.</p></div> :
+      {!signals.length ? <div className="glass-card" style={{ padding: 32 }}><h2>No qualifying signals in this snapshot</h2><p style={{ color: "var(--color-text-muted)", fontSize: 13 }}>A scan can finish without a catalyst passing confluence, liquidity, grounding, and conviction checks. See the scan report above for source outcomes.</p></div> :
         <div className="glass-card" style={{ overflowX: "auto" }}>{signalsPage.items.map((signal, i) => <SignalRow key={signal.id} signal={signal} isLast={i === signalsPage.items.length - 1} />)}</div>}
       <Pagination page={page} total={signals.length} perPage={15} basePath="/signals" query={query} />
     </>}

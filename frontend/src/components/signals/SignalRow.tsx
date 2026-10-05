@@ -45,6 +45,7 @@ export function SignalRow({
     <div>
       {/* ── Main row ─────────────────────────────── */}
       <div
+        className="signal-row-main"
         style={{
           display: "grid",
           gridTemplateColumns: GRID_COLS,
@@ -52,17 +53,10 @@ export function SignalRow({
           minWidth: 900,
           padding: "11px 20px",
           borderBottom: !isLast || expanded
-            ? "1px solid rgba(255,255,255,0.06)"
+            ? "1px solid var(--color-border)"
             : "none",
           alignItems: "center",
-          transition: "background 100ms ease",
           cursor: "default",
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLDivElement).style.background = "#1E293B";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLDivElement).style.background = "transparent";
         }}
       >
         {/* Ticker */}
@@ -72,7 +66,7 @@ export function SignalRow({
               fontFamily: "var(--font-mono)",
               fontSize: 13,
               fontWeight: 700,
-              color: "#F8FAFC",
+              color: "var(--color-text-primary)",
             }}
           >
             {signal.ticker}
@@ -80,14 +74,14 @@ export function SignalRow({
           {signal.is_trap && (
             <AlertTriangle
               size={11}
-              color="#EF4444"
+              color="var(--color-loss)"
               aria-label="Trap detected"
             />
           )}
         </div>
 
         {/* Time */}
-        <span style={{ fontSize: 11, color: "#64748B", whiteSpace: "nowrap" }}>
+        <span style={{ fontSize: 11, color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
           {formatRelative(signal.timestamp_utc)}
         </span>
 
@@ -109,7 +103,7 @@ export function SignalRow({
               width: 48,
               height: 3,
               borderRadius: 2,
-              background: "#1E293B",
+              background: "var(--color-bg-row)",
               overflow: "hidden",
             }}
           >
@@ -128,7 +122,7 @@ export function SignalRow({
         <span
           style={{
             fontSize: 12,
-            color: "#CBD5E1",
+            color: "var(--color-text-secondary)",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -149,7 +143,7 @@ export function SignalRow({
             width: "100%",
             textAlign: "left",
             fontSize: 12,
-            color: "#CBD5E1",
+            color: "var(--color-text-secondary)",
             overflow: "hidden",
             paddingRight: 12,
             background: "none",
@@ -168,9 +162,9 @@ export function SignalRow({
             {signal.rationale}
           </span>
           {expanded ? (
-            <ChevronUp size={11} style={{ flexShrink: 0, color: "#64748B" }} />
+            <ChevronUp size={11} style={{ flexShrink: 0, color: "var(--color-text-muted)" }} />
           ) : (
-            <ChevronDown size={11} style={{ flexShrink: 0, color: "#64748B" }} />
+            <ChevronDown size={11} style={{ flexShrink: 0, color: "var(--color-text-muted)" }} />
           )}
         </button>
 
@@ -184,9 +178,9 @@ export function SignalRow({
                 borderRadius: 3,
                 fontSize: 10,
                 fontWeight: 500,
-                background: "#1E293B",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "#94A3B8",
+                background: "var(--color-bg-row)",
+                border: "1px solid var(--color-border-subtle)",
+                color: "var(--color-text-muted)",
                 letterSpacing: "0.02em",
                 whiteSpace: "nowrap",
               }}
@@ -203,9 +197,9 @@ export function SignalRow({
                 borderRadius: 3,
                 fontSize: 10,
                 fontWeight: 600,
-                background: "rgba(56, 189, 248, 0.12)",
-                border: "1px solid rgba(56, 189, 248, 0.3)",
-                color: "#38BDF8",
+                background: "var(--color-info-bg)",
+                border: "1px solid var(--color-info-border)",
+                color: "var(--color-link)",
                 letterSpacing: "0.02em",
                 whiteSpace: "nowrap",
               }}
@@ -222,9 +216,9 @@ export function SignalRow({
           style={{
             padding: "12px 20px 16px",
             borderBottom: !isLast
-              ? "1px solid rgba(255,255,255,0.06)"
+              ? "1px solid var(--color-border)"
               : "none",
-            background: "#0B1121",
+            background: "var(--color-bg-page)",
             display: "flex",
             flexDirection: "column",
             gap: 12,
@@ -236,8 +230,8 @@ export function SignalRow({
               margin: 0,
               fontSize: 13,
               lineHeight: 1.65,
-              color: "#CBD5E1",
-              borderLeft: "2px solid rgba(255,255,255,0.08)",
+              color: "var(--color-text-secondary)",
+              borderLeft: "2px solid var(--color-border-subtle)",
               paddingLeft: 12,
             }}
           >
@@ -254,9 +248,9 @@ export function SignalRow({
                     fontFamily: "var(--font-mono)",
                     padding: "2px 8px",
                     borderRadius: 3,
-                    background: "rgba(14,165,233,0.12)",
-                    border: "1px solid rgba(14,165,233,0.3)",
-                    color: "#38BDF8",
+                    background: "var(--color-info-bg)",
+                    border: "1px solid var(--color-info-border)",
+                    color: "var(--color-link)",
                   }}
                 >
                   Entry Zone: {signal.suggested_entry_zone}
@@ -269,9 +263,9 @@ export function SignalRow({
                     fontFamily: "var(--font-mono)",
                     padding: "2px 8px",
                     borderRadius: 3,
-                    background: "rgba(239,68,68,0.12)",
-                    border: "1px solid rgba(239,68,68,0.3)",
-                    color: "#F87171",
+                    background: "var(--color-loss-bg)",
+                    border: "1px solid var(--color-loss-border)",
+                    color: "var(--color-loss)",
                   }}
                 >
                   Suggested Stop: {String(signal.suggested_stop)}
@@ -284,8 +278,8 @@ export function SignalRow({
           <div
             style={{
               padding: "10px 14px",
-              background: "#0F172A",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "var(--color-bg-page)",
+              border: "1px solid var(--color-border-subtle)",
               borderRadius: 4,
               display: "flex",
               alignItems: "center",
@@ -297,10 +291,10 @@ export function SignalRow({
             {quote ? (
               <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 11, color: "#64748B", textTransform: "uppercase" }}>
+                  <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase" }}>
                     Live Price:
                   </span>
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 700, color: "#F8FAFC" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 700, color: "var(--color-text-primary)" }}>
                     {quote.price != null ? formatCurrency(quote.price) : "—"}
                   </span>
                 </div>
@@ -313,7 +307,7 @@ export function SignalRow({
                       gap: 4,
                       fontSize: 12,
                       fontFamily: "var(--font-mono)",
-                      color: quote.change >= 0 ? "#10B981" : "#EF4444",
+                      color: quote.change >= 0 ? "var(--color-profit)" : "var(--color-loss)",
                     }}
                   >
                     {quote.change >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
@@ -324,19 +318,19 @@ export function SignalRow({
                 )}
 
                 {quote.day_low != null && quote.day_high != null && (
-                  <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: "var(--font-mono)" }}>
+                  <span style={{ fontSize: 11, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>
                     Day: {formatCurrency(quote.day_low)} – {formatCurrency(quote.day_high)}
                   </span>
                 )}
 
                 {quote.volume != null && (
-                  <span style={{ fontSize: 11, color: "#94A3B8", fontFamily: "var(--font-mono)" }}>
+                  <span style={{ fontSize: 11, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>
                     Vol: {quote.volume.toLocaleString()}
                   </span>
                 )}
               </div>
             ) : (
-              <span style={{ fontSize: 12, color: "#64748B" }}>
+              <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                 {quoteError ? "Quote data temporarily unavailable." : "Inspect real-time market quote and trading volume."}
               </span>
             )}
@@ -353,9 +347,9 @@ export function SignalRow({
                 borderRadius: 3,
                 fontSize: 11,
                 fontWeight: 600,
-                background: quote ? "transparent" : "#1E293B",
-                border: "1px solid rgba(255,255,255,0.12)",
-                color: "#38BDF8",
+                background: quote ? "transparent" : "var(--color-bg-row)",
+                border: "1px solid var(--color-border)",
+                color: "var(--color-link)",
                 cursor: loadingQuote ? "wait" : "pointer",
               }}
             >
@@ -383,14 +377,14 @@ export function SignalRow({
                     display: "flex",
                     gap: 7,
                     fontSize: 12,
-                    color: "#94A3B8",
+                    color: "var(--color-text-muted)",
                     lineHeight: 1.5,
                     position: "relative",
                   }}
                 >
                   <AlertTriangle
                     size={10}
-                    color="#EF4444"
+                    color="var(--color-loss)"
                     style={{ flexShrink: 0, marginTop: 2 }}
                     aria-hidden
                   />
@@ -404,4 +398,3 @@ export function SignalRow({
     </div>
   );
 }
-

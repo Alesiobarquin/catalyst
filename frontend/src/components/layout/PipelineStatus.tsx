@@ -43,8 +43,8 @@ export function PipelineStatus() {
   const degraded = data && !ready && data.database === "ok";
   const dead     = !loading && (data === null || data.database === "error");
 
-  const dotColor   = dead ? "#EF4444" : degraded ? "#F59E0B" : "#10B981";
-  const labelColor = dead ? "#EF4444" : degraded ? "#F59E0B" : "var(--color-text-muted)";
+  const dotColor   = dead ? "var(--color-loss)" : degraded ? "var(--color-warning)" : "var(--color-profit)";
+  const labelColor = dead ? "var(--color-loss)" : degraded ? "var(--color-warning)" : "var(--color-text-muted)";
   const label      = loading ? "…" : dead ? "OFFLINE" : ready ? "LIVE" : "DEGRADED";
   const sub        = loading
     ? "Checking"
@@ -63,12 +63,12 @@ export function PipelineStatus() {
         gap: 8,
         padding: "4px 10px",
         borderRadius: 4,
-        border: "1px solid rgba(255,255,255,0.12)",
+        border: "1px solid var(--color-border)",
         background: "transparent",
       }}
     >
       {dead ? (
-        <AlertCircle size={11} color="#EF4444" />
+        <AlertCircle size={11} color="var(--color-loss)" />
       ) : (
         /* Static dot — NO animation property */
         <span

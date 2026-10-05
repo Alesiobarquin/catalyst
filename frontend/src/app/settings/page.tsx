@@ -227,9 +227,9 @@ export default function SettingsPage() {
             display: "flex",
             alignItems: "center",
             gap: 10,
-            background: feedback.type === "success" ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)",
-            border: `1px solid ${feedback.type === "success" ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)"}`,
-            color: feedback.type === "success" ? "#34D399" : "#F87171",
+            background: feedback.type === "success" ? "var(--color-profit-bg)" : "var(--color-loss-bg)",
+            border: `1px solid ${feedback.type === "success" ? "var(--color-profit-border)" : "var(--color-loss-border)"}`,
+            color: feedback.type === "success" ? "var(--color-profit)" : "var(--color-loss)",
             fontSize: 13,
           }}
         >
@@ -262,20 +262,20 @@ export default function SettingsPage() {
                 width: 36,
                 height: 36,
                 borderRadius: 8,
-                background: "rgba(217,119,6,0.15)",
+                background: "var(--color-category-supernova-bg)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#D97706",
+                color: "var(--color-link)",
               }}
             >
               <Key size={18} />
             </div>
             <div>
-              <h2 style={{ fontSize: 16, fontWeight: 600, color: "#F8FAFC", margin: "0 0 2px" }}>
+              <h2 style={{ fontSize: 16, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 2px" }}>
                 Alpaca Paper Trading
               </h2>
-              <span style={{ fontSize: 12, color: "#64748B" }}>
+              <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                 https://paper-api.alpaca.markets/v2
               </span>
             </div>
@@ -290,9 +290,9 @@ export default function SettingsPage() {
               borderRadius: 20,
               fontSize: 11,
               fontWeight: 600,
-              background: isConnected ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)",
-              border: isConnected ? "1px solid rgba(16,185,129,0.25)" : "1px solid rgba(245,158,11,0.25)",
-              color: isConnected ? "#10B981" : "#F59E0B",
+              background: isConnected ? "var(--color-profit-bg)" : "var(--color-warning-bg)",
+              border: isConnected ? "1px solid var(--color-profit-border)" : "1px solid var(--color-warning-border)",
+              color: isConnected ? "var(--color-profit)" : "var(--color-warning)",
             }}
           >
             <span
@@ -300,14 +300,14 @@ export default function SettingsPage() {
                 width: 6,
                 height: 6,
                 borderRadius: "50%",
-                background: isConnected ? "#10B981" : "#F59E0B",
+                background: isConnected ? "var(--color-profit)" : "var(--color-warning)",
               }}
             />
             {isConnected ? "Connected" : "Disconnected"}
           </div>
         </div>
 
-        <p style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.6, marginBottom: 20 }}>
+        <p style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.6, marginBottom: 20 }}>
           Orders recommended by the Java Strategy Engine and sized by the Half-Kelly risk model are routed to your Alpaca paper portfolio when active.
         </p>
 
@@ -322,15 +322,15 @@ export default function SettingsPage() {
           <div
             style={{
               padding: "12px 14px",
-              background: "#0B1121",
-              border: "1px solid rgba(255,255,255,0.06)",
+              background: "var(--color-bg-page)",
+              border: "1px solid var(--color-border-subtle)",
               borderRadius: 4,
             }}
           >
-            <span style={{ fontSize: 11, color: "#64748B", display: "block", marginBottom: 4 }}>
+            <span style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>
               Order Type
             </span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#F8FAFC", fontFamily: "var(--font-mono)" }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)", fontFamily: "var(--font-mono)" }}>
               Limit + Bracket Stop
             </span>
           </div>
@@ -338,15 +338,15 @@ export default function SettingsPage() {
           <div
             style={{
               padding: "12px 14px",
-              background: "#0B1121",
-              border: "1px solid rgba(255,255,255,0.06)",
+              background: "var(--color-bg-page)",
+              border: "1px solid var(--color-border-subtle)",
               borderRadius: 4,
             }}
           >
-            <span style={{ fontSize: 11, color: "#64748B", display: "block", marginBottom: 4 }}>
+            <span style={{ fontSize: 11, color: "var(--color-text-muted)", display: "block", marginBottom: 4 }}>
               Execution Target
             </span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#F8FAFC", fontFamily: "var(--font-mono)" }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)", fontFamily: "var(--font-mono)" }}>
               Paper Sandbox (No Real Funds)
             </span>
           </div>
@@ -357,18 +357,18 @@ export default function SettingsPage() {
           onSubmit={handleSave}
           style={{
             padding: "16px",
-            background: "rgba(15,23,42,0.6)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            background: "var(--color-bg-overlay)",
+            border: "1px solid var(--color-border-subtle)",
             borderRadius: 6,
             marginBottom: 20,
           }}
         >
-          <h3 style={{ fontSize: 13, fontWeight: 600, color: "#F8FAFC", margin: "0 0 12px" }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 12px" }}>
             Update API Credentials
           </h3>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
             <div>
-              <label style={{ display: "block", fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 11, color: "var(--color-text-muted)", marginBottom: 4 }}>
                 Alpaca API Key ID
               </label>
               <input
@@ -381,16 +381,16 @@ export default function SettingsPage() {
                   padding: "8px 12px",
                   fontSize: 12,
                   fontFamily: "var(--font-mono)",
-                  background: "#080D1A",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "var(--color-bg-page)",
+                  border: "1px solid var(--color-border)",
                   borderRadius: 4,
-                  color: "#F8FAFC",
+                  color: "var(--color-text-primary)",
                   outline: "none",
                 }}
               />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 11, color: "var(--color-text-muted)", marginBottom: 4 }}>
                 Alpaca Secret Key
               </label>
               <input
@@ -403,10 +403,10 @@ export default function SettingsPage() {
                   padding: "8px 12px",
                   fontSize: 12,
                   fontFamily: "var(--font-mono)",
-                  background: "#080D1A",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "var(--color-bg-page)",
+                  border: "1px solid var(--color-border)",
                   borderRadius: 4,
-                  color: "#F8FAFC",
+                  color: "var(--color-text-primary)",
                   outline: "none",
                 }}
               />
@@ -414,12 +414,12 @@ export default function SettingsPage() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "#94A3B8", cursor: "pointer" }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--color-text-muted)", cursor: "pointer" }}>
               <input
                 type="checkbox"
                 checked={validateCreds}
                 onChange={(e) => setValidateCreds(e.target.checked)}
-                style={{ accentColor: "#38BDF8", cursor: "pointer" }}
+                style={{ accentColor: "var(--color-link)", cursor: "pointer" }}
               />
               Pre-verify credentials against Alpaca paper account
             </label>
@@ -435,9 +435,9 @@ export default function SettingsPage() {
                 borderRadius: 4,
                 fontSize: 12,
                 fontWeight: 600,
-                background: saving || !apiKey || !secretKey ? "rgba(56,189,248,0.2)" : "#0284C7",
-                border: "1px solid #38BDF8",
-                color: "#FFFFFF",
+                background: saving || !apiKey || !secretKey ? "var(--color-info-bg)" : "var(--color-link)",
+                border: "1px solid var(--color-link)",
+                color: "var(--color-on-accent)",
                 cursor: saving || !apiKey || !secretKey ? "not-allowed" : "pointer",
                 transition: "all 120ms ease",
               }}
@@ -454,7 +454,7 @@ export default function SettingsPage() {
             alignItems: "center",
             justifyContent: "space-between",
             paddingTop: 16,
-            borderTop: "1px solid rgba(255,255,255,0.08)",
+            borderTop: "1px solid var(--color-border-subtle)",
             flexWrap: "wrap",
             gap: 12,
           }}
@@ -468,7 +468,7 @@ export default function SettingsPage() {
               alignItems: "center",
               gap: 4,
               fontSize: 12,
-              color: "#38BDF8",
+              color: "var(--color-link)",
               textDecoration: "none",
             }}
           >
@@ -488,9 +488,9 @@ export default function SettingsPage() {
                 borderRadius: 4,
                 fontSize: 12,
                 fontWeight: 500,
-                background: "rgba(239,68,68,0.10)",
-                border: "1px solid rgba(239,68,68,0.25)",
-                color: "#EF4444",
+                background: "var(--color-loss-bg)",
+                border: "1px solid var(--color-loss-border)",
+                color: "var(--color-loss)",
                 cursor: disconnecting ? "wait" : "pointer",
                 transition: "all 120ms ease",
               }}
@@ -526,20 +526,20 @@ export default function SettingsPage() {
                 width: 36,
                 height: 36,
                 borderRadius: 8,
-                background: "rgba(56,189,248,0.15)",
+                background: "var(--color-info-bg)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: "#38BDF8",
+                color: "var(--color-link)",
               }}
             >
               <Activity size={18} />
             </div>
             <div>
-              <h2 style={{ fontSize: 16, fontWeight: 600, color: "#F8FAFC", margin: "0 0 2px" }}>
+              <h2 style={{ fontSize: 16, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 2px" }}>
                 Pipeline Telemetry & Subsystems
               </h2>
-              <span style={{ fontSize: 12, color: "#64748B" }}>
+              <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                 FastAPI · TimescaleDB · Redis Confluence · Java Engine
               </span>
             </div>
@@ -557,9 +557,9 @@ export default function SettingsPage() {
               borderRadius: 4,
               fontSize: 12,
               fontWeight: 500,
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              color: "#F8FAFC",
+              background: "var(--color-bg-row)",
+              border: "1px solid var(--color-border)",
+              color: "var(--color-text-primary)",
               cursor: healthLoading ? "wait" : "pointer",
             }}
           >
@@ -568,8 +568,8 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        <p style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.6, marginBottom: 16 }}>
-          Operational status verified via real-time probe (<code style={{ color: "#38BDF8" }}>GET /health/pipeline</code>). All core layers must be operational for automated Half-Kelly trade sizing.
+        <p style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.6, marginBottom: 16 }}>
+          Operational status verified via real-time probe (<code style={{ color: "var(--color-link)" }}>GET /health/pipeline</code>). All core layers must be operational for automated Half-Kelly trade sizing.
         </p>
 
         <div
@@ -580,27 +580,27 @@ export default function SettingsPage() {
             marginBottom: 16,
           }}
         >
-          <div style={{ padding: "10px 12px", background: "#0B1121", borderRadius: 4, border: "1px solid rgba(255,255,255,0.06)" }}>
-            <span style={{ fontSize: 10, color: "#64748B", display: "block", marginBottom: 2 }}>API LAYER</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: pipelineHealth?.api === "ok" ? "#10B981" : "#EF4444" }}>
+          <div style={{ padding: "10px 12px", background: "var(--color-bg-page)", borderRadius: 4, border: "1px solid var(--color-bg-row)" }}>
+            <span style={{ fontSize: 10, color: "var(--color-text-muted)", display: "block", marginBottom: 2 }}>API LAYER</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: pipelineHealth?.api === "ok" ? "var(--color-profit)" : "var(--color-loss)" }}>
               {pipelineHealth?.api ? pipelineHealth.api.toUpperCase() : "..."}
             </span>
           </div>
-          <div style={{ padding: "10px 12px", background: "#0B1121", borderRadius: 4, border: "1px solid rgba(255,255,255,0.06)" }}>
-            <span style={{ fontSize: 10, color: "#64748B", display: "block", marginBottom: 2 }}>DATABASE</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: pipelineHealth?.database === "ok" ? "#10B981" : "#EF4444" }}>
+          <div style={{ padding: "10px 12px", background: "var(--color-bg-page)", borderRadius: 4, border: "1px solid var(--color-bg-row)" }}>
+            <span style={{ fontSize: 10, color: "var(--color-text-muted)", display: "block", marginBottom: 2 }}>DATABASE</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: pipelineHealth?.database === "ok" ? "var(--color-profit)" : "var(--color-loss)" }}>
               {pipelineHealth?.database ? pipelineHealth.database.toUpperCase() : "..."}
             </span>
           </div>
-          <div style={{ padding: "10px 12px", background: "#0B1121", borderRadius: 4, border: "1px solid rgba(255,255,255,0.06)" }}>
-            <span style={{ fontSize: 10, color: "#64748B", display: "block", marginBottom: 2 }}>REDIS CACHE</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: pipelineHealth?.redis === "ok" ? "#10B981" : "#EF4444" }}>
+          <div style={{ padding: "10px 12px", background: "var(--color-bg-page)", borderRadius: 4, border: "1px solid var(--color-bg-row)" }}>
+            <span style={{ fontSize: 10, color: "var(--color-text-muted)", display: "block", marginBottom: 2 }}>REDIS CACHE</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: pipelineHealth?.redis === "ok" ? "var(--color-profit)" : "var(--color-loss)" }}>
               {pipelineHealth?.redis ? pipelineHealth.redis.toUpperCase() : "..."}
             </span>
           </div>
-          <div style={{ padding: "10px 12px", background: "#0B1121", borderRadius: 4, border: "1px solid rgba(255,255,255,0.06)" }}>
-            <span style={{ fontSize: 10, color: "#64748B", display: "block", marginBottom: 2 }}>STRATEGY ENGINE</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: pipelineHealth?.engine === "UP" ? "#10B981" : "#F59E0B" }}>
+          <div style={{ padding: "10px 12px", background: "var(--color-bg-page)", borderRadius: 4, border: "1px solid var(--color-bg-row)" }}>
+            <span style={{ fontSize: 10, color: "var(--color-text-muted)", display: "block", marginBottom: 2 }}>STRATEGY ENGINE</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: pipelineHealth?.engine === "UP" ? "var(--color-profit)" : "var(--color-warning)" }}>
               {pipelineHealth?.engine ? pipelineHealth.engine.toUpperCase() : "..."}
             </span>
           </div>
@@ -621,27 +621,27 @@ export default function SettingsPage() {
               width: 36,
               height: 36,
               borderRadius: 8,
-              background: "rgba(168,85,247,0.15)",
+              background: "var(--color-category-follower-bg)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#A855F7",
+              color: "var(--color-category-follower)",
             }}
           >
             <Send size={18} />
           </div>
           <div>
-            <h2 style={{ fontSize: 16, fontWeight: 600, color: "#F8FAFC", margin: "0 0 2px" }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 2px" }}>
               Developer Signal Injection & Confluence Test
             </h2>
-            <span style={{ fontSize: 12, color: "#64748B" }}>
-              Inject synthetic hunter events into Kafka <code style={{ color: "#A855F7" }}>raw-events</code>
+            <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+              Inject synthetic hunter events into Kafka <code style={{ color: "var(--color-category-follower)" }}>raw-events</code>
             </span>
           </div>
         </div>
 
-        <p style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.6, marginBottom: 16 }}>
-          Inject deterministic multi-source signals to verify Gatekeeper confluence rules (<code style={{ color: "#A855F7" }}>SCARD ≥ 2</code>) and end-to-end pipeline flow. Real tickers (e.g., NVDA, AAPL) are sized by the engine.
+        <p style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.6, marginBottom: 16 }}>
+          Inject deterministic multi-source signals to verify Gatekeeper confluence rules (<code style={{ color: "var(--color-category-follower)" }}>SCARD ≥ 2</code>) and end-to-end pipeline flow. Real tickers (e.g., NVDA, AAPL) are sized by the engine.
         </p>
 
         {injectFeedback && (
@@ -653,9 +653,9 @@ export default function SettingsPage() {
               display: "flex",
               alignItems: "center",
               gap: 8,
-              background: injectFeedback.type === "success" ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)",
-              border: `1px solid ${injectFeedback.type === "success" ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)"}`,
-              color: injectFeedback.type === "success" ? "#34D399" : "#F87171",
+              background: injectFeedback.type === "success" ? "var(--color-profit-bg)" : "var(--color-loss-bg)",
+              border: `1px solid ${injectFeedback.type === "success" ? "var(--color-profit-border)" : "var(--color-loss-border)"}`,
+              color: injectFeedback.type === "success" ? "var(--color-profit)" : "var(--color-loss)",
               fontSize: 12,
             }}
           >
@@ -667,7 +667,7 @@ export default function SettingsPage() {
         <form onSubmit={handleInject}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
             <div>
-              <label style={{ display: "block", fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 11, color: "var(--color-text-muted)", marginBottom: 4 }}>
                 Ticker Symbol
               </label>
               <input
@@ -680,16 +680,16 @@ export default function SettingsPage() {
                   padding: "8px 12px",
                   fontSize: 12,
                   fontFamily: "var(--font-mono)",
-                  background: "#080D1A",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "var(--color-bg-page)",
+                  border: "1px solid var(--color-border)",
                   borderRadius: 4,
-                  color: "#F8FAFC",
+                  color: "var(--color-text-primary)",
                   outline: "none",
                 }}
               />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 11, color: "var(--color-text-muted)", marginBottom: 4 }}>
                 Scenario
               </label>
               <select
@@ -710,10 +710,10 @@ export default function SettingsPage() {
                   width: "100%",
                   padding: "8px 12px",
                   fontSize: 12,
-                  background: "#080D1A",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "var(--color-bg-page)",
+                  border: "1px solid var(--color-border)",
                   borderRadius: 4,
-                  color: "#F8FAFC",
+                  color: "var(--color-text-primary)",
                   outline: "none",
                 }}
               >
@@ -727,7 +727,7 @@ export default function SettingsPage() {
               </select>
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 11, color: "#94A3B8", marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 11, color: "var(--color-text-muted)", marginBottom: 4 }}>
                 Reference Price ($)
               </label>
               <input
@@ -740,10 +740,10 @@ export default function SettingsPage() {
                   padding: "8px 12px",
                   fontSize: 12,
                   fontFamily: "var(--font-mono)",
-                  background: "#080D1A",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "var(--color-bg-page)",
+                  border: "1px solid var(--color-border)",
                   borderRadius: 4,
-                  color: "#F8FAFC",
+                  color: "var(--color-text-primary)",
                   outline: "none",
                 }}
               />
@@ -762,9 +762,9 @@ export default function SettingsPage() {
                 borderRadius: 4,
                 fontSize: 12,
                 fontWeight: 600,
-                background: injecting ? "rgba(168,85,247,0.2)" : "#7C3AED",
-                border: "1px solid #A855F7",
-                color: "#FFFFFF",
+                background: injecting ? "var(--color-category-follower-bg)" : "var(--color-link)",
+                border: "1px solid var(--color-category-follower)",
+                color: "var(--color-on-accent)",
                 cursor: injecting ? "wait" : "pointer",
               }}
             >
@@ -779,19 +779,19 @@ export default function SettingsPage() {
       <div
         style={{
           padding: "16px 20px",
-          background: "#0F172A",
-          border: "1px solid rgba(255,255,255,0.06)",
+          background: "var(--color-bg-page)",
+          border: "1px solid var(--color-border-subtle)",
           borderRadius: 6,
           display: "flex",
           gap: 14,
         }}
       >
-        <ShieldCheck size={20} color="#38BDF8" style={{ flexShrink: 0, marginTop: 2 }} />
+        <ShieldCheck size={20} color="var(--color-link)" style={{ flexShrink: 0, marginTop: 2 }} />
         <div>
-          <h3 style={{ fontSize: 13, fontWeight: 600, color: "#F8FAFC", margin: "0 0 4px" }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: "var(--color-text-primary)", margin: "0 0 4px" }}>
             Zero Direct Postgres Login
           </h3>
-          <p style={{ fontSize: 12, color: "#94A3B8", margin: 0, lineHeight: 1.6 }}>
+          <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: 0, lineHeight: 1.6 }}>
             Authentication is verified statelessly against Clerk JWKS via RS256 JWTs. TimescaleDB only stores execution audit logs and broker credentials with strict user ID partitioning.
           </p>
         </div>

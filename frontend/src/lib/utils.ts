@@ -68,11 +68,11 @@ export function formatDateShort(iso: string): string {
 // ── Strategy color palette ─────────────────────────────────────────
 // Original strategy names preserved exactly.
 const STRATEGY_COLORS: Record<Strategy, { bg: string; text: string; border: string; dot: string }> = {
-  Supernova: { bg: "rgba(249,115,22,0.10)",  text: "#fb923c", border: "rgba(249,115,22,0.25)", dot: "#f97316" },
-  Scalper:   { bg: "rgba(14,165,233,0.10)",  text: "#38bdf8", border: "rgba(14,165,233,0.25)", dot: "#0ea5e9" },
-  Follower:  { bg: "rgba(16,185,129,0.10)",  text: "#34d399", border: "rgba(16,185,129,0.25)", dot: "#10b981" },
-  Drifter:   { bg: "rgba(168,85,247,0.10)",  text: "#c084fc", border: "rgba(168,85,247,0.25)", dot: "#a855f7" },
-  Fallback:  { bg: "rgba(100,116,139,0.10)", text: "#94a3b8", border: "rgba(100,116,139,0.25)", dot: "#64748b" },
+  Supernova: { bg: "var(--color-category-supernova-bg)", text: "var(--color-category-supernova)", border: "var(--color-category-supernova-border)", dot: "var(--color-category-supernova)" },
+  Scalper:   { bg: "var(--color-category-scalper-bg)", text: "var(--color-category-scalper)", border: "var(--color-category-scalper-border)", dot: "var(--color-category-scalper)" },
+  Follower:  { bg: "var(--color-category-follower-bg)", text: "var(--color-category-follower)", border: "var(--color-category-follower-border)", dot: "var(--color-category-follower)" },
+  Drifter:   { bg: "var(--color-category-drifter-bg)", text: "var(--color-category-drifter)", border: "var(--color-category-drifter-border)", dot: "var(--color-category-drifter)" },
+  Fallback:  { bg: "var(--color-category-fallback-bg)", text: "var(--color-category-fallback)", border: "var(--color-category-fallback-border)", dot: "var(--color-category-fallback)" },
 };
 
 export function getStrategyColors(strategy: Strategy) {
@@ -81,10 +81,10 @@ export function getStrategyColors(strategy: Strategy) {
 
 // ── Conviction color (kept for Charts.tsx compatibility) ───────────
 export function getConvictionColor(score: number): string {
-  if (score >= 80) return "#10B981";
-  if (score >= 60) return "#CBD5E1";
-  if (score >= 40) return "#F59E0B";
-  return "#EF4444";
+  if (score >= 80) return "var(--color-profit)";
+  if (score >= 60) return "var(--color-text-secondary)";
+  if (score >= 40) return "var(--color-warning)";
+  return "var(--color-loss)";
 }
 
 export function getConvictionLabel(score: number): string {
@@ -96,27 +96,27 @@ export function getConvictionLabel(score: number): string {
 }
 
 // ── Status config ──────────────────────────────────────────────────
-// Colors: only profit green for target hit, only loss red for stop hit.
+// Labels and status meanings remain stable; colors resolve through the active theme.
 export function getStatusConfig(status: TradeStatus | string) {
   const map: Record<string, { label: string; color: string; bg: string }> = {
-    HIT_TARGET:    { label: "Target hit",      color: "#10B981", bg: "rgba(16,185,129,0.10)" },
-    HIT_STOP:      { label: "Stopped",         color: "#EF4444", bg: "rgba(239,68,68,0.10)"  },
-    ACTIVE:        { label: "Active",          color: "#10B981", bg: "rgba(16,185,129,0.10)" },
-    EXPIRED:       { label: "Expired",         color: "#64748B", bg: "rgba(100,116,139,0.10)"},
-    RESOLVED_WIN:  { label: "Resolved (Win)",  color: "#10B981", bg: "rgba(16,185,129,0.10)" },
-    RESOLVED_LOSS: { label: "Resolved (Loss)", color: "#EF4444", bg: "rgba(239,68,68,0.10)"  },
-    SUBMITTED:     { label: "Submitted",       color: "#38BDF8", bg: "rgba(56,189,248,0.10)" },
-    PENDING_NEW:   { label: "Pending",         color: "#F59E0B", bg: "rgba(245,158,11,0.10)" },
-    NEW:           { label: "New",             color: "#38BDF8", bg: "rgba(56,189,248,0.10)" },
-    ACCEPTED:      { label: "Accepted",        color: "#38BDF8", bg: "rgba(56,189,248,0.10)" },
-    CANCELED:      { label: "Canceled",        color: "#64748B", bg: "rgba(100,116,139,0.10)"},
-    REJECTED:      { label: "Rejected",        color: "#EF4444", bg: "rgba(239,68,68,0.10)"  },
+    HIT_TARGET:    { label: "Target hit",      color: "var(--color-profit)", bg: "var(--color-profit-bg)" },
+    HIT_STOP:      { label: "Stopped",         color: "var(--color-loss)", bg: "var(--color-loss-bg)" },
+    ACTIVE:        { label: "Active",          color: "var(--color-profit)", bg: "var(--color-profit-bg)" },
+    EXPIRED:       { label: "Expired",         color: "var(--color-neutral)", bg: "var(--color-neutral-bg)" },
+    RESOLVED_WIN:  { label: "Resolved (Win)",  color: "var(--color-profit)", bg: "var(--color-profit-bg)" },
+    RESOLVED_LOSS: { label: "Resolved (Loss)", color: "var(--color-loss)", bg: "var(--color-loss-bg)" },
+    SUBMITTED:     { label: "Submitted",       color: "var(--color-info)", bg: "var(--color-info-bg)" },
+    PENDING_NEW:   { label: "Pending",         color: "var(--color-warning)", bg: "var(--color-warning-bg)" },
+    NEW:           { label: "New",             color: "var(--color-info)", bg: "var(--color-info-bg)" },
+    ACCEPTED:      { label: "Accepted",        color: "var(--color-info)", bg: "var(--color-info-bg)" },
+    CANCELED:      { label: "Canceled",        color: "var(--color-neutral)", bg: "var(--color-neutral-bg)" },
+    REJECTED:      { label: "Rejected",        color: "var(--color-loss)", bg: "var(--color-loss-bg)" },
   };
   return (
     map[status] ?? {
       label: String(status).replace("_", " "),
-      color: "#94A3B8",
-      bg: "rgba(148,163,184,0.10)",
+      color: "var(--color-neutral)",
+      bg: "var(--color-neutral-bg)",
     }
   );
 }
