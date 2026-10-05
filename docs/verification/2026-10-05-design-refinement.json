@@ -244,6 +244,214 @@
     "build": "passed",
     "build_public": "passed"
   },
-  "publication": "pending",
-  "live_verification": null
+  "publication": {
+    "commit": "46b72a5579878db721b03c5a02d9463201d8a2f7",
+    "conclusion": "success",
+    "ci": "https://github.com/Alesiobarquin/catalyst/actions/runs/37358691404",
+    "codeql": "https://github.com/Alesiobarquin/catalyst/actions/runs/37358690515",
+    "aws_release": "https://github.com/Alesiobarquin/catalyst/actions/runs/37358691242",
+    "published_at": "2026-10-05T18:53:01Z",
+    "python_tests": 301,
+    "java_tests": 36,
+    "vitest_tests": 187,
+    "total_tests": 524
+  },
+  "live_verification": {
+    "url": "https://d36bndaw2y0rrh.cloudfront.net",
+    "manifest_run": "20261005T140402Z",
+    "checks": [
+      {
+        "page": "dashboard",
+        "status": 200,
+        "viewport": 1440,
+        "theme": "light",
+        "document_width": 1440,
+        "title": "Dashboard \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "signals",
+        "status": 200,
+        "viewport": 1440,
+        "theme": "light",
+        "document_width": 1440,
+        "title": "Signals \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "analytics",
+        "status": 200,
+        "viewport": 1440,
+        "theme": "light",
+        "document_width": 1440,
+        "title": "Analytics \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "architecture",
+        "status": 200,
+        "viewport": 1440,
+        "theme": "light",
+        "document_width": 1440,
+        "title": "Architecture \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "dashboard",
+        "status": 200,
+        "viewport": 390,
+        "theme": "light",
+        "document_width": 390,
+        "title": "Dashboard \u2014 Catalyst",
+        "errors": [],
+        "screenshot": "docs/verification/screenshots/design-refinement/catalyst-design-live-dashboard-390-light.png"
+      },
+      {
+        "page": "signals",
+        "status": 200,
+        "viewport": 390,
+        "theme": "light",
+        "document_width": 390,
+        "title": "Signals \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "analytics",
+        "status": 200,
+        "viewport": 390,
+        "theme": "light",
+        "document_width": 390,
+        "title": "Analytics \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "architecture",
+        "status": 200,
+        "viewport": 390,
+        "theme": "light",
+        "document_width": 390,
+        "title": "Architecture \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "dashboard",
+        "status": 200,
+        "viewport": 390,
+        "theme": "dark",
+        "document_width": 390,
+        "title": "Dashboard \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "signals",
+        "status": 200,
+        "viewport": 390,
+        "theme": "dark",
+        "document_width": 390,
+        "title": "Signals \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "analytics",
+        "status": 200,
+        "viewport": 390,
+        "theme": "dark",
+        "document_width": 390,
+        "title": "Analytics \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "architecture",
+        "status": 200,
+        "viewport": 390,
+        "theme": "dark",
+        "document_width": 390,
+        "title": "Architecture \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "dashboard",
+        "status": 200,
+        "viewport": 320,
+        "theme": "light",
+        "document_width": 320,
+        "title": "Dashboard \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "signals",
+        "status": 200,
+        "viewport": 320,
+        "theme": "light",
+        "document_width": 320,
+        "title": "Signals \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "analytics",
+        "status": 200,
+        "viewport": 320,
+        "theme": "light",
+        "document_width": 320,
+        "title": "Analytics \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "architecture",
+        "status": 200,
+        "viewport": 320,
+        "theme": "light",
+        "document_width": 320,
+        "title": "Architecture \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "dashboard",
+        "status": 200,
+        "viewport": 320,
+        "theme": "dark",
+        "document_width": 320,
+        "title": "Dashboard \u2014 Catalyst",
+        "errors": [],
+        "screenshot": "docs/verification/screenshots/design-refinement/catalyst-design-live-dashboard-320-dark.png"
+      },
+      {
+        "page": "signals",
+        "status": 200,
+        "viewport": 320,
+        "theme": "dark",
+        "document_width": 320,
+        "title": "Signals \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "analytics",
+        "status": 200,
+        "viewport": 320,
+        "theme": "dark",
+        "document_width": 320,
+        "title": "Analytics \u2014 Catalyst",
+        "errors": []
+      },
+      {
+        "page": "architecture",
+        "status": 200,
+        "viewport": 320,
+        "theme": "dark",
+        "document_width": 320,
+        "title": "Architecture \u2014 Catalyst",
+        "errors": []
+      }
+    ],
+    "interactions": [
+      "dark switch via Space",
+      "saved dark reload",
+      "route theme persistence",
+      "scan report open/focus",
+      "320px full navigation",
+      "empty export omitted"
+    ],
+    "errors": 0,
+    "overflow": 0
+  }
 }

@@ -106,6 +106,7 @@ The AWS account was a Free plan scheduled to expire October 21, 2026. It was upg
 
 ## Verification record
 
+- The October 5 design refinement `46b72a5` passed [CI](https://github.com/Alesiobarquin/catalyst/actions/runs/37358691404), [CodeQL](https://github.com/Alesiobarquin/catalyst/actions/runs/37358690515), and the [AWS release](https://github.com/Alesiobarquin/catalyst/actions/runs/37358691242): 301 Python, 36 Java and 187 Vitest tests (524 total). Twenty live CloudFront route/theme/viewport checks passed at 1440px, 390px and 320px with no page errors or horizontal overflow. Page titles, saved dark reload, report opening/focus and narrow navigation were verified. Local populated fixtures covered filtering, page clamping/reset and saved quote provenance through transient request interception; no dataset files were published. The organic manifest remains `20261005T140402Z`. See [verification and screenshots](verification/2026-10-05-design-refinement.json).
 - Local and fresh Linux release CI: 301 Python tests, 36 Java tests, 156 frontend tests (493 total); lint, Python formatting, TypeScript, and static export pass. Release [`ea5f3ef`](https://github.com/Alesiobarquin/catalyst/actions/runs/37242671992) built and published all three native x86 images successfully.
 - Public HTTPS routes `/`, `/signals`, `/analytics`, `/architecture` respond successfully. `/settings` and `/testing/inject` return 404. Direct S3 website content access returns 403.
 - Updated Gemini key passed a real Search-grounded 3.8 Flash request.
