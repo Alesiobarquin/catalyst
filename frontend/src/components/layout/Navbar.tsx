@@ -9,8 +9,8 @@ import { PUBLIC_DEMO } from "@/lib/snapshot";
 
 const NAV_LINKS = [
   { href: "/", label: "Dashboard" },
-  { href: "/analytics", label: "Analytics" },
   { href: "/signals", label: "Signals" },
+  { href: "/analytics", label: "Analytics" },
   { href: "/architecture", label: "How It Works" },
   { href: "/settings", label: "Settings" },
 ];

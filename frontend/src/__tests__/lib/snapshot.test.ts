@@ -22,4 +22,10 @@ describe("Public snapshots", () => {
     expect(filterRows(rows, { ticker: "nvda" })[0].ticker).toBe("NVDA");
     expect(paginate(rows, 2, 1)).toEqual({ items: [rows[1]], total: 2, page: 2, per_page: 1 });
   });
+  it("keeps stale or fractional page queries within the actual result pages", () => {
+    const rows = ["first", "second"];
+    expect(paginate(rows, 999, 1)).toMatchObject({ items: ["second"], page: 2 });
+    expect(paginate(rows, 1.5, 1)).toMatchObject({ items: ["first"], page: 1 });
+    expect(paginate([], 999)).toMatchObject({ items: [], page: 1 });
+  });
 });

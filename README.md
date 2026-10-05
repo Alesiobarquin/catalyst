@@ -5,7 +5,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16%20App%20Router-black.svg)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/Tests-516%20Passing-emerald.svg)](https://github.com/Alesiobarquin/catalyst)
+[![Tests](https://img.shields.io/badge/Tests-524%20Passing-emerald.svg)](https://github.com/Alesiobarquin/catalyst)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
 **Catalyst** is an event-driven quantitative trading and market signal discovery platform. It ingests volatile market events across disparate financial feeds (scrapers, SEC EDGAR Form 4 filings, unusual options flow, earnings surprises), filters them through a stateful Redis confluence gatekeeper, validates theses in real-time via Gemini with Google Search grounding, sizes orders via a Java Spring Boot quantitative engine (Half-Kelly criterion and SPY/VIX regime filtering), executes paper orders via Alpaca Markets, tracks closed-loop lifecycle PnL via an autonomous resolver daemon, broadcasts real-time alerts to Discord/Slack/Telegram, and provides an executive analytics dashboard built on Next.js 16 and FastAPI.
@@ -91,21 +91,21 @@ graph TD
 | **Trade Resolver** (`resolver/`) | Python 3.12, TimescaleDB, Yahoo Finance | ✅ Active | Resolves `ACTIVE` recommendations against sampled Yahoo prices and a 14-calendar-day holding limit. Persists modeled recommendation PnL and `HIT_TARGET`, `HIT_STOP`, or `EXPIRED`; this daemon does not query broker fills or close positions. |
 | **Notification Dispatcher** (`notifier/`) | Python 3.12, Webhooks, HTTPX | ✅ Active | Real-time multi-channel notification engine consuming `validated-signals` and dispatching rich alerts to Discord embeds, Slack Block Kit, and Telegram HTML for high-conviction events ($\ge 70$). |
 | **FastAPI Read Layer** (`api/`) | Python 3.12, FastAPI, asyncpg, Redis | ✅ Active | Asynchronous REST and Server-Sent Events (SSE) streaming API (`/signals/stream`). Exposes KPI statistics (`/signals/stats`, `/orders/stats`), CSV exports, market quotes, pipeline health (`/health/pipeline`), and Prometheus metrics (`/metrics`). |
-| **Frontend Dashboard** (`frontend/`) | Next.js 16, React 19, Tailwind CSS 4, Vitest | ✅ 179 Tests | Read-only public daily snapshot plus API-backed local dashboard, responsive labeled signal table, clear collection freshness and partial-run status, readable chart summaries, accessible keyboard-navigable filters, and persistent light/dark themes. |
+| **Frontend Dashboard** (`frontend/`) | Next.js 16, React 19, Tailwind CSS 4, Vitest | ✅ 187 Tests | Read-only public daily snapshot plus API-backed local dashboard, responsive labeled signal table, clear collection freshness and partial-run status, readable chart summaries, accessible keyboard-navigable filters, and persistent light/dark themes. |
 
 ---
 
 ## 3. Test Coverage & Quality Gates
 
-The codebase maintains rigorous multi-stack automated testing with **516 passing tests** across 3 language ecosystems:
+The codebase maintains rigorous multi-stack automated testing with **524 passing tests** across 3 language ecosystems:
 
 ```text
 ================================ TEST SUITE SUMMARY ================================
 ✅ Python Microservices (Pytest):   301 tests passed (0 failures, 100% pass rate)
 ✅ Java Quantitative Engine (JUnit 5): 36 tests passed (0 failures, 100% pass rate)
-✅ Next.js Frontend (Vitest):        179 tests passed (0 failures, 100% pass rate)
+✅ Next.js Frontend (Vitest):        187 tests passed (0 failures, 100% pass rate)
 ------------------------------------------------------------------------------------
-TOTAL VERIFIED AUTOMATED TESTS:      516 tests passing across stack
+TOTAL VERIFIED AUTOMATED TESTS:      524 tests passing across stack
 ====================================================================================
 ```
 
@@ -124,7 +124,7 @@ TOTAL VERIFIED AUTOMATED TESTS:      516 tests passing across stack
 cd engine && mvn -B test && cd ..
 ```
 
-#### 3. Frontend Vitest Suite (179 tests)
+#### 3. Frontend Vitest Suite (187 tests)
 ```bash
 npm --prefix frontend run test
 npm --prefix frontend run typecheck

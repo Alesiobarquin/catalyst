@@ -5,9 +5,9 @@ import { Pagination } from "@/components/ui/Pagination";
 // Mock next/link
 vi.mock("next/link", () => {
   return {
-    default: ({ children, href, style }: any) => {
+    default: ({ children, href, style, ...props }: any) => {
       return (
-        <a href={href} style={style} data-testid="next-link">
+        <a href={href} style={style} data-testid="next-link" {...props}>
           {children}
         </a>
       );
@@ -30,24 +30,26 @@ describe("Pagination", () => {
     expect(screen.getByText(/\(50 total\)/)).toBeInTheDocument();
   });
 
-  it("disables previous link on first page", () => {
+  it("renders previous as non-interactive text on the first page", () => {
     render(<Pagination page={1} total={50} perPage={10} basePath="/signals" />);
     
-    const prevLink = screen.getByText("← Previous");
-    expect(prevLink).toHaveStyle({ pointerEvents: "none" });
+    expect(screen.getByRole("navigation", { name: "Pagination" })).toBeInTheDocument();
+    const previous = screen.getByText("← Previous");
+    expect(previous).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByRole("link", { name: "← Previous" })).not.toBeInTheDocument();
     
-    const nextLink = screen.getByText("Next →");
-    expect(nextLink).not.toHaveStyle({ pointerEvents: "none" });
+    expect(screen.getByRole("link", { name: "Next →" })).toBeInTheDocument();
+    expect(screen.getByText(/Page 1 of 5/)).toHaveAttribute("aria-current", "page");
   });
 
-  it("disables next link on last page", () => {
+  it("renders next as non-interactive text on the last page", () => {
     render(<Pagination page={5} total={50} perPage={10} basePath="/signals" />);
     
-    const prevLink = screen.getByText("← Previous");
-    expect(prevLink).not.toHaveStyle({ pointerEvents: "none" });
+    expect(screen.getByRole("link", { name: "← Previous" })).toBeInTheDocument();
     
-    const nextLink = screen.getByText("Next →");
-    expect(nextLink).toHaveStyle({ pointerEvents: "none" });
+    const next = screen.getByText("Next →");
+    expect(next).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByRole("link", { name: "Next →" })).not.toBeInTheDocument();
   });
 
   it("constructs correct hrefs with query params", () => {
@@ -61,11 +63,32 @@ describe("Pagination", () => {
       />
     );
     
-    const prevLink = screen.getByText("← Previous");
+    const prevLink = screen.getByRole("link", { name: "← Previous" });
     expect(prevLink).toHaveAttribute("href", "/signals?status=ACTIVE&ticker=AAPL");
     
-    const nextLink = screen.getByText("Next →");
+    const nextLink = screen.getByRole("link", { name: "Next →" });
     expect(nextLink).toHaveAttribute("href", "/signals?status=ACTIVE&ticker=AAPL&page=3");
+  });
+
+  it("replaces the current page query while retaining other filters", () => {
+    render(
+      <Pagination
+        page={2}
+        total={50}
+        perPage={10}
+        basePath="/signals"
+        query={{ ticker: "NVDA", strategy: "Supernova", page: "2" }}
+      />
+    );
+
+    expect(screen.getByRole("link", { name: "← Previous" })).toHaveAttribute(
+      "href",
+      "/signals?ticker=NVDA&strategy=Supernova"
+    );
+    expect(screen.getByRole("link", { name: "Next →" })).toHaveAttribute(
+      "href",
+      "/signals?ticker=NVDA&strategy=Supernova&page=3"
+    );
   });
 
   it("omits empty query parameters", () => {
@@ -79,7 +102,7 @@ describe("Pagination", () => {
       />
     );
     
-    const nextLink = screen.getByText("Next →");
+    const nextLink = screen.getByRole("link", { name: "Next →" });
     expect(nextLink).toHaveAttribute("href", "/signals?status=ACTIVE&page=3");
   });
 });

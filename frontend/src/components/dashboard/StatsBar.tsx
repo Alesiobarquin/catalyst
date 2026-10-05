@@ -3,9 +3,10 @@ import { Activity, Target, TrendingUp, ShieldAlert } from "lucide-react";
 
 interface StatsBarProps {
   stats: OrderStats;
+  snapshot?: boolean;
 }
 
-export function StatsBar({ stats }: StatsBarProps) {
+export function StatsBar({ stats, snapshot = false }: StatsBarProps) {
   const totalOrders = stats.total_orders ?? 0;
   const activeCount = stats.active_count ?? 0;
   const hitTarget = stats.hit_target_count ?? 0;
@@ -22,7 +23,7 @@ export function StatsBar({ stats }: StatsBarProps) {
     {
       label:  "Recommendations",
       value:  totalOrders.toString(),
-      sub:    `${activeCount} open now`,
+      sub:    `${activeCount} open ${snapshot ? "at scan" : "now"}`,
       icon:   Activity,
     },
     {
@@ -48,7 +49,7 @@ export function StatsBar({ stats }: StatsBarProps) {
   ];
 
   return (
-    <div className="stats-grid">
+    <div className="stats-grid stats-summary">
       {cards.map((card) => (
         <div
           key={card.label}

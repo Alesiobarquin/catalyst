@@ -73,9 +73,9 @@ describe("TradeList", () => {
   it("renders empty state without active filters", () => {
     render(<TradeList orders={[]} hasActiveFilters={false} />);
 
-    expect(screen.getByText("No recommendations in this snapshot")).toBeInTheDocument();
+    expect(screen.getByText("No recommendations yet")).toBeInTheDocument();
     expect(
-      screen.getByText(/This scan did not publish an order/)
+      screen.getByText(/Recommendations will appear when a signal passes validation/)
     ).toBeInTheDocument();
   });
 

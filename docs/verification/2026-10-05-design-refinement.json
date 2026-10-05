@@ -1,0 +1,249 @@
+{
+  "manifest_run": "20261005T140402Z",
+  "checks": [
+    {
+      "mode": "organic",
+      "page": "dashboard",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Dashboard \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/design-refinement/catalyst-design-organic-dashboard-1440-light.png"
+    },
+    {
+      "mode": "organic",
+      "page": "signals",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Signals \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "page": "analytics",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Analytics \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "page": "architecture",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Architecture \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "page": "dashboard",
+      "viewport": 390,
+      "theme": "light",
+      "document_width": 390,
+      "title": "Dashboard \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/design-refinement/catalyst-design-organic-dashboard-390-light.png"
+    },
+    {
+      "mode": "organic",
+      "page": "signals",
+      "viewport": 390,
+      "theme": "light",
+      "document_width": 390,
+      "title": "Signals \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "page": "analytics",
+      "viewport": 390,
+      "theme": "light",
+      "document_width": 390,
+      "title": "Analytics \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/design-refinement/catalyst-design-organic-analytics-390-light.png"
+    },
+    {
+      "mode": "organic",
+      "page": "architecture",
+      "viewport": 390,
+      "theme": "light",
+      "document_width": 390,
+      "title": "Architecture \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "page": "dashboard",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "title": "Dashboard \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/design-refinement/catalyst-design-organic-dashboard-320-dark.png"
+    },
+    {
+      "mode": "organic",
+      "page": "signals",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "title": "Signals \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "page": "analytics",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "title": "Analytics \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "page": "architecture",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "title": "Architecture \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "page": "dashboard",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Dashboard \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "page": "signals",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Signals \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "page": "analytics",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Analytics \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/design-refinement/catalyst-design-fixture-analytics-1440-light.png"
+    },
+    {
+      "mode": "fixture",
+      "page": "architecture",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Architecture \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "page": "dashboard",
+      "viewport": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "title": "Dashboard \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "page": "signals",
+      "viewport": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "title": "Signals \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "page": "analytics",
+      "viewport": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "title": "Analytics \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "page": "architecture",
+      "viewport": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "title": "Architecture \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "page": "dashboard",
+      "viewport": 320,
+      "theme": "light",
+      "document_width": 320,
+      "title": "Dashboard \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "page": "signals",
+      "viewport": 320,
+      "theme": "light",
+      "document_width": 320,
+      "title": "Signals \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/design-refinement/catalyst-design-fixture-signals-320-light.png"
+    },
+    {
+      "mode": "fixture",
+      "page": "analytics",
+      "viewport": 320,
+      "theme": "light",
+      "document_width": 320,
+      "title": "Analytics \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "page": "architecture",
+      "viewport": 320,
+      "theme": "light",
+      "document_width": 320,
+      "title": "Architecture \u2014 Catalyst",
+      "errors": []
+    }
+  ],
+  "interactions": [
+    "skip-link keyboard focus",
+    "unclipped 320px navigation",
+    "report open/focus",
+    "public 30d query and reset",
+    "stale page clamp and page-one query reset",
+    "saved quote without live refresh",
+    "filtered signal reset"
+  ],
+  "verified_at": "2026-10-05",
+  "environment": "Local production static export",
+  "fixture_handling": "Organic JSON was fetched read-only; populated fixtures were transient Playwright request interception. No data files were written into the static export.",
+  "validation": {
+    "vitest_tests": 187,
+    "vitest_files": 33,
+    "typecheck": "passed",
+    "lint": "passed",
+    "build": "passed",
+    "build_public": "passed"
+  },
+  "publication": "pending",
+  "live_verification": null
+}

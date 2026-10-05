@@ -65,7 +65,7 @@ describe("SignalRow", () => {
   it("expands to reveal full rationale, suggested zones, and risks when clicked", () => {
     render(<SignalRow signal={mockSignal} isLast={false} />);
 
-    const expandBtn = screen.getByRole("button", { name: "Show signal rationale" });
+    const expandBtn = screen.getByRole("button", { name: "Show rationale for NVDA" });
     expect(expandBtn).toHaveAttribute("aria-expanded", "false");
 
     fireEvent.click(expandBtn);
@@ -83,7 +83,7 @@ describe("SignalRow", () => {
     render(<SignalRow signal={mockSignal} isLast={false} />);
 
     // Expand first
-    const expandBtn = screen.getByRole("button", { name: "Show signal rationale" });
+    const expandBtn = screen.getByRole("button", { name: "Show rationale for NVDA" });
     fireEvent.click(expandBtn);
 
     const quoteBtn = screen.getByText("Check Live Quote");
@@ -102,7 +102,7 @@ describe("SignalRow", () => {
 
     render(<SignalRow signal={mockSignal} isLast={false} />);
 
-    const expandBtn = screen.getByRole("button", { name: "Show signal rationale" });
+    const expandBtn = screen.getByRole("button", { name: "Show rationale for NVDA" });
     fireEvent.click(expandBtn);
 
     const quoteBtn = screen.getByText("Check Live Quote");
@@ -122,5 +122,17 @@ describe("SignalRow", () => {
     render(<SignalRow signal={multiSignal} isLast={false} />);
     expect(screen.getByLabelText("3 Confluence Sources")).toBeInTheDocument();
     expect(screen.getByText("3x")).toBeInTheDocument();
+  });
+
+  it("identifies saved public prices and offers no live quote refresh", async () => {
+    vi.mocked(api.getQuote).mockResolvedValueOnce(mockQuote);
+    render(<SignalRow signal={mockSignal} isLast={false} asOf="2026-10-05T14:04:02Z" />);
+    fireEvent.click(screen.getByRole("button", { name: "Show rationale for NVDA" }));
+    expect(screen.queryByText("Check Live Quote")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show quote at scan" }));
+    expect(await screen.findByText("Price at scan:")).toBeInTheDocument();
+    expect(screen.getByText(/Captured Oct 5, 10:04 AM EDT/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Refresh Quote|Show quote at scan/ })).not.toBeInTheDocument();
+    expect(api.getQuote).toHaveBeenCalledTimes(1);
   });
 });

@@ -25,51 +25,48 @@ export function Pagination({ page, total, perPage, basePath, query }: Pagination
         if (v !== undefined && v !== "") qs.set(k, String(v));
       }
     }
+    qs.delete("page");
     if (p > 1) qs.set("page", String(p));
     const s = qs.toString();
     return s ? `${basePath}?${s}` : basePath;
   };
 
   return (
-    <div
+    <nav
+      aria-label="Pagination"
       style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: 16,
+        gap: 12,
+        flexWrap: "wrap",
         marginTop: 28,
         paddingTop: 20,
         borderTop: "1px solid var(--color-border-subtle)",
       }}
     >
-      <Link
-        href={href(prev)}
-        style={{
-          fontSize: 13,
-          color: page <= 1 ? "var(--color-text-muted)" : "var(--color-link)",
-          pointerEvents: page <= 1 ? "none" : "auto",
-          textDecoration: "none",
-          fontWeight: 600,
-        }}
-      >
-        ← Previous
-      </Link>
-      <span style={{ fontSize: 13, color: "var(--color-text-secondary)", fontFamily: "var(--font-mono)" }}>
-        Page {page} of {totalPages}
-        <span style={{ color: "var(--color-text-muted)", marginLeft: 8 }}>({total} total)</span>
+      {page <= 1 ? (
+        <span aria-disabled="true" style={{ fontSize: 13, color: "var(--color-text-muted)", fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center" }}>
+          ← Previous
+        </span>
+      ) : (
+        <Link href={href(prev)} style={{ fontSize: 13, color: "var(--color-link)", textDecoration: "none", fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center" }}>
+          ← Previous
+        </Link>
+      )}
+      <span style={{ display: "flex", flexDirection: "column", alignItems: "center", fontSize: 13, color: "var(--color-text-secondary)", fontFamily: "var(--font-mono)", lineHeight: 1.3 }}>
+        <span aria-current="page">Page {page} of {totalPages}</span>
+        <span style={{ color: "var(--color-text-muted)", fontSize: 12 }}>({total} total)</span>
       </span>
-      <Link
-        href={href(next)}
-        style={{
-          fontSize: 13,
-          color: page >= totalPages ? "var(--color-text-muted)" : "var(--color-link)",
-          pointerEvents: page >= totalPages ? "none" : "auto",
-          textDecoration: "none",
-          fontWeight: 600,
-        }}
-      >
-        Next →
-      </Link>
-    </div>
+      {page >= totalPages ? (
+        <span aria-disabled="true" style={{ fontSize: 13, color: "var(--color-text-muted)", fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center" }}>
+          Next →
+        </span>
+      ) : (
+        <Link href={href(next)} style={{ fontSize: 13, color: "var(--color-link)", textDecoration: "none", fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center" }}>
+          Next →
+        </Link>
+      )}
+    </nav>
   );
 }

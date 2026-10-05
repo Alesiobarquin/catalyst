@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface ExpandableCardProps {
@@ -10,6 +10,8 @@ interface ExpandableCardProps {
 
 export function ExpandableCard({ title, children }: ExpandableCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const panelId = useId();
+  const triggerId = useId();
 
   return (
     <div
@@ -23,6 +25,10 @@ export function ExpandableCard({ title, children }: ExpandableCardProps) {
       }}
     >
       <button
+        id={triggerId}
+        type="button"
+        aria-expanded={isOpen}
+        aria-controls={panelId}
         onClick={() => setIsOpen(!isOpen)}
         style={{
           width: "100%",
@@ -30,6 +36,7 @@ export function ExpandableCard({ title, children }: ExpandableCardProps) {
           justifyContent: "space-between",
           alignItems: "center",
           padding: "16px 20px",
+          minHeight: 44,
           background: "transparent",
           border: "none",
           cursor: "pointer",
@@ -47,20 +54,21 @@ export function ExpandableCard({ title, children }: ExpandableCardProps) {
         )}
       </button>
 
-      {isOpen && (
-        <div
-          style={{
-            padding: "0 20px 20px",
-            fontSize: 13,
-            color: "var(--color-text-secondary)",
-            lineHeight: 1.6,
-            borderTop: "1px solid var(--color-border-subtle)",
-            paddingTop: 16,
-          }}
-        >
-          {children}
-        </div>
-      )}
+      <div
+        id={panelId}
+        aria-labelledby={triggerId}
+        hidden={!isOpen}
+        style={{
+          padding: "0 20px 20px",
+          fontSize: 14,
+          color: "var(--color-text-secondary)",
+          lineHeight: 1.6,
+          borderTop: "1px solid var(--color-border-subtle)",
+          paddingTop: 16,
+        }}
+      >
+        {isOpen && children}
+      </div>
     </div>
   );
 }

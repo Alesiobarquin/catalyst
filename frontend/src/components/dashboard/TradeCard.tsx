@@ -51,7 +51,8 @@ const ACTION_LINK: React.CSSProperties = {
   background: "none",
   border: "none",
   cursor: "pointer",
-  padding: 0,
+  padding: "0 4px",
+  minHeight: 44,
 };
 
 export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) {
@@ -285,6 +286,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
             className="text-action-link"
             onClick={handleToggleChart}
             aria-expanded={expanded}
+            aria-label={(expanded ? "Hide" : "View") + " chart for " + order.ticker}
             style={ACTION_LINK}
           >
             {expanded ? <ChevronUp size={13} strokeWidth={2} /> : <ChevronDown size={13} strokeWidth={2} />}
@@ -294,6 +296,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
             <button
               className="text-action-link"
               onClick={(e) => onViewAnalysis(order, e.currentTarget as HTMLButtonElement)}
+              aria-label={"View analysis for " + order.ticker}
               style={ACTION_LINK}
             >
               View analysis

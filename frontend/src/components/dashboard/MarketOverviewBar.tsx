@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { TrendingUp, TrendingDown, RefreshCw, Activity } from "lucide-react";
+import { useState } from "react";
+import { RefreshCw } from "lucide-react";
 import type { MarketQuote } from "@/types";
 import { getMarketBenchmarks } from "@/lib/api";
 
@@ -20,214 +20,72 @@ interface MarketOverviewBarProps {
 export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProps) {
   const [quotes, setQuotes] = useState<MarketQuote[]>(initialQuotes);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string>(() =>
-    asOf
-      ? new Date(asOf).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit", timeZoneName: "short" })
-      : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(() =>
+    new Date(asOf ?? Date.now()).toLocaleTimeString("en-US", {
+      timeZone: "America/New_York", hour: "numeric", minute: "2-digit", timeZoneName: "short",
+    })
   );
 
   async function handleRefresh() {
     setIsRefreshing(true);
+    setRefreshFailed(false);
     try {
-      const fresh = await getMarketBenchmarks();
-      setQuotes(fresh);
-      setLastUpdated(
-        new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-      );
+      setQuotes(await getMarketBenchmarks());
+      setLastUpdated(new Date().toLocaleTimeString("en-US", {
+        timeZone: "America/New_York", hour: "numeric", minute: "2-digit", timeZoneName: "short",
+      }));
     } catch {
-      // Keep existing quotes if refresh fails
+      setRefreshFailed(true);
     } finally {
       setIsRefreshing(false);
     }
   }
 
   return (
-    <div
-      style={{
-        background: "var(--color-bg-card)",
-        border: "1px solid var(--color-border)",
-        borderRadius: 6,
-        padding: "10px 16px",
-        marginBottom: 20,
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-      }}
-    >
-      {/* Header ribbon */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          fontSize: 12,
-          color: "var(--color-text-muted)",
-          fontWeight: 600,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <Activity size={13} color="var(--color-link)" />
-          <span>Market Benchmarks</span>
-          <span
-            style={{
-              display: "inline-block",
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: asOf ? "var(--color-link)" : "var(--color-profit)",
-              marginLeft: 4,
-            }}
-            title={asOf ? "Captured with the public scan" : "Live quote refresh available"}
-          />
+    <section className="market-overview" aria-label="Market benchmarks">
+      <div className="market-overview-heading">
+        <div>
+          <h2>Market Benchmarks</h2>
+          <p>Index ETFs · USD · Change from previous close</p>
         </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span
-            suppressHydrationWarning
-            style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
-          >
-            {lastUpdated ? (asOf ? "At scan · " : "Updated · ") + lastUpdated : "Market quotes"}
+        <div className="market-overview-tools">
+          <span suppressHydrationWarning title={asOf ? "Captured with the public scan" : "Live quote refresh available"}>
+            {asOf ? "At scan · " : "Updated · "}{lastUpdated}
           </span>
-          {!asOf && <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            style={{
-              background: "var(--color-bg-row)",
-              border: "1px solid var(--color-border-subtle)",
-              borderRadius: 4,
-              color: isRefreshing ? "var(--color-text-muted)" : "var(--color-text-muted)",
-              cursor: isRefreshing ? "not-allowed" : "pointer",
-              padding: "3px 8px",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              fontSize: 11,
-              fontWeight: 500,
-              fontFamily: "var(--font-mono)",
-            }}
-            title="Refresh benchmark quotes"
-          >
-            <RefreshCw
-              size={11}
-              style={{
-                animation: isRefreshing ? "spin 1s linear infinite" : "none",
-              }}
-            />
-            {isRefreshing ? "Syncing..." : "Sync"}
+          {!asOf && <button type="button" className="button-secondary" onClick={handleRefresh} disabled={isRefreshing} title="Refresh benchmark quotes">
+            <RefreshCw size={14} aria-hidden="true" />
+            {isRefreshing ? "Refreshing…" : "Refresh"}
           </button>}
         </div>
       </div>
-
-      {/* Benchmark cards grid */}
-      <div className="market-benchmarks-grid">
-        {quotes.map((q) => {
-          const name = BENCHMARK_NAMES[q.ticker] ?? q.ticker;
-          const isUp = (q.change ?? 0) >= 0;
-          const isFlat = q.change === 0 || q.change === null || q.change === undefined;
+      {refreshFailed && <p className="market-refresh-error" role="status">Refresh unavailable. Showing the last loaded quotes.</p>}
+      {quotes.length === 0 ? <p className="market-quotes-empty">Benchmark quotes were unavailable at collection.</p> : <div className="market-benchmarks-grid">
+        {quotes.map((quote) => {
+          const change = quote.change_percent;
+          const isFlat = change == null || change === 0;
+          const isUp = (change ?? 0) > 0;
           const changeColor = isFlat ? "var(--color-text-muted)" : isUp ? "var(--color-profit)" : "var(--color-loss)";
-          const changeBg = isFlat
-            ? "var(--color-neutral-bg)"
-            : isUp
-            ? "var(--color-profit-bg)"
-            : "var(--color-loss-bg)";
-
           return (
-            <div
-              key={q.ticker}
-              style={{
-                background: "var(--color-bg-overlay)",
-                border: "1px solid var(--color-border-subtle)",
-                borderRadius: 6,
-                padding: "8px 12px",
-                display: "flex",
-                flexDirection: "column",
-                gap: 4,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                  <span
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      fontWeight: 700,
-                      fontSize: 13,
-                      color: "var(--color-text-primary)",
-                    }}
-                  >
-                    {q.ticker}
-                  </span>
-                  <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{name}</span>
-                </div>
-
-                {q.change_percent !== null && q.change_percent !== undefined && (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 2,
-                      background: changeBg,
-                      color: changeColor,
-                      padding: "2px 6px",
-                      borderRadius: 4,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      fontFamily: "var(--font-mono)",
-                    }}
-                  >
-                    {!isFlat && (isUp ? <TrendingUp size={11} /> : <TrendingDown size={11} />)}
-                    <span>
-                      {isUp && !isFlat ? "+" : ""}
-                      {q.change_percent.toFixed(2)}%
-                    </span>
-                  </div>
-                )}
+            <article className="market-benchmark" key={quote.ticker} aria-label={quote.ticker + " benchmark"}>
+              <div className="market-benchmark-name">
+                <h3>{quote.ticker}</h3>
+                <p>{BENCHMARK_NAMES[quote.ticker] ?? quote.ticker}</p>
               </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "baseline",
-                  justifyContent: "space-between",
-                  marginTop: 2,
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 17,
-                    fontWeight: 600,
-                    color: "var(--color-text-secondary)",
-                  }}
-                >
-                  {q.price !== null && q.price !== undefined ? `$${q.price.toFixed(2)}` : "—"}
-                </span>
-
-                {q.day_low !== null &&
-                  q.day_low !== undefined &&
-                  q.day_high !== null &&
-                  q.day_high !== undefined && (
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontFamily: "var(--font-mono)",
-                        color: "var(--color-text-muted)",
-                      }}
-                    >
-                      L: ${q.day_low.toFixed(1)} H: ${q.day_high.toFixed(1)}
-                    </span>
-                  )}
+              <div className="market-benchmark-price-row">
+                <p className="market-benchmark-price">{quote.price != null ? "$" + quote.price.toFixed(2) : "—"}</p>
+                {change != null && <span className="market-benchmark-change" style={{ color: changeColor }} aria-label={"Change from previous close " + change.toFixed(2) + " percent"}>
+                  {isUp ? "+" : ""}{change.toFixed(2)}%
+                </span>}
               </div>
-            </div>
+              {quote.day_low != null && quote.day_high != null && <dl className="market-benchmark-range">
+                <div><dt>Day low</dt><dd>{"$" + quote.day_low.toFixed(2)}</dd></div>
+                <div><dt>Day high</dt><dd>{"$" + quote.day_high.toFixed(2)}</dd></div>
+              </dl>}
+            </article>
           );
         })}
-      </div>
-    </div>
+      </div>}
+    </section>
   );
 }

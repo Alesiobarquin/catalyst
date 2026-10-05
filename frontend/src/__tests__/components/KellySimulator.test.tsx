@@ -6,45 +6,47 @@ describe("KellySimulator Component", () => {
   it("renders with default metrics and positive edge banner", () => {
     render(<KellySimulator />);
 
-    expect(screen.getByText("Half-Kelly Quantitative Sizer")).toBeInTheDocument();
-    expect(screen.getByText("ENGINE SIMULATOR")).toBeInTheDocument();
-    expect(screen.getByText(/POSITIVE EDGE/)).toBeInTheDocument();
-    expect(screen.getByText("Recommended Size")).toBeInTheDocument();
-    expect(screen.getByText("Capital at Risk")).toBeInTheDocument();
-    expect(screen.getByText("Half-Kelly Fraction")).toBeInTheDocument();
+    expect(screen.getByText("Half-Kelly sizing calculator")).toBeInTheDocument();
+    expect(screen.getByText("Interactive model")).toBeInTheDocument();
+    expect(screen.getByText("Positive modeled edge")).toBeInTheDocument();
+    expect(screen.getByText("Illustrative allocation")).toBeInTheDocument();
+    expect(screen.getByText("Capital at risk")).toBeInTheDocument();
+    expect(screen.getByText("Half-Kelly fraction")).toBeInTheDocument();
   });
 
   it("updates conviction score and calculations when slider changes", () => {
     render(<KellySimulator />);
 
-    const convictionSlider = screen.getByLabelText("AI Conviction Score Slider");
+    const convictionSlider = screen.getByLabelText("Assumed win probability");
     expect(convictionSlider).toHaveValue("75");
 
     fireEvent.change(convictionSlider, { target: { value: "85" } });
     expect(convictionSlider).toHaveValue("85");
-    expect(screen.getByText("85/100 (85%)")).toBeInTheDocument();
+    expect(screen.getByText("85%")).toBeInTheDocument();
+    expect(screen.getByText("$9,875.00")).toBeInTheDocument();
   });
 
   it("displays negative edge when edge is non-positive", () => {
     render(<KellySimulator />);
 
-    const convictionSlider = screen.getByLabelText("AI Conviction Score Slider");
-    const payoffSlider = screen.getByLabelText("Reward to Risk Ratio Slider");
+    const convictionSlider = screen.getByLabelText("Assumed win probability");
+    const payoffSlider = screen.getByLabelText("Reward / risk ratio");
 
     // Setting conviction to 50% and payoff to 1.0 gives f* = (1*0.5 - 0.5)/1 = 0
     fireEvent.change(convictionSlider, { target: { value: "50" } });
     fireEvent.change(payoffSlider, { target: { value: "1.0" } });
 
-    expect(screen.getByText(/NEGATIVE EDGE: NO ALLOCATION/)).toBeInTheDocument();
+    expect(screen.getByText("No modeled edge · No allocation")).toBeInTheDocument();
+    expect(screen.getAllByText("$0.00")).toHaveLength(3);
   });
 
   it("has accessible sliders with labels", () => {
     render(<KellySimulator />);
 
-    expect(screen.getByLabelText("Account Equity Slider")).toBeInTheDocument();
-    expect(screen.getByLabelText("AI Conviction Score Slider")).toBeInTheDocument();
-    expect(screen.getByLabelText("Reward to Risk Ratio Slider")).toBeInTheDocument();
-    expect(screen.getByLabelText("Stop Loss Percentage Slider")).toBeInTheDocument();
-    expect(screen.getByLabelText("Max Portfolio Risk Cap Slider")).toBeInTheDocument();
+    expect(screen.getByLabelText("Account equity")).toBeInTheDocument();
+    expect(screen.getByLabelText("Assumed win probability")).toBeInTheDocument();
+    expect(screen.getByLabelText("Reward / risk ratio")).toBeInTheDocument();
+    expect(screen.getByLabelText("Stop distance")).toBeInTheDocument();
+    expect(screen.getByLabelText("Maximum account risk")).toBeInTheDocument();
   });
 });

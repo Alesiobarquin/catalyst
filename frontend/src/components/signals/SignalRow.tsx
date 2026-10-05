@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { MarketQuote, ValidatedSignal } from "@/types";
 import { formatCurrency, formatRelative, getCatalystLabel } from "@/lib/utils";
 import { getQuote } from "@/lib/api";
+import { PUBLIC_DEMO } from "@/lib/snapshot";
 import { Activity, AlertTriangle, ChevronDown, ChevronUp, TrendingDown, TrendingUp } from "lucide-react";
 
 const GRID_COLS =
@@ -12,9 +13,11 @@ const GRID_COLS =
 export function SignalRow({
   signal,
   isLast,
+  asOf,
 }: {
   signal: ValidatedSignal;
   isLast: boolean;
+  asOf?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [quote, setQuote] = useState<MarketQuote | null>(null);
@@ -22,6 +25,7 @@ export function SignalRow({
   const [quoteError, setQuoteError] = useState(false);
 
   const convColor = "var(--color-link)";
+  const snapshot = Boolean(asOf) || PUBLIC_DEMO;
 
   async function handleFetchQuote() {
     if (loadingQuote) return;
@@ -140,7 +144,7 @@ export function SignalRow({
           <span className="signal-cell-label">Rationale</span>
           <button
             aria-expanded={expanded}
-            aria-label={expanded ? "Hide signal rationale" : "Show signal rationale"}
+            aria-label={(expanded ? "Hide" : "Show") + " rationale for " + signal.ticker}
             onClick={() => setExpanded((prev) => !prev)}
             style={{
               display: "flex",
@@ -296,7 +300,7 @@ export function SignalRow({
               <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase" }}>
-                    Live Price:
+                    {snapshot ? "Price at scan:" : "Live Price:"}
                   </span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 700, color: "var(--color-text-primary)" }}>
                     {quote.price != null ? formatCurrency(quote.price) : "—"}
@@ -335,11 +339,11 @@ export function SignalRow({
               </div>
             ) : (
               <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-                {quoteError ? "Quote data temporarily unavailable." : "Inspect real-time market quote and trading volume."}
+                {quoteError ? (snapshot ? "No quote was available for this ticker at collection." : "Quote data temporarily unavailable.") : snapshot ? "Inspect the quote and volume captured with this scan." : "Inspect real-time market quote and trading volume."}
               </span>
             )}
 
-            <button
+            {(!snapshot || !quote) && <button
               type="button"
               onClick={handleFetchQuote}
               disabled={loadingQuote}
@@ -348,6 +352,7 @@ export function SignalRow({
                 alignItems: "center",
                 gap: 5,
                 padding: "4px 10px",
+                minHeight: 44,
                 borderRadius: 3,
                 fontSize: 12,
                 fontWeight: 600,
@@ -358,8 +363,11 @@ export function SignalRow({
               }}
             >
               <Activity size={12} />
-              {loadingQuote ? "Fetching..." : quote ? "Refresh Quote" : "Check Live Quote"}
-            </button>
+              {loadingQuote ? "Loading…" : snapshot ? "Show quote at scan" : quote ? "Refresh Quote" : "Check Live Quote"}
+            </button>}
+            {quote && asOf && <p style={{ margin: 0, fontSize: 12, color: "var(--color-text-muted)" }}>
+              Captured {new Date(asOf).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" })}
+            </p>}
           </div>
 
           {/* Key risks */}

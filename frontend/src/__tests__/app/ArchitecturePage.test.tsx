@@ -84,9 +84,9 @@ describe("ArchitecturePage", () => {
   it("renders the engineering quality section with test count", () => {
     render(<ArchitecturePage />);
 
-    expect(screen.getByText("516")).toBeInTheDocument();
+    expect(screen.getByText("524")).toBeInTheDocument();
     expect(screen.getByText("Automated Tests")).toBeInTheDocument();
-    expect(screen.getByText("301 Python · 36 Java · 179 Vitest")).toBeInTheDocument();
+    expect(screen.getByText("301 Python · 36 Java · 187 Vitest")).toBeInTheDocument();
   });
 
   it("renders the resilience pattern tags", () => {
@@ -114,7 +114,7 @@ describe("ArchitecturePage", () => {
     expect(screen.getAllByText("React 19").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Apache Kafka").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("TimescaleDB").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Google Gemini 2.5").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Google Gemini 3.8").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("AWS CDK").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Docker").length).toBeGreaterThanOrEqual(1);
   });

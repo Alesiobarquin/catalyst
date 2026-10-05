@@ -39,8 +39,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <Providers>
+          <a href="#main-content" className="skip-link">Skip to content</a>
           <Navbar />
-          <main className="site-main">
+          <main id="main-content" className="site-main" tabIndex={-1}>
             {children}
           </main>
           <footer className="site-footer">

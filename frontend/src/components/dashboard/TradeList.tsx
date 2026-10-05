@@ -6,6 +6,7 @@ import { TradeCard } from "./TradeCard";
 import { SignalDetailPanel } from "./SignalDetailPanel";
 import { getBatchPerformance, fetchSignalDetail } from "@/lib/api";
 import { orderToSignalDetail } from "@/lib/signalDetailUtils";
+import { PUBLIC_DEMO } from "@/lib/snapshot";
 
 interface TradeListProps {
   orders: TradeOrder[];
@@ -88,12 +89,12 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
         }}
       >
         <p style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-secondary)", marginBottom: 8 }}>
-          {hasActiveFilters ? "No recommendations match current filters" : "No recommendations in this snapshot"}
+          {hasActiveFilters ? "No recommendations match current filters" : PUBLIC_DEMO ? "No recommendations in this snapshot" : "No recommendations yet"}
         </p>
         <p style={{ fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>
           {hasActiveFilters
             ? "Adjust the strategy or extend the date range."
-            : "This scan did not publish an order. Check the scan report for source activity; new results appear after the next scheduled run."}
+            : PUBLIC_DEMO ? "This scan did not publish an order. Check the scan report for source activity; new results appear after the next scheduled run." : "Recommendations will appear when a signal passes validation, sizing, and market-regime checks."}
         </p>
       </div>
     );

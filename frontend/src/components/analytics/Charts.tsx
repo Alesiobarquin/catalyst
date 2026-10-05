@@ -83,7 +83,7 @@ export function ConvictionHistogram({ stats }: { stats: OrderStats }) {
                   <span className="chart-metric">{bucket.count}</span>
                   <div className="conviction-chart-bar-track">
                     <div
-                      style={{ width: "100%", height: String(heightPct) + "%", minHeight: 4, background: "var(--color-link)", borderRadius: "3px 3px 0 0" }}
+                      style={{ width: "100%", height: String(heightPct) + "%", minHeight: bucket.count > 0 ? 4 : 0, background: "var(--color-link)", borderRadius: "3px 3px 0 0" }}
                       title={bucket.bucket + ": " + bucket.count + " recommendations"}
                     />
                   </div>
@@ -139,7 +139,7 @@ export function SignalTimeline({ stats }: { stats: OrderStats }) {
                   title={day.date + ": " + day.count + " recommendations"}
                 >
                   <div className="volume-chart-bar-track">
-                    <div style={{ width: "100%", height: String(heightPct) + "%", minHeight: 4 }} />
+                    <div style={{ width: "100%", height: String(heightPct) + "%", minHeight: day.count > 0 ? 4 : 0 }} />
                   </div>
                   <span className="chart-axis-category">{formatVolumeDate(day.date)}</span>
                   <span className="chart-metric">{day.count}</span>
@@ -154,7 +154,7 @@ export function SignalTimeline({ stats }: { stats: OrderStats }) {
 }
 
 // ── Performance summary ───────────────────────────────────────────
-export function PerformanceSummary({ stats }: { stats: OrderStats }) {
+export function PerformanceSummary({ stats, snapshot = false }: { stats: OrderStats; snapshot?: boolean }) {
   const resolved = stats.hit_target_count + stats.hit_stop_count;
   const winRate = resolved > 0
     ? ((stats.hit_target_count / resolved) * 100).toFixed(1) + "%"
@@ -186,7 +186,7 @@ export function PerformanceSummary({ stats }: { stats: OrderStats }) {
       color: "var(--color-loss)",
     },
     {
-      label: "Open now",
+      label: snapshot ? "Open at scan" : "Open now",
       value: String(stats.active_count),
       detail: "Active recommendations",
       color: "var(--color-text-primary)",

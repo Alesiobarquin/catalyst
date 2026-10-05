@@ -1,12 +1,11 @@
 "use client";
 
-import { PUBLIC_DEMO } from "@/lib/snapshot";
-
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Download, Filter } from "lucide-react";
+import { ChevronDown, Download, Filter } from "lucide-react";
 import { useFilterStore } from "@/store/filters";
 import { TickerSearchInput } from "@/components/ui/TickerSearchInput";
+import { PUBLIC_DEMO } from "@/lib/snapshot";
 import type { Strategy } from "@/types";
 
 /* Original strategy codenames — do not rename */
@@ -33,6 +32,7 @@ const STATUS_OPTIONS: Array<{ value: "all" | "ACTIVE" | "HIT_TARGET" | "HIT_STOP
 ];
 
 type DateRange = "7d" | "30d" | "90d" | "all";
+const DEFAULT_DATE_RANGE: DateRange = PUBLIC_DEMO ? "all" : "30d";
 
 interface FilterBarProps {
   initialStrategy: Strategy | "all";
@@ -64,6 +64,7 @@ export function FilterBar({
 
   const [tickerInput, setTickerInput] = useState<string>(initialTicker);
   const [prevInitialTicker, setPrevInitialTicker] = useState<string>(initialTicker);
+  const [filtersOpen, setFiltersOpen] = useState(initialStrategy !== "all" || initialDateRange !== DEFAULT_DATE_RANGE || initialStatus !== "all" || Boolean(initialTicker));
   if (initialTicker !== prevInitialTicker) {
     setPrevInitialTicker(initialTicker);
     setTickerInput(initialTicker);
@@ -93,12 +94,8 @@ export function FilterBar({
     if (s === "all") qs.delete("strategy");
     else qs.set("strategy", s);
 
-    if (d === "30d" || d === "all") {
-      if (d === "30d") qs.delete("date_range");
-      else qs.set("date_range", "all");
-    } else {
-      qs.set("date_range", d);
-    }
+    if (d === DEFAULT_DATE_RANGE) qs.delete("date_range");
+    else qs.set("date_range", d);
 
     if (!st || st === "all") qs.delete("status");
     else qs.set("status", st);
@@ -114,7 +111,7 @@ export function FilterBar({
 
   function handleReset() {
     setStrategy("all");
-    setDateRange("30d");
+    setDateRange(DEFAULT_DATE_RANGE);
     setStatus("all");
     setTicker("");
     setTickerInput("");
@@ -125,9 +122,10 @@ export function FilterBar({
 
   const hasActiveFilters =
     strategy !== "all" ||
-    dateRange !== "30d" ||
+    dateRange !== DEFAULT_DATE_RANGE ||
     (status && status !== "all") ||
     tickerInput.trim().length > 0;
+  const activeFilterCount = Number(strategy !== "all") + Number(dateRange !== DEFAULT_DATE_RANGE) + Number(status !== "all") + Number(tickerInput.trim().length > 0);
 
   function pillStyle(active: boolean, color = "var(--color-link)"): React.CSSProperties {
     return {
@@ -160,6 +158,15 @@ export function FilterBar({
         borderRadius: 6,
       }}
     >
+      <div className="signal-filter-mobile-header">
+        <button type="button" className="signal-filter-mobile-toggle" aria-expanded={filtersOpen} aria-controls="order-filter-controls" onClick={() => setFiltersOpen((value) => !value)}>
+          <Filter size={16} aria-hidden="true" />
+          Filters <span className="signal-filter-mobile-summary">{activeFilterCount > 0 ? `${activeFilterCount} active` : "All results"}</span>
+          <ChevronDown size={15} aria-hidden="true" className={"signal-filter-chevron" + (filtersOpen ? " is-open" : "")} />
+        </button>
+        {hasActiveFilters && <button type="button" className="signal-filter-mobile-clear" onClick={handleReset}>Clear</button>}
+      </div>
+      <div id="order-filter-controls" className="signal-filter-controls" data-open={filtersOpen}>
       {/* ── Top row: Strategy & Ticker search ─────────── */}
       <div
         style={{
@@ -310,6 +317,7 @@ export function FilterBar({
           {hasActiveFilters && (
             <button
               type="button"
+              className="signal-filter-reset"
               onClick={handleReset}
               style={{
                 display: "flex",
@@ -317,11 +325,12 @@ export function FilterBar({
                 gap: 4,
                 background: "none",
                 border: "none",
-                color: "var(--color-loss)",
+                color: "var(--color-link)",
                 fontSize: 12,
                 fontWeight: 500,
                 cursor: "pointer",
                 padding: "4px 8px",
+                minHeight: 44,
               }}
             >
               <Filter size={12} />
@@ -354,6 +363,7 @@ export function FilterBar({
               fontSize: 12,
               fontWeight: 500,
               padding: "4px 8px",
+              minHeight: 44,
               textDecoration: "none",
               fontFamily: "var(--font-mono)",
             }}
@@ -364,6 +374,7 @@ export function FilterBar({
             Export CSV
           </a>}
         </div>
+      </div>
       </div>
     </div>
   );

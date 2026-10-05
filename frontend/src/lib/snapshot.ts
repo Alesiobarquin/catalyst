@@ -61,7 +61,8 @@ export function filterRows<T extends { ticker: string; timestamp_utc: string }>(
 }
 
 export function paginate<T>(rows: T[], page = 1, perPage = 15) {
-  const safePage = Math.max(1, page);
+  const lastPage = Math.max(1, Math.ceil(rows.length / perPage));
+  const safePage = Math.min(lastPage, Math.max(1, Math.floor(page) || 1));
   return { items: rows.slice((safePage - 1) * perPage, safePage * perPage), total: rows.length, page: safePage, per_page: perPage };
 }
 

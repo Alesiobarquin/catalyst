@@ -25,66 +25,49 @@ const SectionHeading = ({ title }: { title: string }) => (
 
 export default function ArchitecturePage() {
   return (
-    <>
-      <div style={{ marginBottom: 32 }}>
-        <h1
-          style={{
-            fontSize: 24,
-            fontWeight: 600,
-            color: "var(--color-text-primary)",
-            letterSpacing: "-0.01em",
-            marginBottom: 4,
-            lineHeight: 1.25,
-          }}
-        >
-          How It Works
-        </h1>
-        <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: 0 }}>
+    <article className="architecture-page">
+      <header className="page-heading">
+        <p className="page-eyebrow">Engineering overview</p>
+        <h1>How It Works</h1>
+        <p className="page-description">
           The engineering behind Catalyst&apos;s market signal pipeline
         </p>
-      </div>
+      </header>
 
-      <div className="glass-card" style={{ padding: 20, marginBottom: 24 }}>
-        <h2 style={{ fontSize: 15, color: "var(--color-link)", marginBottom: 8 }}>Continuous access, daily collection</h2>
-        <p style={{ color: "var(--color-text-muted)", fontSize: 13, lineHeight: 1.7 }}>The public portfolio site runs on private S3 and CloudFront. At 10:00 AM New York time on weekdays, an AWS EC2 worker runs the Docker/Kafka pipeline, exports FastAPI results, and shuts down. The dashboard displays the latest published collection time and source outcomes. Processing capacity describes active runs; it does not imply continuous scraping. No broker execution is enabled. Outcomes use sampled prices and modeled allocations.</p>
+      <div className="architecture-intro">
+        <h2>Continuous access, daily collection</h2>
+        <p>The dashboard stays online through S3 and CloudFront. Each weekday at 10:00 AM New York time, an EC2 worker runs the pipeline, publishes the latest results, and shuts down. The public site shows collection times and hunter outcomes, with sampled prices and modeled allocations. Brokerage execution is disabled.</p>
       </div>
       {/* Section 1: Hero */}
       <div style={{ marginBottom: 48 }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-            gap: 16,
-            marginBottom: 24,
-          }}
-        >
-          <div className="glass-card" style={{ padding: 20 }}>
+        <div className="architecture-problems">
+          <div>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 8 }}>
               The Noise Problem
             </h3>
-            <p style={{ fontSize: 13, color: "var(--color-text-muted)", margin: 0, lineHeight: 1.5 }}>
+            <p>
               Retail traders are overwhelmed by thousands of disconnected market feeds. Many feeds contain low-liquidity noise or conflicting catalysts.
             </p>
           </div>
-          <div className="glass-card" style={{ padding: 20 }}>
+          <div>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 8 }}>
               The Cost Problem
             </h3>
-            <p style={{ fontSize: 13, color: "var(--color-text-muted)", margin: 0, lineHeight: 1.5 }}>
+            <p>
               Sending every raw event to a grounded LLM adds unnecessary token and search costs. Confluence filtering and a persistent daily request cap keep the public demo bounded.
             </p>
           </div>
-          <div className="glass-card" style={{ padding: 20 }}>
+          <div>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 8 }}>
               The Math Problem
             </h3>
-            <p style={{ fontSize: 13, color: "var(--color-text-muted)", margin: 0, lineHeight: 1.5 }}>
+            <p>
               LLMs excel at qualitative thesis synthesis but hallucinate on portfolio math — stop-loss calculations, position sizing, and risk management.
             </p>
           </div>
         </div>
-        <p style={{ fontSize: 14, color: "var(--color-text-secondary)", lineHeight: 1.6, padding: "0 8px" }}>
-          Catalyst solves this with a funnel of increasing cognitive depth. Signals are first triaged via cheap, high-speed deterministic filters (Python + Redis) before advancing to expensive, high-latency qualitative reasoning (Gemini AI), and finally passing to strict capital-risk models (Java).
+        <p className="architecture-prose">
+          Catalyst first filters raw events with Python and Redis, then asks Gemini to validate the evidence. Java handles the final position sizing and risk checks. Each stage can be tested and scaled independently.
         </p>
       </div>
 
@@ -100,28 +83,28 @@ export default function ArchitecturePage() {
         />
         <PipelineConnector />
         <PipelineStage
-          icon={<Filter size={20} color="var(--color-category-follower)" />}
+          icon={<Filter size={20} color="var(--color-link)" />}
           title="2. Confluence Filter"
           desc="Redis Sorted Set sliding window requires ≥2 independent sources within 5 minutes. The public profile disables the single-source technical exception."
           tech={["Redis 7", "Kafka"]}
         />
         <PipelineConnector />
         <PipelineStage
-          icon={<Brain size={20} color="var(--color-warning)" />}
+          icon={<Brain size={20} color="var(--color-link)" />}
           title="3. AI Validation"
           desc="Gemini 3.8 Flash with Google Search grounding synthesizes a structured catalyst thesis, conviction score, trap detection, and entry/exit parameters."
           tech={["Google GenAI SDK"]}
         />
         <PipelineConnector />
         <PipelineStage
-          icon={<Calculator size={20} color="var(--color-profit)" />}
+          icon={<Calculator size={20} color="var(--color-link)" />}
           title="4. Quantitative Sizing"
           desc="Java Spring Boot engine classifies market regime (SPY 200 SMA, VIX), calculates Half-Kelly position size capped at 25% allocated capital per recommendation on a $100k book."
           tech={["Java 21", "Spring Boot 3.4"]}
         />
         <PipelineConnector />
         <PipelineStage
-          icon={<Target size={20} color="var(--color-loss)" />}
+          icon={<Target size={20} color="var(--color-link)" />}
           title="5. Execution & Resolution"
           desc="TimescaleDB persists sized recommendations for FastAPI snapshot export. A daily resolver samples prices for modeled outcomes. The optional local Alpaca executor is disabled in this public deployment."
           tech={["FastAPI", "TimescaleDB", "S3 / CloudFront"]}
@@ -138,10 +121,10 @@ export default function ArchitecturePage() {
           Durable event replay, topic-level partition scaling, and multi-consumer decoupling: Persistence, Java Engine, and Notifier consume <code>validated-signals</code> independently without data loss during service restarts.
         </ExpandableCard>
         <ExpandableCard title="Why Redis Sorted Sets for confluence?">
-          Microsecond sliding window pruning via <code>ZREMRANGEBYSCORE</code>. Atomic lock deduplication via <code>SET NX EX</code> prevents race conditions during market-open signal bursts.
+          Timestamped sliding-window pruning via <code>ZREMRANGEBYSCORE</code>. Atomic lock deduplication via <code>SET NX EX</code> prevents race conditions during signal bursts.
         </ExpandableCard>
         <ExpandableCard title="Why Half-Kelly, not Full Kelly?">
-          Full Kelly maximizes geometric growth but exhibits extreme drawdown volatility in non-Gaussian market distributions. Half-Kelly retains ~75% of compound growth while cutting variance and max drawdown by ~50%.
+          Using half of the Kelly fraction reduces the allocation implied by estimated probabilities and payoff ratios. Separate portfolio caps and market-regime checks constrain recommendations further.
         </ExpandableCard>
         <ExpandableCard title="Why scheduled EC2 via EventBridge?">
           EventBridge Scheduler starts the worker at 10:00 AM America/New_York on weekdays. It stops after publication, with boot and scheduler shutdown deadlines. S3 and CloudFront keep the dashboard online. A $10 AWS budget tracks spending; it is an alert threshold, not a hard spending cap.
@@ -160,13 +143,13 @@ export default function ArchitecturePage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-          <span style={{ fontSize: 32, fontWeight: 700, color: "var(--color-profit)", fontFamily: "var(--font-mono)", lineHeight: 1 }}>
-            516
+          <span style={{ fontSize: 32, fontWeight: 600, color: "var(--color-text-primary)", fontFamily: "var(--font-mono)", lineHeight: 1 }}>
+            524
           </span>
           <span style={{ fontSize: 16, fontWeight: 600, color: "var(--color-text-primary)" }}>Automated Tests</span>
         </div>
         <p style={{ fontSize: 12, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)", margin: 0 }}>
-          301 Python · 36 Java · 179 Vitest
+          301 Python · 36 Java · 187 Vitest
         </p>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
@@ -198,7 +181,7 @@ export default function ArchitecturePage() {
 
       {/* Section 5: What I Learned */}
       <SectionHeading title="What I Learned" />
-      <div style={{ display: "flex", flexDirection: "column", gap: 20, color: "var(--color-text-secondary)", fontSize: 14, lineHeight: 1.6 }}>
+      <div className="architecture-prose" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <p>
           <strong style={{ color: "var(--color-text-primary)" }}>Event-driven complexity vs. monolith simplicity</strong> — The overhead of Kafka topics, consumer groups, and offset management is real. But the ability to add the Notifier service as a new consumer of <code>validated-signals</code> without touching a single line of existing code proved the decoupling thesis.
         </p>
@@ -219,7 +202,7 @@ export default function ArchitecturePage() {
         {[
           "Python 3.12", "Java 21", "TypeScript", "Next.js 16", "React 19",
           "Spring Boot 3.4", "FastAPI", "Apache Kafka", "Redis 7", "TimescaleDB",
-          "Google Gemini 2.5", "AWS CDK", "Docker", "Playwright", "Vitest", "JUnit 5", "Pytest"
+          "Google Gemini 3.8", "AWS CDK", "Docker", "Playwright", "Vitest", "JUnit 5", "Pytest"
         ].map((tech) => (
           <div
             key={tech}
@@ -237,7 +220,7 @@ export default function ArchitecturePage() {
           </div>
         ))}
       </div>
-    </>
+    </article>
   );
 }
 
@@ -283,7 +266,7 @@ function PipelineStage({ icon, title, desc, tech }: { icon: React.ReactNode, tit
           <span
             key={t}
             style={{
-              fontSize: 11,
+              fontSize: 12,
               fontFamily: "var(--font-mono)",
               color: "var(--color-link)",
               background: "var(--color-category-supernova-bg)",

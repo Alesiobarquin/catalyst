@@ -73,7 +73,7 @@ describe("AnalyticsPage", () => {
     expect(screen.getAllByText("Scalper").length).toBeGreaterThanOrEqual(1);
 
     // Half-Kelly simulator presence
-    expect(screen.getByText("Half-Kelly Quantitative Sizer")).toBeInTheDocument();
+    expect(screen.getByText("Half-Kelly sizing calculator")).toBeInTheDocument();
   });
 
   it("handles empty stats gracefully", async () => {

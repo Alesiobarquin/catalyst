@@ -72,7 +72,10 @@ describe("MarketOverviewBar", () => {
 
     expect(screen.getByText("+0.63%")).toBeInTheDocument();
     expect(screen.getByText("$520.50")).toBeInTheDocument();
-    expect(screen.getByText("L: $518.2 H: $521.8")).toBeInTheDocument();
+    expect(screen.getByText("$518.20")).toBeInTheDocument();
+    expect(screen.getByText("$521.80")).toBeInTheDocument();
+    expect(screen.getAllByText("Day low")).toHaveLength(4);
+    expect(screen.getAllByText("Day high")).toHaveLength(4);
   });
 
   it("formats negative price changes appropriately", () => {

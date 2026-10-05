@@ -10,7 +10,7 @@ const COLUMNS = [
   { label: "Sources", width: "minmax(110px, 130px)" },
 ];
 
-export function SignalTable({ signals }: { signals: ValidatedSignal[] }) {
+export function SignalTable({ signals, asOf }: { signals: ValidatedSignal[]; asOf?: string }) {
   return (
     <div className="glass-card signal-table" role="table" aria-label="Validated signals">
       <div role="rowgroup">
@@ -38,6 +38,7 @@ export function SignalTable({ signals }: { signals: ValidatedSignal[] }) {
           <SignalRow
             key={signal.id}
             signal={signal}
+            asOf={asOf}
             isLast={index === signals.length - 1}
           />
         ))}
