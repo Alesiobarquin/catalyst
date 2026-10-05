@@ -73,18 +73,18 @@ describe("TradeList", () => {
   it("renders empty state without active filters", () => {
     render(<TradeList orders={[]} hasActiveFilters={false} />);
 
-    expect(screen.getByText("No signals in queue")).toBeInTheDocument();
+    expect(screen.getByText("No recommendations in this snapshot")).toBeInTheDocument();
     expect(
-      screen.getByText("The pipeline will publish signals as opportunities are identified.")
+      screen.getByText(/This scan did not publish an order/)
     ).toBeInTheDocument();
   });
 
   it("renders empty state with active filters", () => {
     render(<TradeList orders={[]} hasActiveFilters={true} />);
 
-    expect(screen.getByText("No signals match current filters")).toBeInTheDocument();
+    expect(screen.getByText("No recommendations match current filters")).toBeInTheDocument();
     expect(
-      screen.getByText("Adjust strategy or expand the lookback window.")
+      screen.getByText("Adjust the strategy or extend the date range.")
     ).toBeInTheDocument();
   });
 

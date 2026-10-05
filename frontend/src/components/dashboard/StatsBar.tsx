@@ -6,38 +6,43 @@ interface StatsBarProps {
 }
 
 export function StatsBar({ stats }: StatsBarProps) {
+  const totalOrders = stats.total_orders ?? 0;
+  const activeCount = stats.active_count ?? 0;
   const hitTarget = stats.hit_target_count ?? 0;
   const hitStop = stats.hit_stop_count ?? 0;
   const closedTotal = hitTarget + hitStop;
   const winRate = closedTotal > 0
     ? `${((hitTarget / closedTotal) * 100).toFixed(0)}%`
     : "—";
+  const averageConviction = totalOrders > 0
+    ? `${(stats.avg_conviction ?? 0).toFixed(0)}/100`
+    : "—";
 
   const cards = [
     {
-      label:  "Active signals",
-      value:  (stats.total_orders ?? 0).toString(),
-      sub:    `${stats.active_count ?? 0} currently open`,
+      label:  "Recommendations",
+      value:  totalOrders.toString(),
+      sub:    `${activeCount} open now`,
       icon:   Activity,
     },
     {
-      label:  "Avg confidence",
-      value:  `${(stats.avg_conviction ?? 0).toFixed(0)}/100`,
-      sub:    "out of 100",
+      label:  "Avg. conviction",
+      value:  averageConviction,
+      sub:    totalOrders > 0 ? `Across ${totalOrders} recommendations` : "No recommendations yet",
       icon:   Target,
     },
     {
-      label:  "Win rate",
+      label:  "Modeled win rate",
       value:  winRate,
       sub:    closedTotal > 0
-                ? `${stats.hit_target_count} of ${closedTotal} closed`
-                : "No closed positions",
+                ? `${hitTarget} of ${closedTotal} stop/target outcomes`
+                : "No stop/target outcomes yet",
       icon:   TrendingUp,
     },
     {
-      label:  "Stop rate",
-      value:  stats.hit_stop_count === 0 ? "0" : stats.hit_stop_count.toString(),
-      sub:    stats.hit_stop_count === 0 ? "No risk events" : `${stats.hit_stop_count} triggered`,
+      label:  "Stops hit",
+      value:  hitStop.toString(),
+      sub:    closedTotal > 0 ? `${hitStop} of ${closedTotal} stop/target outcomes` : "No stop/target outcomes yet",
       icon:   ShieldAlert,
     },
   ];

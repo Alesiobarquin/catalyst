@@ -28,12 +28,6 @@ function truncateThesis(text: string, maxWords = 20): string {
   return words.slice(0, maxWords).join(" ") + "…";
 }
 
-function signedPct(numerator: number, denominator: number): string {
-  const pct = (numerator / denominator) * 100;
-  const sign = pct >= 0 ? "+" : "";
-  return `${sign}${pct.toFixed(1)}%`;
-}
-
 function formatExecutionLabel(ex: TradeExecution): string {
   if (ex.execution_status === "filled" && ex.filled_avg_price != null) {
     return `Filled @ ${formatCurrency(ex.filled_avg_price)}`;
@@ -46,18 +40,6 @@ function formatExecutionLabel(ex: TradeExecution): string {
   if (ex.execution_status === "pending") return "Pending";
   return ex.execution_status;
 }
-
-/* ── Shared micro-styles ──────────────────────────────────────── */
-const TAG: React.CSSProperties = {
-  padding: "1px 6px",
-  borderRadius: 2,
-  background: "var(--color-bg-row)",
-  border: "1px solid var(--color-border-subtle)",
-  fontSize: 11,
-  fontWeight: 500,
-  color: "var(--color-text-secondary)",
-  whiteSpace: "nowrap" as const,
-};
 
 const ACTION_LINK: React.CSSProperties = {
   display: "flex",
@@ -106,16 +88,6 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
   const pnlPct    = order.pnl_percent ?? order.pnl_pct;
   const pnlColor  = pnlPct !== undefined && pnlPct < 0 ? "var(--color-loss)" : "var(--color-profit)";
 
-  const stopPct   = signedPct(order.stop_loss   - order.limit_price, order.limit_price);
-  const targetPct = signedPct(order.target_price - order.limit_price, order.limit_price);
-  const riskLine  = `Stop ${stopPct} prior swing, target ${targetPct} 1.618 fib  ·  VIX ${order.regime_vix} · SPY ${order.spy_above_200sma ? "↑" : "↓"} 200SMA`;
-
-  const tags = [
-    getCatalystLabel(order.catalyst_type),
-    `VIX ${order.regime_vix}`,
-    order.spy_above_200sma ? "SPY ↑ 200SMA" : "SPY ↓ 200SMA",
-    `$${(order.recommended_size_usd / 1000).toFixed(0)}K position`,
-  ];
 
   return (
     <div
@@ -125,7 +97,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
         overflow: "hidden",
       }}
     >
-      <div style={{ padding: "20px 24px" }}>
+      <div className="trade-card-content" style={{ padding: "20px 24px" }}>
 
         {/* ════════════════════════════════════════════════
             HEADER — 2-row implicit grid
@@ -135,7 +107,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
         <div style={{ marginBottom: 14 }}>
 
           {/* Row 1 */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
+          <div className="trade-card-heading-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
 
             {/* Left: ticker + action badge + status */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -196,11 +168,11 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
           </div>
 
           {/* Row 2: strategy on left, R:R · age on right */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <div className="trade-card-meta-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
             <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
               {order.strategy_used}
             </span>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--color-text-muted)" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--color-text-muted)" }}>
               R:R 1:{rr}&nbsp;&nbsp;·&nbsp;&nbsp;{formatRelative(order.timestamp_utc)}
             </span>
           </div>
@@ -212,7 +184,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
         {/* ════════════════════════════════════════════════
             EXECUTION PARAMETERS — three boxes
         ════════════════════════════════════════════════ */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+        <div className="trade-price-levels" style={{ display: "flex", gap: 8, marginBottom: 14 }}>
           {[
             { label: "Entry",        value: formatCurrency(order.limit_price),  color: "var(--color-text-primary)" },
             { label: "Stop loss",    value: formatCurrency(order.stop_loss),    color: "var(--color-warning)" },
@@ -228,7 +200,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
                 padding: "12px 14px",
               }}
             >
-              <p style={{ fontSize: 11, fontWeight: 500, color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.02em" }}>
+              <p style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-muted)", marginBottom: 6, letterSpacing: "0.02em" }}>
                 {p.label}
               </p>
               <p style={{ fontFamily: "var(--font-mono)", fontSize: 16, fontWeight: 600, color: p.color, margin: 0 }}>
@@ -243,7 +215,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
           {/* Conviction with bar */}
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <div style={{ display: "flex", gap: 5, alignItems: "baseline" }}>
-              <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>Conviction</span>
+              <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>Conviction</span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)" }}>
                 {order.conviction_score}/100
               </span>
@@ -263,7 +235,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
           <div style={{ width: 1, height: 28, background: "var(--color-bg-row)", alignSelf: "center" }} />
 
           <div style={{ display: "flex", gap: 5, alignItems: "baseline" }}>
-            <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>Size</span>
+            <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>Size</span>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)" }}>
               ${(order.recommended_size_usd / 1000).toFixed(0)}K
             </span>
@@ -273,7 +245,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
             <>
               <div style={{ width: 1, height: 28, background: "var(--color-bg-row)", alignSelf: "center" }} />
               <div style={{ display: "flex", gap: 5, alignItems: "baseline" }}>
-                <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>Execution</span>
+                <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>Execution</span>
                 <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)" }}>
                   {formatExecutionLabel(order.execution)}
                 </span>
@@ -289,27 +261,15 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
             BODY — 4 lines max
         ════════════════════════════════════════════════ */}
 
-        {/* Line 1: catalyst label */}
-        <p style={{ fontSize: 12, fontWeight: 600, color: "var(--color-text-secondary)", margin: "0 0 5px", lineHeight: 1.5 }}>
-          Primary catalyst: {getCatalystLabel(order.catalyst_type)}
-        </p>
-
-        {/* Line 2: thesis */}
-        <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: "0 0 9px", lineHeight: 1.5 }}>
-          {truncateThesis(order.rationale)}
-        </p>
-
-        {/* Line 3: compact tags */}
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 9 }}>
-          {tags.map((t) => (
-            <span key={t} style={TAG}>{t}</span>
-          ))}
+        <div className="trade-card-summary">
+          <p style={{ fontSize: 14, color: "var(--color-text-secondary)", margin: "0 0 12px", lineHeight: 1.6 }}>
+            {truncateThesis(order.rationale, 28)}
+          </p>
+          <div className="trade-card-context">
+            <p><span>Catalyst</span>{getCatalystLabel(order.catalyst_type)}</p>
+            <p><span>Market at recommendation</span>VIX {order.regime_vix} · SPY {order.spy_above_200sma ? "above" : "below"} 200-day average</p>
+          </div>
         </div>
-
-        {/* Line 4: risk line */}
-        <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: 0, lineHeight: 1.5 }}>
-          Risk: {riskLine}
-        </p>
 
         {/* ── Action bar ───────────────────────────────── */}
         <div
@@ -354,11 +314,9 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
           flexWrap: "wrap",
         }}
       >
-        <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-          Source: Gemini · Options flow · SEC filings
-        </span>
-        <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-          Generated: {formatDateTime(order.timestamp_utc)}
+
+        <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+          Recommendation generated {formatDateTime(order.timestamp_utc)}
         </span>
       </div>
 
@@ -373,6 +331,7 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
             style={{ overflow: "hidden" }}
           >
             <div
+              className="trade-chart-content"
               style={{
                 borderTop: "1px solid var(--color-border-subtle)",
                 padding: "16px 24px",
@@ -393,17 +352,17 @@ export function TradeCard({ order, index = 0, onViewAnalysis }: TradeCardProps) 
                         borderTop: l.dashed ? `1px dashed ${l.color}` : `2px solid ${l.color}`,
                       }}
                     />
-                    <span style={{ fontSize: 10, color: "var(--color-text-muted)" }}>{l.label}</span>
+                    <span style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>{l.label}</span>
                   </div>
                 ))}
-                <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--color-text-muted)" }}>
+                <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-text-secondary)" }}>
                   Signal: {formatDateTime(order.timestamp_utc)}
                 </span>
               </div>
 
               {historyStatus === "loading" && (
                 <div style={{ height: 140, display: "flex", alignItems: "center" }}>
-                  <p style={{ fontSize: 11, color: "var(--color-text-muted)" }}>Fetching price data…</p>
+                  <p style={{ fontSize: 12, color: "var(--color-text-muted)" }}>Fetching price data…</p>
                 </div>
               )}
               {(historyStatus === "live" || historyStatus === "synthetic") && (

@@ -1,7 +1,7 @@
 "use client";
 
 import type { OrderStats } from "@/types";
-import { getStrategyColors, getConvictionColor } from "@/lib/utils";
+import { getStrategyColors } from "@/lib/utils";
 import type { Strategy } from "@/types";
 
 // Shared section-title style matching the dashboard's card heading pattern.
@@ -21,203 +21,134 @@ interface StrategyBreakdownProps {
 export function StrategyBreakdown({ stats }: StrategyBreakdownProps) {
   const total = Object.values(stats.strategy_breakdown).reduce((a, b) => a + b, 0);
   const entries = Object.entries(stats.strategy_breakdown).filter(
-    ([, v]) => v > 0
+    ([, value]) => value > 0
   ) as [Strategy, number][];
 
   return (
-    <div className="glass-card" style={{ padding: "20px 22px" }}>
+    <div className="glass-card analytics-chart-card">
       <h3 style={SECTION_TITLE}>Strategy breakdown</h3>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {entries.length === 0 && (
-          <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: 0 }}>
-            No strategy data yet.
-          </p>
-        )}
-        {entries.map(([strategy, count]) => {
-          const pct = total > 0 ? (count / total) * 100 : 0;
-          const colors = getStrategyColors(strategy);
-          return (
-            <div key={strategy}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: 6,
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 500,
-                    color: colors.text,
-                  }}
-                >
-                  {strategy}
-                </span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontFamily: "var(--font-mono)",
-                    color: "var(--color-text-muted)",
-                  }}
-                >
-                  {count}&nbsp;({pct.toFixed(0)}%)
-                </span>
+      <p className="chart-subtitle">Recommendations by strategy · count and share</p>
+      {entries.length === 0 ? (
+        <p className="chart-empty" role="status">No strategy data in this snapshot.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {entries.map(([strategy, count]) => {
+            const pct = total > 0 ? (count / total) * 100 : 0;
+            const colors = getStrategyColors(strategy);
+            return (
+              <div key={strategy}>
+                <div className="chart-row-label">
+                  <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>{strategy}</span>
+                  <span className="chart-metric">{count} · {pct.toFixed(0)}%</span>
+                </div>
+                <div className="chart-track" role="img" aria-label={strategy + ": " + count + " recommendations, " + pct.toFixed(0) + " percent"}>
+                  <div style={{ height: "100%", width: String(pct) + "%", borderRadius: 3, background: colors.dot }} />
+                </div>
               </div>
-              <div
-                style={{
-                  height: 4,
-                  borderRadius: 2,
-                  background: "var(--color-bg-row)",
-                  overflow: "hidden",
-                }}
-              >
-                <div
-                  style={{
-                    height: "100%",
-                    width: `${pct}%`,
-                    borderRadius: 2,
-                    background: colors.dot,
-                    transition: "width 0.6s ease",
-                  }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Conviction histogram ──────────────────────────────────────────
 export function ConvictionHistogram({ stats }: { stats: OrderStats }) {
-  const max = Math.max(...stats.conviction_distribution.map((d) => d.count), 1);
+  const distribution = stats.conviction_distribution;
+  const total = distribution.reduce((sum, bucket) => sum + bucket.count, 0);
+  const max = Math.max(...distribution.map((bucket) => bucket.count), 1);
+  const summary = distribution
+    .map((bucket) => bucket.bucket + " points: " + bucket.count + " recommendations")
+    .join("; ");
 
   return (
-    <div className="glass-card" style={{ padding: "20px 22px" }}>
-      <h3 style={SECTION_TITLE}>Conviction distribution</h3>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-end",
-          gap: 8,
-          height: 100,
-        }}
-      >
-        {stats.conviction_distribution.map((d) => {
-          const heightPct = max > 0 ? (d.count / max) * 100 : 0;
-          const bucket = parseInt(d.bucket.split("–")[0], 10);
-          // Use the same color scale as getConvictionColor() in utils
-          const barColor =
-            bucket >= 80
-              ? "var(--color-profit)"
-              : bucket >= 60
-                ? "var(--color-warning)"
-                : bucket >= 40
-                  ? "var(--color-text-secondary)"
-                  : "var(--color-loss)";
-          return (
-            <div
-              key={d.bucket}
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 10,
-                  color: "var(--color-text-muted)",
-                  fontFamily: "var(--font-mono)",
-                }}
-              >
-                {d.count}
-              </span>
-              <div
-                style={{
-                  width: "100%",
-                  height: `${heightPct}%`,
-                  minHeight: 4,
-                  background: barColor,
-                  borderRadius: "2px 2px 0 0",
-                  opacity: 0.85,
-                }}
-                title={`${d.bucket}: ${d.count}`}
-              />
-              <span
-                style={{
-                  fontSize: 9,
-                  color: "var(--color-text-muted)",
-                  textAlign: "center",
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                {d.bucket}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+    <div className="glass-card analytics-chart-card">
+      <h3 style={SECTION_TITLE}>Conviction score distribution</h3>
+      <p className="chart-subtitle">Recommendation count · score from 0 to 100</p>
+      {total === 0 ? (
+        <p className="chart-empty" role="status">No conviction data in this snapshot.</p>
+      ) : (
+        <>
+          <div className="chart-axis-labels"><span>0 recommendations</span><span>Peak {max}</span></div>
+          <div
+            className="conviction-chart-bars"
+            role="img"
+            aria-label={"Conviction score distribution. " + summary}
+          >
+            {distribution.map((bucket) => {
+              const heightPct = (bucket.count / max) * 100;
+              return (
+                <div key={bucket.bucket} className="conviction-chart-column">
+                  <span className="chart-metric">{bucket.count}</span>
+                  <div className="conviction-chart-bar-track">
+                    <div
+                      style={{ width: "100%", height: String(heightPct) + "%", minHeight: 4, background: "var(--color-link)", borderRadius: "3px 3px 0 0" }}
+                      title={bucket.bucket + ": " + bucket.count + " recommendations"}
+                    />
+                  </div>
+                  <span className="chart-axis-category">{bucket.bucket}</span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-// ── Signal volume timeline ────────────────────────────────────────
+// ── Recommendation volume timeline ────────────────────────────────
+function formatVolumeDate(date: string) {
+  if (date.length !== 10 || date[4] !== "-" || date[7] !== "-") return date;
+  return new Date(date + "T12:00:00Z").toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export function SignalTimeline({ stats }: { stats: OrderStats }) {
-  const max = Math.max(...stats.daily_volume.map((d) => d.count), 1);
+  const volume = stats.daily_volume;
+  const max = Math.max(...volume.map((day) => day.count), 1);
+  const total = volume.reduce((sum, day) => sum + day.count, 0);
+  const range = volume.length > 0
+    ? formatVolumeDate(volume[0].date) + " – " + formatVolumeDate(volume[volume.length - 1].date)
+    : "";
 
   return (
-    <div className="glass-card" style={{ padding: "20px 22px" }}>
-      <h3 style={SECTION_TITLE}>Signals per day</h3>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-end",
-          gap: 6,
-          height: 80,
-          overflowX: "auto",
-        }}
-      >
-        {stats.daily_volume.map((d) => {
-          const heightPct = max > 0 ? (d.count / max) * 100 : 10;
-          return (
-            <div
-              key={d.date}
-              title={`${d.date}: ${d.count} signal${d.count !== 1 ? "s" : ""}`}
-              style={{
-                flex: "0 0 24px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              <div
-                style={{
-                  width: "100%",
-                  height: `${heightPct}%`,
-                  minHeight: 4,
-                  background: "var(--color-text-muted)",
-                  borderRadius: "2px 2px 0 0",
-                }}
-              />
-              <span
-                style={{
-                  fontSize: 9,
-                  color: "var(--color-text-muted)",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {d.date.split(" ")[1]}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+    <div className="glass-card analytics-chart-card">
+      <h3 style={SECTION_TITLE}>Recommendations by day</h3>
+      <p className="chart-subtitle">Count per UTC date · {range}</p>
+      {total === 0 ? (
+        <p className="chart-empty" role="status">No recommendation history in this snapshot.</p>
+      ) : (
+        <>
+          <div className="chart-axis-labels"><span>0 recommendations</span><span>Peak {max}</span></div>
+          <div
+            className="volume-chart-bars"
+            role="img"
+            aria-label={"Recommendations per UTC date. " + volume.map((day) => day.date + ": " + day.count).join("; ")}
+          >
+            {volume.map((day) => {
+              const heightPct = (day.count / max) * 100;
+              return (
+                <div
+                  key={day.date}
+                  className="volume-chart-column"
+                  title={day.date + ": " + day.count + " recommendations"}
+                >
+                  <div className="volume-chart-bar-track">
+                    <div style={{ width: "100%", height: String(heightPct) + "%", minHeight: 4 }} />
+                  </div>
+                  <span className="chart-axis-category">{formatVolumeDate(day.date)}</span>
+                  <span className="chart-metric">{day.count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -225,75 +156,59 @@ export function SignalTimeline({ stats }: { stats: OrderStats }) {
 // ── Performance summary ───────────────────────────────────────────
 export function PerformanceSummary({ stats }: { stats: OrderStats }) {
   const resolved = stats.hit_target_count + stats.hit_stop_count;
-  const winRate =
-    resolved > 0
-      ? `${((stats.hit_target_count / resolved) * 100).toFixed(1)}%`
-      : "—";
+  const winRate = resolved > 0
+    ? ((stats.hit_target_count / resolved) * 100).toFixed(1) + "%"
+    : "—";
 
   const items = [
     {
-      label: "Win rate",
+      label: "Modeled win rate",
       value: winRate,
-      color: "var(--color-profit)",
+      detail: resolved > 0 ? stats.hit_target_count + " of " + resolved + " stop/target outcomes" : "No stop/target outcomes yet",
+      color: resolved > 0 ? "var(--color-profit)" : "var(--color-text-muted)",
     },
     {
-      label: "Avg conviction",
-      value: stats.avg_conviction.toFixed(0),
-      color: getConvictionColor(stats.avg_conviction),
+      label: "Avg. conviction",
+      value: stats.total_orders > 0 ? stats.avg_conviction.toFixed(0) + "/100" : "—",
+      detail: stats.total_orders > 0 ? "Across " + stats.total_orders + " recommendations" : "No recommendations yet",
+      color: stats.total_orders > 0 ? "var(--color-text-primary)" : "var(--color-text-muted)",
     },
     {
-      label: "Hit target",
+      label: "Targets reached",
       value: String(stats.hit_target_count),
+      detail: "Sampled price checks",
       color: "var(--color-profit)",
     },
     {
-      label: "Hit stop",
+      label: "Stops reached",
       value: String(stats.hit_stop_count),
+      detail: "Sampled price checks",
       color: "var(--color-loss)",
     },
     {
-      label: "Active",
+      label: "Open now",
       value: String(stats.active_count),
+      detail: "Active recommendations",
       color: "var(--color-text-primary)",
     },
     {
-      label: "Total signals",
+      label: "Total recommendations",
       value: String(stats.total_orders),
+      detail: "All strategies",
       color: "var(--color-text-primary)",
     },
   ];
 
   return (
-    <div className="glass-card" style={{ padding: "20px 22px" }}>
+    <div className="glass-card analytics-chart-card">
       <h3 style={SECTION_TITLE}>Performance</h3>
-      <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 24px" }}
-      >
+      <p className="chart-subtitle">Stop and target outcomes use sampled prices, not continuous intraday monitoring.</p>
+      <div className="performance-metrics-grid">
         {items.map((item) => (
           <div key={item.label}>
-            <p
-              style={{
-                fontSize: 11,
-                fontWeight: 500,
-                color: "var(--color-text-muted)",
-                margin: "0 0 3px",
-                letterSpacing: "0.02em",
-              }}
-            >
-              {item.label}
-            </p>
-            <p
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 20,
-                fontWeight: 700,
-                color: item.color,
-                margin: 0,
-                lineHeight: 1,
-              }}
-            >
-              {item.value}
-            </p>
+            <p className="performance-metric-label">{item.label}</p>
+            <p className="performance-metric-value" style={{ color: item.color }}>{item.value}</p>
+            <p className="performance-metric-detail">{item.detail}</p>
           </div>
         ))}
       </div>

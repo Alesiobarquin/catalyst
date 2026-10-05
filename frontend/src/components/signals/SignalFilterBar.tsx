@@ -4,7 +4,7 @@ import { PUBLIC_DEMO } from "@/lib/snapshot";
 
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Download, Filter } from "lucide-react";
+import { ChevronDown, Download, Filter } from "lucide-react";
 import { TickerSearchInput } from "@/components/ui/TickerSearchInput";
 import type { CatalystType } from "@/types";
 
@@ -58,6 +58,14 @@ export function SignalFilterBar({
   const [trapFilter, setTrapFilter] = useState<string>(initialTrap);
   const [tickerQuery, setTickerQuery] = useState<string>(initialTicker);
   const [dateRange, setDateRange] = useState<string>(initialDateRange);
+  const initialActiveCount = [
+    initialCatalyst !== "all",
+    initialMinConviction !== "all",
+    initialTrap !== "all",
+    Boolean(initialTicker.trim()),
+    initialDateRange !== "all",
+  ].filter(Boolean).length;
+  const [filtersOpen, setFiltersOpen] = useState(initialActiveCount > 0);
 
   function applyFilters(updates: {
     catalyst?: string;
@@ -124,15 +132,22 @@ export function SignalFilterBar({
     });
   }
 
-  const hasActiveFilters =
-    (catalyst && catalyst !== "all") ||
-    (minConviction && minConviction !== "all") ||
-    (trapFilter && trapFilter !== "all") ||
-    tickerQuery.trim().length > 0;
+  const activeFilterCount = [
+    catalyst !== "all",
+    String(minConviction) !== "all",
+    trapFilter !== "all",
+    tickerQuery.trim().length > 0,
+    dateRange !== "all",
+  ].filter(Boolean).length;
+  const hasActiveFilters = activeFilterCount > 0;
 
   function pillStyle(active: boolean): React.CSSProperties {
     return {
       padding: "5px 12px",
+      minHeight: 44,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
       borderRadius: 4,
       fontSize: 12,
       fontWeight: 500,
@@ -159,6 +174,37 @@ export function SignalFilterBar({
         borderRadius: 6,
       }}
     >
+      <div className="signal-filter-mobile-header">
+        <button
+          type="button"
+          className="signal-filter-mobile-toggle"
+          aria-expanded={filtersOpen}
+          aria-controls="signal-filter-controls"
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          <Filter size={16} aria-hidden="true" />
+          <span>Filters</span>
+          <span className="signal-filter-mobile-summary">
+            {activeFilterCount === 0 ? "All results" : `${activeFilterCount} active`}
+          </span>
+          <ChevronDown className={filtersOpen ? "signal-filter-chevron is-open" : "signal-filter-chevron"} size={16} aria-hidden="true" />
+        </button>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            className="signal-filter-mobile-clear"
+            aria-label="Clear signal filters"
+            onClick={handleReset}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <div
+        id="signal-filter-controls"
+        className="signal-filter-controls"
+        data-open={filtersOpen}
+      >
       <div
         style={{
           display: "flex",
@@ -172,7 +218,7 @@ export function SignalFilterBar({
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <span
             style={{
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 600,
               textTransform: "uppercase",
               letterSpacing: "0.05em",
@@ -221,6 +267,7 @@ export function SignalFilterBar({
 
       {/* Secondary filter row: Conviction & Trap */}
       <div
+        className="signal-filter-secondary"
         style={{
           display: "flex",
           alignItems: "center",
@@ -231,10 +278,10 @@ export function SignalFilterBar({
         }}
       >
         {/* Min Conviction */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="signal-filter-group" style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span
             style={{
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 600,
               textTransform: "uppercase",
               letterSpacing: "0.05em",
@@ -265,10 +312,10 @@ export function SignalFilterBar({
         </div>
 
         {/* Trap status */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="signal-filter-group" style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span
             style={{
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 600,
               textTransform: "uppercase",
               letterSpacing: "0.05em",
@@ -299,10 +346,10 @@ export function SignalFilterBar({
         </div>
 
         {/* Date range */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="signal-filter-group" style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span
             style={{
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 600,
               textTransform: "uppercase",
               letterSpacing: "0.05em",
@@ -338,6 +385,7 @@ export function SignalFilterBar({
             <button
               type="button"
               aria-label="Reset all active filters"
+              className="signal-filter-reset"
               onClick={handleReset}
               style={{
                 display: "flex",
@@ -345,7 +393,7 @@ export function SignalFilterBar({
                 gap: 4,
                 background: "none",
                 border: "none",
-                color: "var(--color-loss)",
+                color: "var(--color-link)",
                 fontSize: 12,
                 fontWeight: 500,
                 cursor: "pointer",
@@ -383,7 +431,7 @@ export function SignalFilterBar({
               border: "1px solid var(--color-border-subtle)",
               borderRadius: 4,
               color: "var(--color-text-muted)",
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 500,
               padding: "4px 8px",
               textDecoration: "none",
@@ -394,6 +442,7 @@ export function SignalFilterBar({
             <Download size={12} />
           </a>}
         </div>
+      </div>
       </div>
     </div>
   );

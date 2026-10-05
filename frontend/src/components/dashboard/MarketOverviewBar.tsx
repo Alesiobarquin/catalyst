@@ -21,7 +21,9 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
   const [quotes, setQuotes] = useState<MarketQuote[]>(initialQuotes);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>(() =>
-    asOf ? new Date(asOf).toLocaleString() : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    asOf
+      ? new Date(asOf).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit", timeZoneName: "short" })
+      : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   );
 
   async function handleRefresh() {
@@ -30,7 +32,7 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
       const fresh = await getMarketBenchmarks();
       setQuotes(fresh);
       setLastUpdated(
-        new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+        new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
       );
     } catch {
       // Keep existing quotes if refresh fails
@@ -58,7 +60,7 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          fontSize: 11,
+          fontSize: 12,
           color: "var(--color-text-muted)",
           fontWeight: 600,
         }}
@@ -72,19 +74,19 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
               width: 6,
               height: 6,
               borderRadius: "50%",
-              background: "var(--color-profit)",
+              background: asOf ? "var(--color-link)" : "var(--color-profit)",
               marginLeft: 4,
             }}
-            title={asOf ? "Daily snapshot" : "Live telemetry active"}
+            title={asOf ? "Captured with the public scan" : "Live quote refresh available"}
           />
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <span
             suppressHydrationWarning
-            style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
+            style={{ fontSize: 12, fontFamily: "var(--font-mono)", color: "var(--color-text-muted)" }}
           >
-            {lastUpdated ? `Updated: ${lastUpdated}` : "Market live"}
+            {lastUpdated ? (asOf ? "At scan · " : "Updated · ") + lastUpdated : "Market quotes"}
           </span>
           {!asOf && <button
             type="button"
@@ -118,13 +120,7 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
       </div>
 
       {/* Benchmark cards grid */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: 12,
-        }}
-      >
+      <div className="market-benchmarks-grid">
         {quotes.map((q) => {
           const name = BENCHMARK_NAMES[q.ticker] ?? q.ticker;
           const isUp = (q.change ?? 0) >= 0;
@@ -167,7 +163,7 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
                   >
                     {q.ticker}
                   </span>
-                  <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>{name}</span>
+                  <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>{name}</span>
                 </div>
 
                 {q.change_percent !== null && q.change_percent !== undefined && (
@@ -205,7 +201,7 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
                 <span
                   style={{
                     fontFamily: "var(--font-mono)",
-                    fontSize: 16,
+                    fontSize: 17,
                     fontWeight: 600,
                     color: "var(--color-text-secondary)",
                   }}
@@ -219,7 +215,7 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
                   q.day_high !== undefined && (
                     <span
                       style={{
-                        fontSize: 10,
+                        fontSize: 11,
                         fontFamily: "var(--font-mono)",
                         color: "var(--color-text-muted)",
                       }}

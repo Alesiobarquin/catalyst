@@ -132,6 +132,10 @@ export function FilterBar({
   function pillStyle(active: boolean, color = "var(--color-link)"): React.CSSProperties {
     return {
       padding: "5px 12px",
+      minHeight: 44,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
       borderRadius: 4,
       fontSize: 12,
       fontWeight: 500,
@@ -170,7 +174,7 @@ export function FilterBar({
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <span
             style={{
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 600,
               textTransform: "uppercase",
               letterSpacing: "0.05em",
@@ -235,7 +239,7 @@ export function FilterBar({
         <div className="filter-bar-status-group" style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span
             style={{
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 600,
               textTransform: "uppercase",
               letterSpacing: "0.05em",
@@ -270,7 +274,7 @@ export function FilterBar({
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span
             style={{
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 600,
               textTransform: "uppercase",
               letterSpacing: "0.05em",
@@ -347,7 +351,7 @@ export function FilterBar({
               border: "1px solid var(--color-border-subtle)",
               borderRadius: 4,
               color: "var(--color-text-muted)",
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: 500,
               padding: "4px 8px",
               textDecoration: "none",

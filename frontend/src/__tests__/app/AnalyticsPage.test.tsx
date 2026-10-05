@@ -60,12 +60,12 @@ describe("AnalyticsPage", () => {
     render(page);
 
     expect(screen.getByRole("heading", { level: 1, name: "Analytics" })).toBeInTheDocument();
-    expect(screen.getByText("Total Pipeline Orders")).toBeInTheDocument();
+    expect(screen.getAllByText("Total recommendations").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("50").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Historical Win Rate")).toBeInTheDocument();
+    expect(screen.getAllByText("Modeled win rate").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/80/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Average Conviction")).toBeInTheDocument();
-    expect(screen.getByText("85/100")).toBeInTheDocument();
+    expect(screen.getAllByText("Avg. conviction").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("85/100").length).toBeGreaterThanOrEqual(1);
 
     // Strategy & Catalyst breakdown
     expect(screen.getByText("Catalyst type breakdown")).toBeInTheDocument();
@@ -84,5 +84,7 @@ describe("AnalyticsPage", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: "Analytics" })).toBeInTheDocument();
     expect(screen.getByText("No catalyst data yet.")).toBeInTheDocument();
+    expect(screen.getAllByText("No stop/target outcomes yet").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("No recommendations yet").length).toBeGreaterThanOrEqual(1);
   });
 });

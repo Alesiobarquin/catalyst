@@ -88,12 +88,12 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
         }}
       >
         <p style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-secondary)", marginBottom: 8 }}>
-          {hasActiveFilters ? "No signals match current filters" : "No signals in queue"}
+          {hasActiveFilters ? "No recommendations match current filters" : "No recommendations in this snapshot"}
         </p>
         <p style={{ fontSize: 13, color: "var(--color-text-muted)", lineHeight: 1.6, maxWidth: 400, margin: "0 auto" }}>
           {hasActiveFilters
-            ? "Adjust strategy or expand the lookback window."
-            : "The pipeline will publish signals as opportunities are identified."}
+            ? "Adjust the strategy or extend the date range."
+            : "This scan did not publish an order. Check the scan report for source activity; new results appear after the next scheduled run."}
         </p>
       </div>
     );

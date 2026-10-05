@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getSignals, getSignalStats } from "@/lib/api";
 import { getCatalystLabel } from "@/lib/utils";
 import { AlertTriangle, Radio, RotateCcw } from "lucide-react";
-import { SignalRow } from "@/components/signals/SignalRow";
+import { SignalTable } from "@/components/signals/SignalTable";
 import { SignalFilterBar } from "@/components/signals/SignalFilterBar";
 import { LiveStreamBanner } from "@/components/signals/LiveStreamBanner";
 import { Pagination } from "@/components/ui/Pagination";
@@ -17,15 +17,6 @@ export const metadata: Metadata = {
 };
 
 const SIGNALS_PER_PAGE = 15;
-
-const TABLE_COLS = [
-  { label: "Ticker",    width: "75px"            },
-  { label: "Time",      width: "110px"           },
-  { label: "Conv.",     width: "75px"            },
-  { label: "Catalyst",  width: "210px"           },
-  { label: "Rationale", width: "minmax(260px,1fr)" },
-  { label: "Sources",   width: "140px"           },
-];
 
 type PageProps = {
   searchParams: Promise<{
@@ -104,7 +95,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
           <code
             style={{
               fontFamily: "var(--font-mono)",
-              fontSize: 11,
+              fontSize: 12,
               padding: "1px 6px",
               borderRadius: 3,
               background: "var(--color-bg-row)",
@@ -129,49 +120,49 @@ export default async function SignalsPage({ searchParams }: PageProps) {
         className="stats-grid"
       >
         <div className="stat-card" style={{ padding: "14px 16px" }}>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Total Pipeline Signals
           </span>
           <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "var(--color-text-primary)", margin: "4px 0 2px" }}>
             {stats.total_signals}
           </p>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
             {stats.clean_count} actionable
           </span>
         </div>
 
         <div className="stat-card" style={{ padding: "14px 16px" }}>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            Average Conviction
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Average conviction
           </span>
           <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "var(--color-link)", margin: "4px 0 2px" }}>
-            {stats.avg_conviction}/100
+            {stats.total_signals > 0 ? `${stats.avg_conviction}/100` : "—"}
           </p>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-            Gemini multi-factor
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+            {stats.total_signals > 0 ? `Across ${stats.total_signals} validated signals` : "No validated signals yet"}
           </span>
         </div>
 
         <div className="stat-card" style={{ padding: "14px 16px" }}>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             High Conviction (≥80)
           </span>
           <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "var(--color-profit)", margin: "4px 0 2px" }}>
             {stats.high_conviction_count}
           </p>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-            Eligible for execution
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+            Of {stats.total_signals} validated signals
           </span>
         </div>
 
         <div className="stat-card" style={{ padding: "14px 16px" }}>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Trap Protection
           </span>
           <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "var(--color-warning)", margin: "4px 0 2px" }}>
             {stats.trap_count}
           </p>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
             {stats.trap_rate_percent}% rejected
           </span>
         </div>
@@ -255,47 +246,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
         </div>
       ) : (
         <>
-          <div
-            className="glass-card"
-            style={{ overflowX: "auto", overflowY: "hidden", marginBottom: 24 }}
-          >
-            {/* Table header */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: TABLE_COLS.map((c) => c.width).join(" "),
-                columnGap: 16,
-                minWidth: 900,
-                borderBottom: "1px solid var(--color-border-subtle)",
-                padding: "10px 20px",
-                background: "var(--color-bg-page)",
-                alignItems: "center",
-              }}
-            >
-              {TABLE_COLS.map((col) => (
-                <span
-                  key={col.label}
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 500,
-                    color: "var(--color-text-muted)",
-                    letterSpacing: "0.02em",
-                  }}
-                >
-                  {col.label}
-                </span>
-              ))}
-            </div>
-
-            {/* Rows */}
-            {signals.map((signal, i) => (
-              <SignalRow
-                key={signal.id}
-                signal={signal}
-                isLast={i === signals.length - 1}
-              />
-            ))}
-          </div>
+          <SignalTable signals={signals} />
 
           <Pagination
             page={curPage}
@@ -358,7 +309,7 @@ export default async function SignalsPage({ searchParams }: PageProps) {
                     >
                       {signal.ticker}
                     </span>
-                    <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+                    <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
                       {getCatalystLabel(signal.catalyst_type)}
                     </span>
                     {signal.is_trap && (

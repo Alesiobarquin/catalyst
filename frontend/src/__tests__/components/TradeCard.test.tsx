@@ -59,6 +59,9 @@ describe("TradeCard", () => {
     expect(screen.getByText("$120.00")).toBeInTheDocument();
     expect(screen.getByText("$110.00")).toBeInTheDocument();
     expect(screen.getByText("$145.00")).toBeInTheDocument();
+    expect(screen.getByText("Catalyst")).toBeInTheDocument();
+    expect(screen.queryByText(/Source: Gemini/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Market at recommendation/)).toBeInTheDocument();
   });
 
   it("renders execution badge when execution is attached", () => {

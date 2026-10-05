@@ -53,7 +53,7 @@ describe("Analytics Charts", () => {
       expect(screen.getByText("Scalper")).toBeInTheDocument();
       expect(screen.getByText("Follower")).toBeInTheDocument();
       expect(screen.getByText("Drifter")).toBeInTheDocument();
-      expect(screen.getByText(/6\s+\(40%\)/)).toBeInTheDocument();
+      expect(screen.getByText("6 · 40%")).toBeInTheDocument();
     });
 
     it("renders empty state message when no strategies have values", () => {
@@ -69,7 +69,7 @@ describe("Analytics Charts", () => {
       };
 
       render(<StrategyBreakdown stats={emptyStats} />);
-      expect(screen.getByText(/No strategy data yet/i)).toBeInTheDocument();
+      expect(screen.getByText("No strategy data in this snapshot.")).toBeInTheDocument();
     });
   });
 
@@ -77,7 +77,7 @@ describe("Analytics Charts", () => {
     it("renders all conviction distribution buckets", () => {
       render(<ConvictionHistogram stats={mockOrderStats} />);
 
-      expect(screen.getByText("Conviction distribution")).toBeInTheDocument();
+      expect(screen.getByText("Conviction score distribution")).toBeInTheDocument();
       expect(screen.getByText("50–59")).toBeInTheDocument();
       expect(screen.getByText("60–69")).toBeInTheDocument();
       expect(screen.getByText("70–79")).toBeInTheDocument();
@@ -90,12 +90,13 @@ describe("Analytics Charts", () => {
     it("renders signals per day title and dates", () => {
       render(<SignalTimeline stats={mockOrderStats} />);
 
-      expect(screen.getByText("Signals per day")).toBeInTheDocument();
+      expect(screen.getByText("Recommendations by day")).toBeInTheDocument();
+      expect(screen.getByText(/Sep 27 – Sep 28/)).toBeInTheDocument();
       expect(
-        screen.getByTitle("2026-09-27: 7 signals")
+        screen.getByTitle("2026-09-27: 7 recommendations")
       ).toBeInTheDocument();
       expect(
-        screen.getByTitle("2026-09-28: 8 signals")
+        screen.getByTitle("2026-09-28: 8 recommendations")
       ).toBeInTheDocument();
     });
   });
@@ -105,18 +106,18 @@ describe("Analytics Charts", () => {
       render(<PerformanceSummary stats={mockOrderStats} />);
 
       expect(screen.getByText("Performance")).toBeInTheDocument();
-      expect(screen.getByText("Win rate")).toBeInTheDocument();
+      expect(screen.getByText("Modeled win rate")).toBeInTheDocument();
       // 8 / (8 + 2) = 80.0%
       expect(screen.getByText("80.0%")).toBeInTheDocument();
-      expect(screen.getByText("Avg conviction")).toBeInTheDocument();
-      expect(screen.getByText("78")).toBeInTheDocument();
-      expect(screen.getByText("Hit target")).toBeInTheDocument();
-      expect(screen.getByText("8")).toBeInTheDocument();
-      expect(screen.getByText("Hit stop")).toBeInTheDocument();
+      expect(screen.getByText("Avg. conviction")).toBeInTheDocument();
+      expect(screen.getByText("78/100")).toBeInTheDocument();
+      expect(screen.getByText("Targets reached")).toBeInTheDocument();
+      expect(screen.getAllByText("8").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText("Stops reached")).toBeInTheDocument();
       expect(screen.getByText("2")).toBeInTheDocument();
-      expect(screen.getByText("Active")).toBeInTheDocument();
+      expect(screen.getByText("Open now")).toBeInTheDocument();
       expect(screen.getByText("5")).toBeInTheDocument();
-      expect(screen.getByText("Total signals")).toBeInTheDocument();
+      expect(screen.getByText("Total recommendations")).toBeInTheDocument();
       expect(screen.getByText("15")).toBeInTheDocument();
     });
 
@@ -129,6 +130,28 @@ describe("Analytics Charts", () => {
 
       render(<PerformanceSummary stats={zeroClosedStats} />);
       expect(screen.getByText("—")).toBeInTheDocument();
+    });
+
+    it("explains when a chart has no observations", () => {
+      const noOrders: OrderStats = {
+        ...mockOrderStats,
+        total_orders: 0,
+        strategy_breakdown: { Supernova: 0, Scalper: 0, Follower: 0, Drifter: 0, Fallback: 0 },
+        conviction_distribution: [],
+        daily_volume: [],
+      };
+
+      render(
+        <>
+          <StrategyBreakdown stats={noOrders} />
+          <ConvictionHistogram stats={noOrders} />
+          <SignalTimeline stats={noOrders} />
+        </>
+      );
+
+      expect(screen.getByText("No strategy data in this snapshot.")).toBeInTheDocument();
+      expect(screen.getByText("No conviction data in this snapshot.")).toBeInTheDocument();
+      expect(screen.getByText("No recommendation history in this snapshot.")).toBeInTheDocument();
     });
   });
 });

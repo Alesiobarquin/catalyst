@@ -45,6 +45,9 @@ describe("SignalRow", () => {
     expect(screen.getByText("Short-covering event detected")).toBeInTheDocument();
     expect(screen.getByText("squeeze")).toBeInTheDocument();
     expect(screen.getByText("whale")).toBeInTheDocument();
+    expect(screen.getByText("Ticker")).toBeInTheDocument();
+    expect(screen.getByText("Conviction")).toBeInTheDocument();
+    expect(screen.getByText("Rationale")).toBeInTheDocument();
     expect(screen.queryByText(/Upcoming Fed rate decision/)).not.toBeInTheDocument();
   });
 
@@ -62,7 +65,7 @@ describe("SignalRow", () => {
   it("expands to reveal full rationale, suggested zones, and risks when clicked", () => {
     render(<SignalRow signal={mockSignal} isLast={false} />);
 
-    const expandBtn = screen.getByRole("button", { name: new RegExp(mockSignal.rationale) });
+    const expandBtn = screen.getByRole("button", { name: "Show signal rationale" });
     expect(expandBtn).toHaveAttribute("aria-expanded", "false");
 
     fireEvent.click(expandBtn);
@@ -80,7 +83,7 @@ describe("SignalRow", () => {
     render(<SignalRow signal={mockSignal} isLast={false} />);
 
     // Expand first
-    const expandBtn = screen.getByRole("button", { name: new RegExp(mockSignal.rationale) });
+    const expandBtn = screen.getByRole("button", { name: "Show signal rationale" });
     fireEvent.click(expandBtn);
 
     const quoteBtn = screen.getByText("Check Live Quote");
@@ -99,7 +102,7 @@ describe("SignalRow", () => {
 
     render(<SignalRow signal={mockSignal} isLast={false} />);
 
-    const expandBtn = screen.getByRole("button", { name: new RegExp(mockSignal.rationale) });
+    const expandBtn = screen.getByRole("button", { name: "Show signal rationale" });
     fireEvent.click(expandBtn);
 
     const quoteBtn = screen.getByText("Check Live Quote");
@@ -121,4 +124,3 @@ describe("SignalRow", () => {
     expect(screen.getByText("3x")).toBeInTheDocument();
   });
 });
-

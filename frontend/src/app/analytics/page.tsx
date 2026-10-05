@@ -28,12 +28,9 @@ export default async function AnalyticsPage() {
   const stats = await getOrderStats();
 
   const closedTotal = stats.hit_target_count + stats.hit_stop_count;
-  const winRate =
-    stats.win_rate_percent !== undefined
-      ? `${stats.win_rate_percent}%`
-      : closedTotal > 0
-        ? `${((stats.hit_target_count / closedTotal) * 100).toFixed(0)}%`
-        : "—";
+  const winRate = closedTotal > 0
+    ? ((stats.hit_target_count / closedTotal) * 100).toFixed(0) + "%"
+    : "—";
 
   return (
     <>
@@ -51,8 +48,8 @@ export default async function AnalyticsPage() {
         >
           Analytics
         </h1>
-        <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: 0 }}>
-          Pipeline performance · Signal quality · Strategy distribution
+        <p style={{ fontSize: 14, color: "var(--color-text-secondary)", margin: 0 }}>
+          Sampled stop/target outcomes · recommendation quality · strategy distribution
         </p>
       </div>
 
@@ -61,50 +58,50 @@ export default async function AnalyticsPage() {
         className="stats-grid"
       >
         <div className="stat-card" style={{ padding: "16px 18px" }}>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            Total Pipeline Orders
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Total recommendations
           </span>
           <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "var(--color-text-primary)", margin: "6px 0 2px" }}>
             {stats.total_orders}
           </p>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-            {stats.active_count} active in queue
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+            {stats.active_count} open now
           </span>
         </div>
 
         <div className="stat-card" style={{ padding: "16px 18px" }}>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            Recommended Volume
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Recommended notional
           </span>
           <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "var(--color-text-primary)", margin: "6px 0 2px" }}>
             {stats.total_recommended_volume_usd ? `$${formatCompact(stats.total_recommended_volume_usd)}` : "—"}
           </p>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-            Half-Kelly portfolio sizing
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+            Half-Kelly sizing across {stats.total_orders} recommendations
           </span>
         </div>
 
         <div className="stat-card" style={{ padding: "16px 18px" }}>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            Historical Win Rate
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Modeled win rate
           </span>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "var(--color-profit)", margin: "6px 0 2px" }}>
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: closedTotal > 0 ? "var(--color-profit)" : "var(--color-text-muted)", margin: "6px 0 2px" }}>
             {winRate}
           </p>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-            {stats.hit_target_count} targets attained
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+            {closedTotal > 0 ? String(stats.hit_target_count) + " of " + String(closedTotal) + " stop/target outcomes" : "No stop/target outcomes yet"}
           </span>
         </div>
 
         <div className="stat-card" style={{ padding: "16px 18px" }}>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            Average Conviction
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+            Avg. conviction
           </span>
-          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: "var(--color-link)", margin: "6px 0 2px" }}>
-            {stats.avg_conviction.toFixed(0)}/100
+          <p style={{ fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700, color: stats.total_orders > 0 ? "var(--color-link)" : "var(--color-text-muted)", margin: "6px 0 2px" }}>
+            {stats.total_orders > 0 ? stats.avg_conviction.toFixed(0) + "/100" : "—"}
           </p>
-          <span style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
-            Multi-source gatekeeper validated
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+            {stats.total_orders > 0 ? "Across " + stats.total_orders + " recommendations" : "No recommendations yet"}
           </span>
         </div>
       </div>
@@ -162,7 +159,7 @@ export default async function AnalyticsPage() {
                 >
                   <p
                     style={{
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: 600,
                       color: col,
                       letterSpacing: "0.04em",
@@ -184,7 +181,7 @@ export default async function AnalyticsPage() {
                   >
                     {count}
                   </p>
-                  <p style={{ fontSize: 11, color: "var(--color-text-muted)", margin: 0 }}>
+                  <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: 0 }}>
                     signals
                   </p>
                 </div>

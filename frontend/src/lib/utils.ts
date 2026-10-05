@@ -79,14 +79,6 @@ export function getStrategyColors(strategy: Strategy) {
   return STRATEGY_COLORS[strategy] ?? STRATEGY_COLORS.Fallback;
 }
 
-// ── Conviction color (kept for Charts.tsx compatibility) ───────────
-export function getConvictionColor(score: number): string {
-  if (score >= 80) return "var(--color-profit)";
-  if (score >= 60) return "var(--color-text-secondary)";
-  if (score >= 40) return "var(--color-warning)";
-  return "var(--color-loss)";
-}
-
 export function getConvictionLabel(score: number): string {
   if (score >= 85) return "Very high";
   if (score >= 70) return "High";

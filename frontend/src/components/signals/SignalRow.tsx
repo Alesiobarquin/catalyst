@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import type { MarketQuote, ValidatedSignal } from "@/types";
-import { formatCurrency, formatRelative, getCatalystLabel, getConvictionColor } from "@/lib/utils";
+import { formatCurrency, formatRelative, getCatalystLabel } from "@/lib/utils";
 import { getQuote } from "@/lib/api";
 import { Activity, AlertTriangle, ChevronDown, ChevronUp, TrendingDown, TrendingUp } from "lucide-react";
 
 const GRID_COLS =
-  "75px 110px 75px 210px minmax(260px, 1fr) 140px";
+  "72px 92px 64px minmax(145px, 190px) minmax(180px, 1fr) minmax(110px, 130px)";
 
 export function SignalRow({
   signal,
@@ -21,7 +21,7 @@ export function SignalRow({
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [quoteError, setQuoteError] = useState(false);
 
-  const convColor = getConvictionColor(signal.conviction_score);
+  const convColor = "var(--color-link)";
 
   async function handleFetchQuote() {
     if (loadingQuote) return;
@@ -42,15 +42,15 @@ export function SignalRow({
   }
 
   return (
-    <div>
+    <>
       {/* ── Main row ─────────────────────────────── */}
       <div
         className="signal-row-main"
+        role="row"
         style={{
           display: "grid",
           gridTemplateColumns: GRID_COLS,
           columnGap: 16,
-          minWidth: 900,
           padding: "11px 20px",
           borderBottom: !isLast || expanded
             ? "1px solid var(--color-border)"
@@ -60,7 +60,9 @@ export function SignalRow({
         }}
       >
         {/* Ticker */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="signal-cell signal-cell--ticker" role="cell">
+          <span className="signal-cell-label">Ticker</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span
             style={{
               fontFamily: "var(--font-mono)",
@@ -74,19 +76,25 @@ export function SignalRow({
           {signal.is_trap && (
             <AlertTriangle
               size={11}
-              color="var(--color-loss)"
+              color="var(--color-warning)"
               aria-label="Trap detected"
             />
           )}
+          </span>
         </div>
 
         {/* Time */}
-        <span style={{ fontSize: 11, color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
-          {formatRelative(signal.timestamp_utc)}
-        </span>
+        <div className="signal-cell signal-cell--time" role="cell">
+          <span className="signal-cell-label">Time</span>
+          <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
+            {formatRelative(signal.timestamp_utc)}
+          </span>
+        </div>
 
         {/* Conviction */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div className="signal-cell signal-cell--conviction" role="cell" aria-label={"Conviction " + signal.conviction_score + " out of 100"}>
+          <span className="signal-cell-label">Conviction</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span
             style={{
               fontFamily: "var(--font-mono)",
@@ -116,67 +124,62 @@ export function SignalRow({
               }}
             />
           </div>
+          </div>
         </div>
 
         {/* Catalyst */}
-        <span
-          style={{
-            fontSize: 12,
-            color: "var(--color-text-secondary)",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-          title={getCatalystLabel(signal.catalyst_type)}
-        >
-          {getCatalystLabel(signal.catalyst_type)}
-        </span>
+        <div className="signal-cell signal-cell--catalyst" role="cell">
+          <span className="signal-cell-label">Catalyst</span>
+          <span style={{ fontSize: 13, color: "var(--color-text-secondary)" }} title={getCatalystLabel(signal.catalyst_type)}>
+            {getCatalystLabel(signal.catalyst_type)}
+          </span>
+        </div>
 
         {/* Rationale (expandable) */}
-        <button
-          aria-expanded={expanded}
-          onClick={() => setExpanded((prev) => !prev)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            width: "100%",
-            textAlign: "left",
-            fontSize: 12,
-            color: "var(--color-text-secondary)",
-            overflow: "hidden",
-            paddingRight: 12,
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-          }}
-          title={signal.rationale}
-        >
-          <span
+        <div className="signal-cell signal-cell--rationale" role="cell">
+          <span className="signal-cell-label">Rationale</span>
+          <button
+            aria-expanded={expanded}
+            aria-label={expanded ? "Hide signal rationale" : "Show signal rationale"}
+            onClick={() => setExpanded((prev) => !prev)}
             style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              minHeight: 44,
+              width: "100%",
+              textAlign: "left",
+              fontSize: 13,
+              lineHeight: 1.45,
+              color: "var(--color-text-secondary)",
               overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              padding: "4px 12px 4px 0",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
             }}
+            title={signal.rationale}
           >
-            {signal.rationale}
-          </span>
-          {expanded ? (
-            <ChevronUp size={11} style={{ flexShrink: 0, color: "var(--color-text-muted)" }} />
-          ) : (
-            <ChevronDown size={11} style={{ flexShrink: 0, color: "var(--color-text-muted)" }} />
-          )}
-        </button>
+            <span className="signal-rationale-preview">{signal.rationale}</span>
+            {expanded ? (
+              <ChevronUp size={14} style={{ flexShrink: 0, color: "var(--color-text-muted)" }} />
+            ) : (
+              <ChevronDown size={14} style={{ flexShrink: 0, color: "var(--color-text-muted)" }} />
+            )}
+          </button>
+        </div>
 
         {/* Confluence sources */}
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+        <div className="signal-cell signal-cell--sources" role="cell">
+          <span className="signal-cell-label">Sources</span>
+          <span style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
           {signal.confluence_sources.map((src) => (
             <span
               key={src}
               style={{
                 padding: "2px 6px",
                 borderRadius: 3,
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: 500,
                 background: "var(--color-bg-row)",
                 border: "1px solid var(--color-border-subtle)",
@@ -195,7 +198,7 @@ export function SignalRow({
               style={{
                 padding: "2px 5px",
                 borderRadius: 3,
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: 600,
                 background: "var(--color-info-bg)",
                 border: "1px solid var(--color-info-border)",
@@ -207,23 +210,24 @@ export function SignalRow({
               {signal.confluence_count}x
             </span>
           )}
+          </span>
         </div>
       </div>
 
       {/* ── Expanded details ─────────────────────── */}
       {expanded && (
-        <div
-          style={{
-            padding: "12px 20px 16px",
-            borderBottom: !isLast
-              ? "1px solid var(--color-border)"
-              : "none",
-            background: "var(--color-bg-page)",
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-          }}
-        >
+        <div className="signal-details-row" role="row">
+          <div className="signal-details-cell" role="cell" aria-colspan={6}>
+            <div
+              style={{
+                padding: "14px 20px 18px",
+                borderBottom: !isLast ? "1px solid var(--color-border)" : "none",
+                background: "var(--color-bg-page)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
           {/* Rationale paragraph */}
           <p
             style={{
@@ -244,7 +248,7 @@ export function SignalRow({
               {signal.suggested_entry_zone && (
                 <span
                   style={{
-                    fontSize: 11,
+                    fontSize: 12,
                     fontFamily: "var(--font-mono)",
                     padding: "2px 8px",
                     borderRadius: 3,
@@ -259,7 +263,7 @@ export function SignalRow({
               {signal.suggested_stop && (
                 <span
                   style={{
-                    fontSize: 11,
+                    fontSize: 12,
                     fontFamily: "var(--font-mono)",
                     padding: "2px 8px",
                     borderRadius: 3,
@@ -291,7 +295,7 @@ export function SignalRow({
             {quote ? (
               <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 11, color: "var(--color-text-muted)", textTransform: "uppercase" }}>
+                  <span style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase" }}>
                     Live Price:
                   </span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 700, color: "var(--color-text-primary)" }}>
@@ -318,13 +322,13 @@ export function SignalRow({
                 )}
 
                 {quote.day_low != null && quote.day_high != null && (
-                  <span style={{ fontSize: 11, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>
+                  <span style={{ fontSize: 12, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>
                     Day: {formatCurrency(quote.day_low)} – {formatCurrency(quote.day_high)}
                   </span>
                 )}
 
                 {quote.volume != null && (
-                  <span style={{ fontSize: 11, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>
+                  <span style={{ fontSize: 12, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)" }}>
                     Vol: {quote.volume.toLocaleString()}
                   </span>
                 )}
@@ -345,7 +349,7 @@ export function SignalRow({
                 gap: 5,
                 padding: "4px 10px",
                 borderRadius: 3,
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: 600,
                 background: quote ? "transparent" : "var(--color-bg-row)",
                 border: "1px solid var(--color-border)",
@@ -393,8 +397,10 @@ export function SignalRow({
               ))}
             </ul>
           )}
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

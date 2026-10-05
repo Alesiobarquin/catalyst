@@ -24,17 +24,17 @@ describe("StatsBar", () => {
   it("renders all four primary KPI stat cards", () => {
     render(<StatsBar stats={mockStats} />);
 
-    expect(screen.getByText("Active signals")).toBeInTheDocument();
-    expect(screen.getByText("Avg confidence")).toBeInTheDocument();
-    expect(screen.getByText("Win rate")).toBeInTheDocument();
-    expect(screen.getByText("Stop rate")).toBeInTheDocument();
+    expect(screen.getByText("Recommendations")).toBeInTheDocument();
+    expect(screen.getByText("Avg. conviction")).toBeInTheDocument();
+    expect(screen.getByText("Modeled win rate")).toBeInTheDocument();
+    expect(screen.getByText("Stops hit")).toBeInTheDocument();
   });
 
   it("formats total orders and active counts accurately", () => {
     render(<StatsBar stats={mockStats} />);
 
     expect(screen.getByText("45")).toBeInTheDocument();
-    expect(screen.getByText("13 currently open")).toBeInTheDocument();
+    expect(screen.getByText("13 open now")).toBeInTheDocument();
   });
 
   it("calculates and formats win rate when closed trades exist", () => {
@@ -42,7 +42,8 @@ describe("StatsBar", () => {
 
     // 24 / (24 + 8) = 75%
     expect(screen.getByText("75%")).toBeInTheDocument();
-    expect(screen.getByText("24 of 32 closed")).toBeInTheDocument();
+    expect(screen.getByText("24 of 32 stop/target outcomes")).toBeInTheDocument();
+    expect(screen.getByText("8 of 32 stop/target outcomes")).toBeInTheDocument();
   });
 
   it("handles zero closed trades gracefully with fallback placeholder", () => {
@@ -56,14 +57,31 @@ describe("StatsBar", () => {
     render(<StatsBar stats={zeroStats} />);
 
     expect(screen.getByText("—")).toBeInTheDocument();
-    expect(screen.getByText("No closed positions")).toBeInTheDocument();
-    expect(screen.getByText("No risk events")).toBeInTheDocument();
+    expect(screen.getAllByText("No stop/target outcomes yet")).toHaveLength(2);
+    expect(screen.getByText("0")).toBeInTheDocument();
   });
 
   it("formats average confidence correctly", () => {
     render(<StatsBar stats={mockStats} />);
 
     expect(screen.getByText("84/100")).toBeInTheDocument();
-    expect(screen.getByText("out of 100")).toBeInTheDocument();
+    expect(screen.getByText("Across 45 recommendations")).toBeInTheDocument();
+  });
+
+  it("does not report a zero conviction average for an empty snapshot", () => {
+    const emptyStats: OrderStats = {
+      ...mockStats,
+      total_orders: 0,
+      avg_conviction: 0,
+      hit_target_count: 0,
+      hit_stop_count: 0,
+      active_count: 0,
+    };
+
+    render(<StatsBar stats={emptyStats} />);
+
+    expect(screen.getAllByText("—")).toHaveLength(2);
+    expect(screen.getByText("No recommendations yet")).toBeInTheDocument();
+    expect(screen.getAllByText("No stop/target outcomes yet")).toHaveLength(2);
   });
 });

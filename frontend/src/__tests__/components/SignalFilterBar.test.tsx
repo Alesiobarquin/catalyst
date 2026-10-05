@@ -96,4 +96,20 @@ describe("SignalFilterBar", () => {
 
     expect(mockPush).toHaveBeenCalledWith("/signals");
   });
+
+  it("summarizes active filters and provides a clear action", () => {
+    render(
+      <SignalFilterBar
+        initialCatalyst="SUPERNOVA"
+        initialTicker="NVDA"
+        initialDateRange="7d"
+      />
+    );
+
+    const toggle = screen.getByRole("button", { name: /Filters/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("3 active")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Clear signal filters" }));
+    expect(mockPush).toHaveBeenCalledWith("/signals");
+  });
 });

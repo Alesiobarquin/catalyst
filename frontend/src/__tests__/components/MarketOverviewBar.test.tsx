@@ -56,7 +56,7 @@ describe("MarketOverviewBar", () => {
     render(<MarketOverviewBar initialQuotes={mockQuotes} />);
 
     expect(screen.getByText("Market Benchmarks")).toBeInTheDocument();
-    expect(screen.getByTitle("Live telemetry active")).toBeInTheDocument();
+    expect(screen.getByTitle("Live quote refresh available")).toBeInTheDocument();
     expect(screen.getByText("SPY")).toBeInTheDocument();
     expect(screen.getByText("S&P 500")).toBeInTheDocument();
     expect(screen.getByText("QQQ")).toBeInTheDocument();
@@ -87,6 +87,14 @@ describe("MarketOverviewBar", () => {
 
     expect(screen.getByText("0.00%")).toBeInTheDocument();
     expect(screen.getByText("$390.00")).toBeInTheDocument();
+  });
+
+  it("labels public benchmark quotes as scan-time values", () => {
+    render(<MarketOverviewBar initialQuotes={mockQuotes} asOf="2026-10-05T14:00:00Z" />);
+
+    expect(screen.getByTitle("Captured with the public scan")).toBeInTheDocument();
+    expect(screen.getByText(/At scan ·/)).toBeInTheDocument();
+    expect(screen.queryByTitle("Refresh benchmark quotes")).not.toBeInTheDocument();
   });
 
   it("triggers benchmark refresh when Sync button is clicked", async () => {

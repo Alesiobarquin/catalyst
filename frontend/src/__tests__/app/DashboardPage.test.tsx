@@ -84,7 +84,7 @@ describe("DashboardPage", () => {
     expect(screen.getByRole("heading", { level: 1, name: /Signal Dashboard/i })).toBeInTheDocument();
     expect(screen.getByText("SPY")).toBeInTheDocument();
     expect(screen.getByText("QQQ")).toBeInTheDocument();
-    expect(screen.getByText("Active signals")).toBeInTheDocument();
+    expect(screen.getByText("Recommendations")).toBeInTheDocument();
     expect(screen.getByText("15")).toBeInTheDocument();
     expect(screen.getByText("NVDA")).toBeInTheDocument();
   });
