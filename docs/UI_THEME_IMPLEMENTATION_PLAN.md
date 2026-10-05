@@ -353,7 +353,7 @@ All of the following must be true:
 - [x] Frontend tests, lint, typecheck, both builds, and diff check pass.
 - [x] Visual evidence is available, with any verification limitation stated accurately.
 - [x] AGENTS.md documents the actual implementation, storage key, default behavior, chart strategy, and current test counts.
-- [ ] The final change is committed and the existing release workflow succeeds; this gate will be checked after publication.
+- [x] The final change is committed, GitHub CI and CodeQL pass, and the existing AWS release workflow succeeds.
 
 Do not declare success with an untested dark page, a mocked-only toggle, missing chart theming, or a failing static build.
 
@@ -376,8 +376,11 @@ An unavailable signed-in GitHub/AWS identity is a genuine publishing blocker. Ex
 
 ## 10. Execution record
 
-Implementation and local verification completed October 5, 2026. The production static export is built by `npm --prefix frontend run build:public`; the regular application build is built by `npm --prefix frontend run build`.
+Implementation and production verification completed October 5, 2026. The production static export is built by `npm --prefix frontend run build:public`; the regular application build is built by `npm --prefix frontend run build`.
 
-- Frontend suite: 174 passing Vitest tests across 31 files; lint, typecheck, regular build, public build, and `git diff --check` pass.
-- Browser evidence and the scenario matrix: [verification record](verification/2026-10-05-theme-verification.json) and [screenshots](verification/screenshots/).
-- The final commit and public release verification will be recorded here after the existing main-branch workflow completes.
+- Commits: theme implementation [`a28fc1c`](https://github.com/Alesiobarquin/catalyst/commit/a28fc1c32a0a4c5ef0564841a9613486ba65237b) and live-discovered 320px filter-wrap fix [`f140886`](https://github.com/Alesiobarquin/catalyst/commit/f140886334a3539ac98c9c71d6ff7ff6e02eef6a).
+- Frontend suite: 174 passing Vitest tests across 31 files; lint, typecheck, regular build, public build, and `git diff --check` pass. GitHub CI, CodeQL, and Release public demo all pass for both commits.
+- Live site: [https://d36bndaw2y0rrh.cloudfront.net/](https://d36bndaw2y0rrh.cloudfront.net/). Production Chromium checks confirmed light first visit under OS dark preference, saved dark applied before hydration, accessible persistent switch, all four public routes load, and no 320px or 390px horizontal overflow in either theme.
+- Data provenance: the release preserved the organic manifest and matching snapshot at run `20261005T140402Z` (`partial`; zero events, signals, and orders). No initial or test dataset was published.
+- Workflow runs: [CI](https://github.com/Alesiobarquin/catalyst/actions/runs/37347429091), [CodeQL](https://github.com/Alesiobarquin/catalyst/actions/runs/37347426780), and [Release public demo](https://github.com/Alesiobarquin/catalyst/actions/runs/37347428681).
+- Browser evidence and scenario matrix: [verification record](verification/2026-10-05-theme-verification.json) and [22 screenshots](verification/screenshots/).

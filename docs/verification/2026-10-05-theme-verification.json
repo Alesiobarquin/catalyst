@@ -50,6 +50,36 @@
     "client_navigation_preference": "PASS",
     "cross_tab_storage_sync": "PASS",
     "blocked_local_storage_toggle": "PASS",
-    "reduced_motion_thumb_transition": "PASS"
+    "reduced_motion_thumb_transition": "PASS",
+    "production_live_theme_and_routes": "PASS",
+    "production_320_390_both_themes_zero_overflow": "PASS",
+    "production_snapshot_manifest_integrity": "PASS"
+  },
+  "production_live_verification": {
+    "site": "https://d36bndaw2y0rrh.cloudfront.net/",
+    "theme_commit": "a28fc1c32a0a4c5ef0564841a9613486ba65237b",
+    "responsive_fix_commit": "f140886334a3539ac98c9c71d6ff7ff6e02eef6a",
+    "ci_run": "https://github.com/Alesiobarquin/catalyst/actions/runs/37347429091",
+    "codeql_run": "https://github.com/Alesiobarquin/catalyst/actions/runs/37347426780",
+    "release_run": "https://github.com/Alesiobarquin/catalyst/actions/runs/37347428681",
+    "public_routes_http_200": "PASS",
+    "os_dark_first_visit_defaults_light": "PASS",
+    "saved_dark_applies_before_hydration_with_scripts_blocked": "PASS",
+    "theme_toggle_and_navigation_persistence": "PASS",
+    "mobile_320_and_390_both_themes_zero_overflow": "PASS",
+    "status_filter_fits_at_320": "PASS",
+    "icon_svg_http_200": "PASS",
+    "data_manifest_http_200": "PASS",
+    "snapshot_http_200_and_run_id_matches_manifest": "PASS",
+    "manifest_run_id": "20261005T140402Z",
+    "snapshot_status": "partial",
+    "snapshot_event_counts": {
+      "raw-events": 0,
+      "triage-priority": 0,
+      "validated-signals": 0
+    },
+    "snapshot_signals": 0,
+    "snapshot_orders": 0,
+    "data_reset_or_test_fixture_published": false
   }
 }
