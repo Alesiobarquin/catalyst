@@ -293,6 +293,9 @@ html[data-theme="dark"] .theme-switch-thumb { transform: translateX(18px); backg
 }
 @media (max-width: 480px) {
   .stats-grid, .analytics-kpi-grid { grid-template-columns: minmax(0, 1fr); }
+  .filter-bar-status-group { flex: 1 1 100%; flex-wrap: wrap; align-items: flex-start !important; min-width: 0; max-width: 100%; }
+  .filter-bar-status-group > span { flex-basis: 100%; margin-right: 0 !important; }
+  .filter-bar-status-pills { flex-wrap: wrap; min-width: 0; max-width: 100%; }
 }
 @media (max-width: 360px) {
   .site-header-inner { padding-left: 12px; padding-right: 12px; }

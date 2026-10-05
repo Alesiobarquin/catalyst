@@ -232,7 +232,7 @@ export function FilterBar({
         }}
       >
         {/* Status Pills */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="filter-bar-status-group" style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span
             style={{
               fontSize: 11,
@@ -245,7 +245,7 @@ export function FilterBar({
           >
             Status
           </span>
-          <div style={{ display: "flex", gap: 4 }}>
+          <div className="filter-bar-status-pills" style={{ display: "flex", gap: 4 }}>
             {STATUS_OPTIONS.map((st) => {
               const active = (status || "all") === st.value;
               return (
