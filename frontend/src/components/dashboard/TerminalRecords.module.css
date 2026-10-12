@@ -1,0 +1,237 @@
+.recordId {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+}
+
+.instrument {
+  min-width: 0;
+}
+
+.headerRecord {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.command {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  background: var(--color-bg-row);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.035em;
+}
+
+.functionKey {
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--color-link);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.meter {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 104px;
+  height: 5px;
+  margin-top: 7px;
+  overflow: hidden;
+  background: var(--color-border);
+}
+
+.meter > span {
+  display: block;
+  height: 100%;
+  background: var(--color-link);
+  transform-origin: left;
+}
+
+.meter::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: repeating-linear-gradient(to right, transparent 0, transparent calc(10% - 1px), var(--color-bg-page) calc(10% - 1px), var(--color-bg-page) 10%);
+}
+
+.scoreBlock {
+  min-width: 112px;
+}
+
+.scoreBlock .meter {
+  max-width: none;
+}
+
+.priceRail {
+  margin: 0 0 20px;
+  padding: 10px 0 0;
+}
+
+.priceRailTrack {
+  position: relative;
+  height: 24px;
+  margin: 0 4px;
+}
+
+.priceRailTrack::before {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 11px;
+  height: 1px;
+  content: "";
+  background: var(--color-border);
+}
+
+.priceRailSegment {
+  position: absolute;
+  top: 8px;
+  height: 7px;
+  background: var(--color-profit-bg);
+}
+
+.priceRailSegment[data-level="stop"] {
+  background: var(--color-loss-bg);
+}
+
+.priceRailMarker {
+  position: absolute;
+  top: 7px;
+  height: 9px;
+  width: 9px;
+  border: 2px solid var(--color-bg-card);
+  background: var(--color-text-primary);
+  transform: translateX(-50%);
+}
+
+.priceRailMarker[data-level="stop"] {
+  background: var(--color-loss);
+}
+
+.priceRailMarker[data-level="target"] {
+  background: var(--color-profit);
+}
+
+.priceRailLabels {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.priceRailCaption {
+  margin: 6px 0 0 !important;
+  font-family: var(--font-mono);
+  font-size: 9px !important;
+  color: var(--color-text-muted) !important;
+}
+
+.implementation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 16px;
+}
+
+.implementation a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+  color: var(--color-link);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-decoration: none;
+}
+
+.implementation a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.escapeKey {
+  padding: 3px 5px;
+  border: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 400;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .row {
+    animation: rowArrival 260ms ease-out both;
+    animation-delay: calc(var(--record-order, 0) * 35ms);
+  }
+
+  .detail {
+    animation: detailArrival 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .meter > span {
+    animation: meterArrival 440ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--record-order, 0) * 35ms + 100ms);
+  }
+
+  .panelContent :global(.signal-inspector-section) {
+    animation: sectionArrival 300ms ease-out both;
+    animation-delay: calc(var(--section-order, 0) * 40ms + 80ms);
+  }
+
+  .priceRailMarker {
+    animation: markerArrival 380ms ease-out both;
+  }
+
+  .row :global(button) svg {
+    transition: transform 160ms ease-out;
+  }
+}
+
+@keyframes rowArrival {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes detailArrival {
+  from { opacity: 0; clip-path: inset(0 0 12% 0); }
+  to { opacity: 1; clip-path: inset(0); }
+}
+
+@keyframes meterArrival {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes sectionArrival {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes markerArrival {
+  from { opacity: 0; transform: translateX(-50%) scale(0.7); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+@media (max-width: 767px) {
+  .command { padding-left: 0; padding-right: 0; }
+}
+
+@media (max-width: 479px) {
+  .escapeKey { display: none; }
+}

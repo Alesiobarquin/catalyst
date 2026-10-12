@@ -7,10 +7,10 @@ describe("DashboardHeader", () => {
     render(<DashboardHeader />);
 
     expect(
-      screen.getByRole("heading", { name: "Signal Dashboard" })
+      screen.getByRole("heading", { name: "Overview" })
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Multi-factor confluence analysis · Engine: Gemini · Half-Kelly · VIX regime/i)
+      screen.getByText(/Recommendations below come from the connected pipeline/i)
     ).toBeInTheDocument();
   });
 });

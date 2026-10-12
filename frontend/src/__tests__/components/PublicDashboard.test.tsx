@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PublicDashboard } from "@/components/public/PublicDashboard";
 import { loadRunStatus, loadSnapshot, type PublicSnapshot, type RunStatus } from "@/lib/snapshot";
@@ -122,6 +122,17 @@ describe("PublicDashboard snapshot states", () => {
     expect(screen.queryByRole("button", { name: "Export CSV" })).not.toBeInTheDocument();
   });
 
+  it("uses exported per-run counters and leaves an absent sizing count unknown", async () => {
+    await renderDashboard("orders", makeSnapshot({
+      event_counts: { "raw-events": 10, "triage-priority": 0, "validated-signals": 0 },
+    }));
+
+    const counters = within(screen.getByLabelText("Events from this scan"));
+    expect(counters.getByText("10")).toBeInTheDocument();
+    expect(counters.getByText("—")).toBeInTheDocument();
+    expect(counters.getByText("Count not exported")).toBeInTheDocument();
+  });
+
   it("opens the real scan report and moves focus to its summary", async () => {
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
     await renderDashboard("orders");
@@ -138,7 +149,7 @@ describe("PublicDashboard snapshot states", () => {
       hunters: [{ hunter: "squeeze", provider: "yahoo_equity_screener", success: true, emitted_events: 1, error: null, duration_sec: 3 }],
     }));
 
-    expect(screen.getByText("Yahoo Finance")).toBeInTheDocument();
+    expect(screen.getByText(/Short interest & volume · Yahoo Finance/)).toBeInTheDocument();
     expect(screen.queryByText("Finviz")).not.toBeInTheDocument();
   });
 

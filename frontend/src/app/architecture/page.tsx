@@ -1,296 +1,76 @@
 import type { Metadata } from "next";
-import { Radar, Filter, Brain, Calculator, Target } from "lucide-react";
+import Link from "next/link";
+import { Topology } from "./Topology";
+import styles from "./notebook.module.css";
 import { ExpandableCard } from "@/components/architecture/ExpandableCard";
 
 export const metadata: Metadata = {
-  title: "Architecture — Catalyst",
-  description: "The engineering behind Catalyst's market signal pipeline.",
+  title: "Engineering notebook — Catalyst",
+  description: "Implementation decisions, recorded checks, and limits of Catalyst's daily market-signal pipeline.",
 };
 
-const SectionHeading = ({ title }: { title: string }) => (
-  <h2
-    style={{
-      fontSize: 18,
-      fontWeight: 600,
-      color: "var(--color-text-primary)",
-      marginBottom: 20,
-      marginTop: 48,
-      borderBottom: "1px solid var(--color-border-subtle)",
-      paddingBottom: 12,
-    }}
-  >
-    {title}
-  </h2>
-);
+const repository = "https://github.com/Alesiobarquin/catalyst";
+const source = (path: string) => `${repository}/blob/main/${path}`;
+
+const stages = [
+  { title: "Collect", topic: "raw-events", description: "Five Python hunters inspect Yahoo Finance short-interest data, SEC filings, pdufa.bio clinical catalysts, Barchart options activity, and FMP earnings. Each bounded sweep reports its elapsed time, delivered events, and provider failures.", path: "hunters/main.py", label: "Hunter orchestrator" },
+  { title: "Find confluence", topic: "triage-priority", description: "Redis tracks distinct hunter sources for each ticker in a rolling five-minute window. The public profile requires two sources, plus price, volume, and relative-volume checks.", path: "gatekeeper/gatekeeper.py", label: "Confluence filter" },
+  { title: "Validate evidence", topic: "validated-signals", description: "Gemini with Google Search grounding returns a structured thesis, risks, and conviction score. The public profile requires grounding, a score of at least 50, and has no heuristic fallback.", path: "ai_layer/ai_service.py", label: "Analysis consumer" },
+  { title: "Size a recommendation", topic: "trade-orders", description: "Java checks SPY against its 200-session average and reads VIX before applying Half-Kelly sizing. Missing or stale regime data halts sizing; a separate allocation cap limits each recommendation.", path: "engine/src/main/java/com/catalyst/engine/sizer/KellySizer.java", label: "Sizing implementation" },
+  { title: "Publish and observe", topic: "snapshot.json", description: "TimescaleDB stores results. A finite batch exports bounded API responses to S3, then promotes the manifest. A resolver samples later prices to model outcomes; public brokerage execution is disabled.", path: "deploy/batch.sh", label: "Publication sequence" },
+];
+
+function Evidence({ links }: { links: Array<[string, string]> }) {
+  return <div className="notebook-evidence">{links.map(([label, path]) => <a key={path} href={source(path)}><span className={styles.evidenceType}>{/test|verification/i.test(path) ? "CHECK" : path.startsWith("docs/") ? "DOC" : "SOURCE"}</span>{label} <span aria-hidden="true">↗</span></a>)}</div>;
+}
 
 export default function ArchitecturePage() {
   return (
-    <article className="architecture-page">
-      <header className="page-heading">
-        <p className="page-eyebrow">Engineering overview</p>
-        <h1>How It Works</h1>
-        <p className="page-description">
-          The engineering behind Catalyst&apos;s market signal pipeline
-        </p>
+    <article className={`engineering-page ${styles.notebook}`}>
+      <header className="page-heading engineering-intro">
+        <p className="page-eyebrow">Project notes · Implementation and evidence</p>
+        <h1>Engineering notebook</h1>
+        <p className="page-description">The engineering behind Catalyst: collecting market events, checking whether sources agree, and publishing bounded research recommendations.</p>
+        <div className="notebook-evidence"><a href={repository}>Browse the repository <span aria-hidden="true">↗</span></a><Link href="/">Read the latest scan <span aria-hidden="true">→</span></Link></div>
       </header>
+      <div className="engineering-layout">
+        <div className="engineering-main">
+          <section id="pipeline" className="notebook-section" aria-labelledby="pipeline-heading">
+            <header className="notebook-section-heading"><p className="page-eyebrow">01 / Data path</p><h2 id="pipeline-heading">Five stages, one published snapshot</h2></header>
+            <p>The public dashboard stays available through S3 and CloudFront. An EC2 worker collects once each weekday at 10:00 AM New York time, runs the pipeline, publishes results, and stops. The local application retains an API-backed dashboard and optional execution services.</p>
+            <Topology />
+            <ol className="notebook-pipeline">{stages.map((stage, index) => <li className="notebook-stage" key={stage.title}><span className="notebook-stage-number" aria-hidden="true">0{index + 1}</span><div><div className="notebook-stage-heading"><h3>{stage.title}</h3><code>{stage.topic}</code></div><p>{stage.description}</p><code className={styles.sourcePath}>{stage.path}</code><Evidence links={[[stage.label, stage.path]]} /></div></li>)}</ol>
+          </section>
 
-      <div className="architecture-intro">
-        <h2>Continuous access, daily collection</h2>
-        <p>The dashboard stays online through S3 and CloudFront. Each weekday at 10:00 AM New York time, an EC2 worker runs the pipeline, publishes the latest results, and shuts down. The public site shows collection times and hunter outcomes, with sampled prices and modeled allocations. Brokerage execution is disabled.</p>
-      </div>
-      {/* Section 1: Hero */}
-      <div style={{ marginBottom: 48 }}>
-        <div className="architecture-problems">
-          <div>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 8 }}>
-              The Noise Problem
-            </h3>
-            <p>
-              Retail traders are overwhelmed by thousands of disconnected market feeds. Many feeds contain low-liquidity noise or conflicting catalysts.
-            </p>
-          </div>
-          <div>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 8 }}>
-              The Cost Problem
-            </h3>
-            <p>
-              Sending every raw event to a grounded LLM adds unnecessary token and search costs. Confluence filtering and a persistent daily request cap keep the public demo bounded.
-            </p>
-          </div>
-          <div>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--color-text-primary)", marginBottom: 8 }}>
-              The Math Problem
-            </h3>
-            <p>
-              LLMs excel at qualitative thesis synthesis but hallucinate on portfolio math — stop-loss calculations, position sizing, and risk management.
-            </p>
-          </div>
+          <section id="decisions" className="notebook-section" aria-labelledby="decisions-heading">
+            <header className="notebook-section-heading"><p className="page-eyebrow">02 / Design decisions</p><h2 id="decisions-heading">Where the constraints enter</h2></header>
+            <p>These choices keep the work separated into observable steps. They also add services, configuration, and failure modes to maintain.</p>
+            <div className="notebook-decisions">
+              <ExpandableCard title="Why three languages? (Python + Java + TypeScript)"><p>Python handles provider parsing and the Google GenAI SDK. Java owns sizing and regime checks. TypeScript presents API and snapshot data in Next.js. This separates responsibilities, but it also requires maintaining contracts across languages; the frontend types are not generated proof of schema parity.</p><Evidence links={[["Python analysis", "ai_layer/ai_service.py"], ["Java sizing", "engine/src/main/java/com/catalyst/engine/sizer/KellySizer.java"], ["Frontend contracts", "frontend/src/types/index.ts"]]} /></ExpandableCard>
+              <ExpandableCard title="Why Apache Kafka over Redis Pub/Sub?"><p>Durable event replay and separate consumer groups let persistence and sizing read the same validated-signals topic independently. Delivery still depends on producer acknowledgments, offset handling, retention, and service configuration. Kafka is additional operational work, not a guarantee that every external event is captured.</p><Evidence links={[["Persistence consumer", "persistence/consumer.py"], ["Batch drain checks", "deploy/batch.sh"]]} /></ExpandableCard>
+              <ExpandableCard title="Why Redis Sorted Sets for confluence?"><p>Each source has a timestamp. Expired scores are pruned before counting distinct sources in the five-minute window. An atomic SET NX EX reservation prevents duplicate forwarding; failed dispatch clears it. A compatibility set fallback remains in the implementation.</p><Evidence links={[["Window and reservation", "gatekeeper/gatekeeper.py"], ["Gatekeeper tests", "tests/test_gatekeeper.py"]]} /></ExpandableCard>
+              <ExpandableCard title="Why Half-Kelly, not Full Kelly?"><p>Half-Kelly reduces the allocation implied by a probability estimate and reward/risk ratio. Conviction divided by 100 is a probability proxy, not a calibrated win probability. Defaults use a $100,000 book and a 25% per-recommendation allocation cap. There is no aggregate per-ticker exposure limit or implemented 2% loss-risk cap.</p><Evidence links={[["Sizing formula", "engine/src/main/java/com/catalyst/engine/sizer/KellySizer.java"], ["Engine documentation", "docs/ENGINE.md"]]} /></ExpandableCard>
+              <ExpandableCard title="Why scheduled EC2 via EventBridge?"><p>A finite worker run limits runtime while static hosting keeps the dashboard available between scans. Normal completion stops the worker; separate shutdown deadlines bound failed runs. The $10/month target is a cost constraint, not a billing cap. The AWS Budget has no email subscription.</p><Evidence links={[["Public infrastructure", "infra/public_demo_stack.py"], ["Operations and cost model", "docs/PUBLIC_DEMO_OPERATIONS.md"]]} /></ExpandableCard>
+            </div>
+          </section>
+
+          <section id="observations" className="notebook-section" aria-labelledby="observations-heading">
+            <header className="notebook-section-heading"><p className="page-eyebrow">03 / Observed failures</p><h2 id="observations-heading">Changes supported by checks</h2></header>
+            <div className="notebook-note"><h3>Missing market data must stop sizing</h3><p>Cloud verification found a double-encoded VIX URL returning 404 while SPY succeeded. Passing an already-encoded URI fixed retrieval. An HTTP mock now checks VIX acquisition, the 200-session average, and snapshot freshness. The regime filter halts on unavailable or stale data instead of substituting the latest price for the average.</p><Evidence links={[["Market data implementation", "engine/src/main/java/com/catalyst/engine/service/MarketDataService.java"], ["HTTP regression test", "engine/src/test/java/com/catalyst/engine/service/MarketDataServiceTest.java"], ["Regime tests", "engine/src/test/java/com/catalyst/engine/filter/RegimeFilterTest.java"]]} /></div>
+            <div className="notebook-note"><h3>Failed analysis is not a validated signal</h3><p>The public profile disables heuristic fallback and reserves each AI request against a persistent UTC-day budget before network access. A recorded preflight returned a low-conviction response without grounding; enforcement rejected it. That request did not establish an organic validated catalyst.</p><Evidence links={[["Grounding enforcement", "ai_layer/ai_service.py"], ["Persistent request budget", "ai_layer/request_budget.py"], ["Budget regression tests", "tests/test_public_deployment.py"]]} /></div>
+            <div className="notebook-note"><h3>A failed publication must preserve the prior dataset</h3><p>The batch uploads an immutable dataset and private backup before promoting the public manifest. A separate status file describes newer attempts. This lets the browser disclose a failed or running attempt while continuing to show the last published results.</p><Evidence links={[["Upload ordering", "deploy/batch.sh"], ["Bounded export", "deploy/export_snapshot.py"], ["Snapshot reader tests", "frontend/src/__tests__/lib/snapshot.test.ts"]]} /></div>
+          </section>
+
+          <section id="verification" className="notebook-section" aria-labelledby="verification-heading">
+            <header className="notebook-section-heading"><p className="page-eyebrow">04 / Verification and limits</p><h2 id="verification-heading">What the evidence establishes</h2></header>
+            <p>The October 11 GitHub release check recorded <strong>566 automated tests</strong>: 342 Python, 36 Java, and 188 Vitest. This terminal redesign passes 191 frontend tests in the combined release candidate. Test counts describe checked behavior; they do not establish throughput or investment performance.</p>
+            <div className="scroll-region"><table className="notebook-checks"><caption>Different checks answer different questions</caption><thead><tr><th scope="col">Evidence</th><th scope="col">Scope</th><th scope="col">Limit</th></tr></thead><tbody><tr><th scope="row">Unit and regression tests</th><td>Parsing, filtering, sizing, budget controls, and UI behavior with controlled inputs.</td><td>Do not establish provider availability or prediction quality.</td></tr><tr><th scope="row">Recorded AWS publication</th><td>Worker execution, export, snapshot promotion, and automatic shutdown.</td><td>A successful run does not establish sustained throughput.</td></tr><tr><th scope="row">Modeled outcomes</th><td>Recommendation prices checked against sampled reference prices.</td><td>Daily sampling can miss intraday crossings; these are not broker fills.</td></tr></tbody></table></div>
+            <Evidence links={[["Release verification", "docs/verification/2026-10-05-design-refinement.json"], ["Deployment verification", "docs/verification/2026-10-04-deployment.json"], ["Test instructions", "docs/TESTING.md"], ["Price resolver", "resolver/trade_resolver.py"]]} />
+            <div className="notebook-note"><h3>Still to establish</h3><p>There is no measured live 50–100 events/minute artifact or demonstrated predictive edge. The public snapshot exposes hunter outcomes and aggregate event counts; exact rejection reasons for individual raw events and original grounding citation URLs are not available in the reviewed signal contract. Zero results alone do not identify which check rejected an event.</p></div>
+          </section>
         </div>
-        <p className="architecture-prose">
-          Catalyst first filters raw events with Python and Redis, then asks Gemini to validate the evidence. Java handles the final position sizing and risk checks. Each stage can be tested and scaled independently.
-        </p>
-      </div>
-
-      {/* Section 2: Pipeline Visualization */}
-      <SectionHeading title="The 5-Stage Pipeline" />
-      <div style={{ position: "relative", paddingLeft: 16, paddingRight: 16, maxWidth: 800, margin: "0 auto" }}>
-        {/* Stages */}
-        <PipelineStage
-          icon={<Radar size={20} color="var(--color-link)" />}
-          title="1. Ingestion"
-          desc="Five hunters collect short-interest screens, SEC EDGAR Form 4 filings, biotech catalysts, Barchart options activity, and FMP earnings. The public Squeeze scan uses Yahoo Finance; Finviz remains an optional source. Feed access limits appear in the scan report."
-          tech={["Python 3.12", "Playwright", "HTTPX", "BeautifulSoup"]}
-        />
-        <PipelineConnector />
-        <PipelineStage
-          icon={<Filter size={20} color="var(--color-link)" />}
-          title="2. Confluence Filter"
-          desc="Redis Sorted Set sliding window requires ≥2 independent sources within 5 minutes. The public profile disables the single-source technical exception."
-          tech={["Redis 7", "Kafka"]}
-        />
-        <PipelineConnector />
-        <PipelineStage
-          icon={<Brain size={20} color="var(--color-link)" />}
-          title="3. AI Validation"
-          desc="Gemini 3.8 Flash with Google Search grounding synthesizes a structured catalyst thesis, conviction score, trap detection, and entry/exit parameters."
-          tech={["Google GenAI SDK"]}
-        />
-        <PipelineConnector />
-        <PipelineStage
-          icon={<Calculator size={20} color="var(--color-link)" />}
-          title="4. Quantitative Sizing"
-          desc="Java Spring Boot engine classifies market regime (SPY 200 SMA, VIX), calculates Half-Kelly position size capped at 25% allocated capital per recommendation on a $100k book."
-          tech={["Java 21", "Spring Boot 3.4"]}
-        />
-        <PipelineConnector />
-        <PipelineStage
-          icon={<Target size={20} color="var(--color-link)" />}
-          title="5. Execution & Resolution"
-          desc="TimescaleDB persists sized recommendations for FastAPI snapshot export. A daily resolver samples prices for modeled outcomes. The optional local Alpaca executor is disabled in this public deployment."
-          tech={["FastAPI", "TimescaleDB", "S3 / CloudFront"]}
-        />
-      </div>
-
-      {/* Section 3: Architectural Decisions */}
-      <SectionHeading title="Architectural Decisions" />
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <ExpandableCard title="Why three languages? (Python + Java + TypeScript)">
-          Python for rapid scraper engineering and native Google GenAI SDK. Java 21 for deterministic capital-risk math with strict type safety and JPA transactional integrity. TypeScript/Next.js 16 for full-stack type sync with Pydantic models and streaming React Server Components.
-        </ExpandableCard>
-        <ExpandableCard title="Why Apache Kafka over Redis Pub/Sub?">
-          Durable event replay, topic-level partition scaling, and multi-consumer decoupling: Persistence, Java Engine, and Notifier consume <code>validated-signals</code> independently without data loss during service restarts.
-        </ExpandableCard>
-        <ExpandableCard title="Why Redis Sorted Sets for confluence?">
-          Timestamped sliding-window pruning via <code>ZREMRANGEBYSCORE</code>. Atomic lock deduplication via <code>SET NX EX</code> prevents race conditions during signal bursts.
-        </ExpandableCard>
-        <ExpandableCard title="Why Half-Kelly, not Full Kelly?">
-          Using half of the Kelly fraction reduces the allocation implied by estimated probabilities and payoff ratios. Separate portfolio caps and market-regime checks constrain recommendations further.
-        </ExpandableCard>
-        <ExpandableCard title="Why scheduled EC2 via EventBridge?">
-          EventBridge Scheduler starts the worker at 10:00 AM America/New_York on weekdays. It stops after publication, with boot and scheduler shutdown deadlines. S3 and CloudFront keep the dashboard online. A $10 AWS budget tracks spending; it is an alert threshold, not a hard spending cap.
-        </ExpandableCard>
-      </div>
-
-      {/* Section 4: Engineering Quality */}
-      <SectionHeading title="Engineering Quality & Resilience" />
-      <div
-        className="glass-card"
-        style={{
-          padding: 24,
-          display: "flex",
-          flexDirection: "column",
-          gap: 16,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-          <span style={{ fontSize: 32, fontWeight: 600, color: "var(--color-text-primary)", fontFamily: "var(--font-mono)", lineHeight: 1 }}>
-            524
-          </span>
-          <span style={{ fontSize: 16, fontWeight: 600, color: "var(--color-text-primary)" }}>Automated Tests</span>
-        </div>
-        <p style={{ fontSize: 12, color: "var(--color-text-muted)", fontFamily: "var(--font-mono)", margin: 0 }}>
-          301 Python · 36 Java · 187 Vitest
-        </p>
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8 }}>
-          {[
-            "Kafka offset commits on poison-pill payloads",
-            "Exponential backoff on HTTP 429 rate limits",
-            "Alpaca execution circuit breaker",
-            "Gemini model fallback chain",
-            "Redis memory TTL protection",
-            "Hypertable time-bound query optimization",
-            "GitHub Actions 3-job CI matrix"
-          ].map((tag) => (
-            <span
-              key={tag}
-              style={{
-                fontSize: 12,
-                padding: "6px 12px",
-                background: "var(--color-bg-row)",
-                border: "1px solid var(--color-border-subtle)",
-                borderRadius: 4,
-                color: "var(--color-text-secondary)",
-              }}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Section 5: What I Learned */}
-      <SectionHeading title="What I Learned" />
-      <div className="architecture-prose" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        <p>
-          <strong style={{ color: "var(--color-text-primary)" }}>Event-driven complexity vs. monolith simplicity</strong> — The overhead of Kafka topics, consumer groups, and offset management is real. But the ability to add the Notifier service as a new consumer of <code>validated-signals</code> without touching a single line of existing code proved the decoupling thesis.
-        </p>
-        <p>
-          <strong style={{ color: "var(--color-text-primary)" }}>Confluence filtering as AI cost control</strong> — The Gatekeeper requires two distinct hunter sources before public signals reach Gemini. A persistent two-request daily cap bounds AI usage even across worker restarts. Published run reports expose observed event counts.
-        </p>
-        <p>
-          <strong style={{ color: "var(--color-text-primary)" }}>Deterministic math belongs in a typed language</strong> — Python is excellent for rapid prototyping, but Half-Kelly position sizing with regime-dependent caps requires the kind of strict numerical type safety that Java&apos;s type system naturally enforces.
-        </p>
-        <p>
-          <strong style={{ color: "var(--color-text-primary)" }}>Closed-loop validation changes everything</strong> — Building the Resolver daemon to track actual trade outcomes (wins, losses, stops, expirations) transformed Catalyst from a signal generator into a system that can measure its own accuracy.
-        </p>
-      </div>
-
-      {/* Section 6: Tech Stack Grid */}
-      <SectionHeading title="Tech Stack" />
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 40 }}>
-        {[
-          "Python 3.12", "Java 21", "TypeScript", "Next.js 16", "React 19",
-          "Spring Boot 3.4", "FastAPI", "Apache Kafka", "Redis 7", "TimescaleDB",
-          "Google Gemini 3.8", "AWS CDK", "Docker", "Playwright", "Vitest", "JUnit 5", "Pytest"
-        ].map((tech) => (
-          <div
-            key={tech}
-            style={{
-              padding: "10px 16px",
-              background: "var(--color-bg-card)",
-              border: "1px solid var(--color-border-subtle)",
-              borderRadius: 6,
-              fontSize: 13,
-              fontWeight: 500,
-              color: "var(--color-text-primary)",
-            }}
-          >
-            {tech}
-          </div>
-        ))}
+        <aside className="engineering-index" aria-label="Notebook contents"><p className="page-eyebrow">In this notebook</p><nav aria-label="Engineering sections"><a href="#pipeline">01 Data path</a><a href="#decisions">02 Design decisions</a><a href="#observations">03 Observed failures</a><a href="#verification">04 Verification and limits</a></nav><p>Public profile</p><ul><li>Weekday collection</li><li>Two-source confluence</li><li>Grounded analysis only</li><li>Modeled recommendations</li><li>Brokerage execution off</li></ul></aside>
       </div>
     </article>
-  );
-}
-
-// Helper components for Pipeline Visualization
-
-function PipelineStage({ icon, title, desc, tech }: { icon: React.ReactNode, title: string, desc: string, tech: string[] }) {
-  return (
-    <div
-      className="glass-card"
-      style={{
-        padding: 24,
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        position: "relative",
-        zIndex: 2,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 8,
-            background: "var(--color-bg-row)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            border: "1px solid var(--color-border-subtle)"
-          }}
-        >
-          {icon}
-        </div>
-        <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--color-text-primary)", margin: 0 }}>
-          {title}
-        </h3>
-      </div>
-      <p style={{ fontSize: 14, color: "var(--color-text-muted)", margin: 0, lineHeight: 1.5 }}>
-        {desc}
-      </p>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-        {tech.map((t) => (
-          <span
-            key={t}
-            style={{
-              fontSize: 12,
-              fontFamily: "var(--font-mono)",
-              color: "var(--color-link)",
-              background: "var(--color-category-supernova-bg)",
-              padding: "4px 8px",
-              borderRadius: 3,
-            }}
-          >
-            {t}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function PipelineConnector() {
-  return (
-    <div
-      style={{
-        width: 2,
-        height: 32,
-        background: "var(--color-bg-row)",
-        margin: "0 auto",
-      }}
-    />
   );
 }
