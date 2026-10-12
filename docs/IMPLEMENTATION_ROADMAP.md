@@ -1,10 +1,10 @@
 # Catalyst Implementation Roadmap
 
-> **Note**: This roadmap is superseded by the Phase history in [AGENTS.md](../AGENTS.md), which tracks all 50 phases of development.
+> **STATUS: HISTORICAL / SUPERSEDED.** This March 2026 roadmap preserves planning history. Component statuses, estimates and deployment dependencies below are not current instructions. See [AGENTS.md](../AGENTS.md), [current priorities](PRODUCT_PRIORITIES.md) and [public operations](PUBLIC_DEMO_OPERATIONS.md). The October 11 ET EC2 verification completed all five hunters using free pdufa.bio; no account setup remains required.
 
 **Purpose:** Phased implementation plan, estimates, dependencies, and recruiting angles.
 
-**For the current ordered backlog (scheduler → second hunter → UI), use [PRODUCT_PRIORITIES.md](PRODUCT_PRIORITIES.md)** — it is maintained as the living “what next” checklist. This file may lag the codebase.
+**For the current ordered backlog, use [PRODUCT_PRIORITIES.md](PRODUCT_PRIORITIES.md)** — it is maintained as the living “what next” checklist. This file may lag the codebase.
 
 **Last updated:** March 2026
 

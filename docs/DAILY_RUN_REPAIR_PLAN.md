@@ -2,7 +2,11 @@
 
 Scope: the scheduled production batch on `i-0597d111f82782b5d` in `us-east-1`. Verification must use AWS execution evidence; local application startup is outside this task.
 
-## Observed failures
+## Completed result
+
+Release `0073de8` completed all five hunters on EC2 and published `20261012T034358Z`: 56 organic raw events, fresh regime, private backup/logs and automatic shutdown at 03:44:39 UTC on October 12 (October 11 ET). No recommendations qualified. Runtime version 5 selects free anonymous pdufa.bio; no account or subscription is required. See [final evidence](verification/2026-10-11-free-biotech-source.json). Sections below preserve investigation stages.
+
+## Initially observed failures
 
 - EventBridge successfully started the worker at 10:00 ET every weekday October 5–9. The worker published snapshots and stopped itself around 10:04 ET. Both schedules are enabled.
 - Latest snapshot `20261009T140408Z` used release `46b72a5`: ten raw Insider events, zero triage/validated events, fresh market regime. Squeeze failed with `RuntimeError`; Whale with `TimeoutError` after 99 seconds.
@@ -27,7 +31,7 @@ Scope: the scheduled production batch on `i-0597d111f82782b5d` in `us-east-1`. V
 4. Deploy the repaired runtime through an immutable release. Verify on EC2 that all intended source requests are attempted, failures are explicit, the pipeline drains, a snapshot and backup are published, and the worker stops.
 5. Record remaining external provider restrictions with their evidence. An organic run can correctly publish zero recommendations when no ticker meets confluence.
 
-No local test results are acceptance evidence for this task. Production verification details will be appended when completed.
+No local test results are acceptance evidence for this task. Completed production verification is recorded below.
 
 ## Live provider evidence
 
@@ -44,19 +48,19 @@ SSM check `57de431b-61ae-4bfa-87be-a6f4bbc4aeed` ran the repaired source on the 
 
 Encrypted SSM runtime version 4 selects `SQUEEZE_PROVIDER=yahoo`; existing credentials, database password and other settings are preserved. Repair `e93ac3a` and formatting correction `7e5b4de` are on main. The initial release stopped at its formatting gate before publishing. The corrected release passed GitHub CI, CodeQL and AWS publication at 01:47:58 UTC on October 12 (October 11 ET). Remote verification passed 342 Python, 36 Java and 188 frontend tests (566 total), lint/format/types and both Next.js builds. The full repaired EC2 batch published `20261012T015207Z`: 31 raw events, four completed hunters, fresh regime, saved backup and logs, and automatic shutdown at 01:52:48 UTC. CloudFront serves the matching manifest. Final access wording was published as `7bbe2a8` at 02:05:45 UTC because the signup gate does not establish whether payment is required; its final EC2 batch published `20261012T021037Z`, again with 31 raw events and four completed hunters, retained job logs/backup and automatic shutdown at 02:11:18 UTC.
 
-## Remaining provider access
+## Provider restriction and completed replacement
 
 BioPharmCatalyst drug/date details require account access; a payment requirement was not verified. The user declined account/subscription dependency and requested a free public replacement. [openFDA Drugs@FDA](https://open.fda.gov/apis/drug/drugsfda/) describes approved products rather than upcoming PDUFA events, and [ClinicalTrials.gov fields](https://clinicaltrials.gov/data-about-studies/csv-download) supply sponsor names and study completion dates rather than stock tickers and scheduled readout announcements; those were not equivalent replacements. A later targeted search found the documented [pdufa.bio core API](https://www.pdufa.bio/developers): free anonymous access to actual goal dates, drug/ticker, date precision and source links. Its EC2 request returned HTTP 200, anonymous tier, 36 records, and provider build `2026-10-12T01:31:15+00:00`. The implemented collector includes visible public attribution and uses no account or paid endpoint.
 
 This replacement is now deployed and verified as release `0073de8`. The source-only EC2 collector accepted 25 exact-day upcoming source-linked records in 0.20 seconds; the full batch `20261012T034358Z` completed all five hunters with 56 raw events. Regime, export/schema guards, private backup/logs, CloudFront manifest and automatic shutdown passed. All 56 events have Gatekeeper outcomes: 22 buffered at one source, 33 RVOL drops and one price drop, with no schema/processing errors. The worker stopped itself at 03:44:39 UTC. Both weekday schedules remain enabled. No account setup, paid subscription or user action remains required; see [final free-source evidence](verification/2026-10-11-free-biotech-source.json).
 
-## Follow-up work
+## Completed follow-up work
 
-- The archived final-run logs explain zero triage: 22 events buffered at one source and nine failed hard filters (one price, eight RVOL). All 31 have recorded outcomes; 18 unique tickers had no cross-hunter overlap. The 20 SEC events comprise seven purchases and 13 sales. Preserve the two-source requirement.
-- Replace the public account-gated Biotech source with the free pdufa.bio core API. Verify exact pending/source-linked dates, request/record bounds, actual EC2 collection, snapshot attribution and a completed five-hunter batch. Retain the dormant legacy option; account setup is not requested.
-- Repair startup diagnostic coverage and release preparation: publish bootstrap attempt status, retain private failure logs, require a successful fresh release-pointer download and extract each release into a clean staging directory. Update the existing EC2 wrapper explicitly and verify on AWS; changed first-boot user data alone is insufficient.
+- The archived 31-event startup follow-up logs explain zero triage at that stage: 22 events buffered at one source and nine failed hard filters (one price, eight RVOL). All 31 have recorded outcomes; 18 unique tickers had no cross-hunter overlap. The 20 SEC events comprise seven purchases and 13 sales. Preserve the two-source requirement.
+- Completed: replace the public account-gated Biotech source with the free pdufa.bio core API. Verify exact pending/source-linked dates, request/record bounds, actual EC2 collection, snapshot attribution and a completed five-hunter batch. Retain the dormant legacy option; account setup is not requested.
+- Completed: repair startup diagnostic coverage and release preparation: publish bootstrap attempt status, retain private failure logs, require a successful fresh release-pointer download and extract each release into a clean staging directory. Update the existing EC2 wrapper explicitly and verify on AWS; changed first-boot user data alone is insufficient.
 - Keep the healthy weekday schedules and shutdown safeguards. No missed-start evidence justifies a schedule redesign.
 
 Follow-up release `559cc8a` passed CI, CodeQL and AWS publication. Migration run `20261012T025646Z` installed the canonical wrapper; the next boot through it published `20261012T030040Z`. Both runs had 31 raw events, four completed hunters, fresh regime, saved backup and private job logs, then stopped automatically. The second boot also retained private bootstrap logs and early running status; SSM confirmed clean-release directory links and private file modes. The final logs account for 22 buffered/9 dropped events and no Gatekeeper schema/processing errors. See [startup follow-up evidence](verification/2026-10-11-ec2-startup-followup.json).
 
-Startup and free-source work are complete. Provider-only legacy session support remains disabled. The free pdufa.bio collector is selected publicly in encrypted runtime version 5 and verified on EC2. Account setup is not requested. The next scheduled run is October 12 at 10:00 ET; the worker is stopped until then.
+Startup and free-source work are complete. Provider-only legacy session support remains disabled. The free pdufa.bio collector is selected publicly in encrypted runtime version 5 and verified on EC2. Account setup is not requested. At verification close (03:44:39 UTC), the worker was stopped. Enabled schedules start it at 10:00 America/New_York weekdays, with an independent 11:30 hard stop. Later outcomes require fresh AWS readback.

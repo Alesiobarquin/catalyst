@@ -2,9 +2,11 @@
 
 **Purpose:** Canonical ordered backlog for **what to build next** — operational reliability first, then signal volume, then UI. Use this doc when planning sprints, agent tasks, or weekly check-ins. Update checkboxes and the “Last updated” line as work completes.
 
-**Last updated:** October 3, 2026 (public hosting target revised; historical Tracks 1–7 retained below)
+**Last updated:** October 12, 2026 (verified deployment and daily-run repairs; historical Tracks 1–7 retained below)
 
-**Current priority:** Implement the [Public Demo Deployment Plan](PUBLIC_DEMO_DEPLOYMENT_PLAN.md): a 24/7 read-only AWS HTTPS site showing the latest successful weekday scan, with at most $10/month in hosting costs. Build trustworthy daily results and snapshot export first, then static public UI, production releases, CDK hosting/orchestration, and deployment verification. The older market-hours cadence and Track 4 checklist below describe the previous target. No public snapshot site has been deployed yet.
+**Current priority:** Observe the repaired weekday EC2 cadence and retain production evidence. The read-only [public site](https://d36bndaw2y0rrh.cloudfront.net) is deployed. Release `0073de8` completed all five hunters in the October 11 ET manual verification: 56 organic raw events, zero qualified recommendations, fresh regime, private backup/log retention and automatic shutdown. Public Biotech uses free anonymous pdufa.bio; no account dependency remains. See [operations](PUBLIC_DEMO_OPERATIONS.md) and [EC2 evidence](verification/2026-10-11-free-biotech-source.json).
+
+**Next steps:** Verify subsequent scheduled outcomes, monitor source coverage and actual costs against the $10/month target, and retain evidence of organic confluence if it occurs. This repair does not establish an organic validated recommendation or sustained 2–4 week reliability. Keep private Clerk/Alpaca enablement deferred. The track checklists below preserve the earlier prototype plan.
 
 **See also:** [IMPLEMENTATION_ROADMAP.md](IMPLEMENTATION_ROADMAP.md) (older phased estimates and recruiting context), [TESTING.md](TESTING.md) (how to verify the stack), [DEPLOYMENT.md](DEPLOYMENT.md) (AWS / scheduling ideas).
 
@@ -12,7 +14,7 @@
 
 ## How to use this document
 
-1. Work **tracks in order** (Track 1 → 2 → 3 → 4 → …). Tracks 1–3 are **complete**; start at **Track 4** unless fixing a regression.
+1. Use the current priority above and the operations runbook. Tracks below are historical planning context.
 2. After completing a checkbox, mark it `[x]` in this file in the same PR as the code change.
 3. If scope changes, edit the checklist here — this file is the source of truth for **priority order**, not individual tickets elsewhere.
 
@@ -24,7 +26,7 @@
 - **Track 1 (recurrence):** squeeze and biotech run continuous loops with configurable intervals. **Accepted local proof** is an **accelerated-interval multi-cycle soak** (multiple “next sweep” log lines), then restore default intervals—documented in the validation report. A **literal 24h wall-clock** run at default intervals is optional hardening (archive `docker logs` if you do it); do not claim it without logs.
 - **Track 2 (confluence):** **Gatekeeper confluence ≥ 2** is **proven** with **controlled** `raw-events` injection plus Redis `gk:sources:{TICKER}` (and full-stack **NVDA** in the same report). **Organic** overlap (two distinct live hunters hitting the same ticker inside the rolling window without injection) is **sparse by design** and is a **stretch** validation—longer runs, market hours, and AWS-like retention help; it is not required to call Track 2 “implemented.”
 - **Drifter** and **whale** are implemented and wired in Compose; **shadow** was dropped (Tradytics paywall, no viable free data source).
-- **Tracks 1–3 and pre-AWS gates are complete.** Next milestone is **AWS deployment** (Track 4), then polish/housekeeping (Tracks 5–6), then **Clerk + Alpaca wiring** (Track 7) when go-live gates are met.
+- **Public AWS deployment and daily-run repairs are complete.** Clerk + Alpaca remain operationally deferred and excluded from the public worker.
 - **Clerk + Alpaca code exists** (API auth, executor, settings routes) but is **not operationally enabled** — frontend Clerk is disabled; env vars and smoke tests remain.
 
 ---
@@ -43,9 +45,9 @@ This is a portfolio-first system, not a 24/7 production trading platform.
 
 ---
 
-## Operating cadence (recommended happy medium)
+## Historical prototype cadence (not deployed)
 
-Use this cadence for portfolio operations and demos:
+The deployed cadence is one 10:00 ET weekday batch with automatic shutdown and an independent 11:30 hard stop. The earlier proposal was:
 
 - **Weekdays only**
 - **07:00 ET:** pre-market warmup run

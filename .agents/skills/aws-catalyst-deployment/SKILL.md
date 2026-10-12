@@ -13,7 +13,7 @@ This skill guides provisioning, configuring, and managing the Catalyst pipeline 
 
 The accepted target is a public read-only dashboard available 24/7 over an AWS-provided HTTPS URL, with one weekday pipeline run and a hosting budget of at most $10/month. The S3/CloudFront site, scheduled EC2 worker, encrypted SSM runtime, and GitHub OIDC publisher are deployed and verified. Organic scans published and stopped automatically; both weekday schedules are enabled. Read [docs/PUBLIC_DEMO_OPERATIONS.md](../../../docs/PUBLIC_DEMO_OPERATIONS.md) and `AGENTS.md` for current CLI operations, safeguards, source limitations, schedule state, and verification evidence. Repository defaults select this stack and enabled schedules; use `-c enableDailyScan=false` to pause collection or `-c publicDemo=false` to select the legacy stack.
 
-The remaining instructions describe the **legacy single-instance prototype**. Stopping that instance also stops an instance-hosted dashboard. Do not present this legacy workflow as sufficient for the 24/7 public target. The existing instance is a running `t3.micro` / 8 GiB disk, while the CDK source's optional create path is `t3.medium` / 30 GiB; neither establishes a validated memory requirement for the full stack.
+The remaining instructions describe the **legacy single-instance prototype**. Stopping that instance also stops an instance-hosted dashboard. Do not present this legacy workflow as sufficient for the 24/7 public target. The legacy instance `i-0194d6c0b8f0e191a` is stopped with its 8 GiB root retained; inspection found a full disk and no running containers, while the CDK source's optional create path is `t3.medium` / 30 GiB; neither establishes a validated memory requirement for the full stack.
 
 ## Legacy architecture
 
@@ -50,14 +50,14 @@ The CDK stack is defined in [infra/catalyst_stack.py](file:///Users/alesio/Devel
 ```bash
 cd infra
 source .venv/bin/activate
-cdk deploy -c createEc2=true -c keyPairName=catalyst-us-east-1
+cdk deploy -c publicDemo=false -c createEc2=true -c keyPairName=catalyst-us-east-1
 ```
 
 ### Option B: Wire Lambdas to an Existing EC2 Instance
 ```bash
 cd infra
 source .venv/bin/activate
-cdk deploy -c existingInstanceId=i-0123456789abcdef0
+cdk deploy -c publicDemo=false -c existingInstanceId=i-0123456789abcdef0
 ```
 
 > [!IMPORTANT]
