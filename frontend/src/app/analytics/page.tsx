@@ -12,9 +12,9 @@ import { KellySimulator } from "@/components/analytics/KellySimulator";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Analytics — Catalyst",
+  title: "Modeled outcomes — Catalyst",
   description:
-    "Aggregate analytics: conviction distribution, strategy breakdown, signal volume, and performance metrics.",
+    "Sampled recommendation outcomes, conviction distribution, and sizing assumptions from the connected API.",
 };
 
 const CATALYST_COLORS: Record<string, string> = {
@@ -35,23 +35,11 @@ export default async function AnalyticsPage() {
   return (
     <>
       {/* ── Page header ─────────────────────────────── */}
-      <div style={{ marginBottom: 24 }}>
-        <h1
-          style={{
-            fontSize: 24,
-            fontWeight: 600,
-            color: "var(--color-text-primary)",
-            letterSpacing: "-0.01em",
-            marginBottom: 4,
-            lineHeight: 1.25,
-          }}
-        >
-          Analytics
-        </h1>
-        <p style={{ fontSize: 14, color: "var(--color-text-secondary)", margin: 0 }}>
-          Sampled stop/target outcomes · recommendation quality · strategy distribution
-        </p>
-      </div>
+      <header className="page-heading">
+        <p className="page-eyebrow">Local workspace · Recommendation measurements</p>
+        <h1>Modeled outcomes</h1>
+        <p className="page-description">Recommendation allocations evaluated at sampled reference prices. These figures describe modeled outcomes, not broker fills or realized trading profit; sampling can miss intraday stop and target crossings.</p>
+      </header>
 
       {/* ── Executive KPI summary strip ──────────────── */}
       <div

@@ -62,7 +62,7 @@ describe("SignalsPage", () => {
 
     render(page);
 
-    expect(screen.getByRole("heading", { level: 1, name: "Validated signals" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Signal archive" })).toBeInTheDocument();
     expect(screen.getByText("No validated signals yet")).toBeInTheDocument();
     expect(screen.getByTestId("live-stream-banner")).toBeInTheDocument();
     expect(screen.getByText("Total Pipeline Signals")).toBeInTheDocument();

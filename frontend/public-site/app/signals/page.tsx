@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PublicDashboard } from "@/components/public/PublicDashboard";
 
 export const metadata: Metadata = {
-  title: "Signals — Catalyst",
+  title: "Signal archive — Catalyst",
   description: "Daily snapshot of validated market signals, including catalyst, conviction, rationale, and confluence details.",
 };
 

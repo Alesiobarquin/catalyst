@@ -1,0 +1,599 @@
+{
+  "design_branch": "design/trading-terminal",
+  "checkpoint_branch": "design/research-workspace-20261011",
+  "checkpoint_commit": "96e5af1",
+  "verified_at": "2026-10-12T02:04:45.574Z",
+  "environment": "Local production static export",
+  "organic_run": "20261009T140408Z",
+  "fixture_handling": "Transient browser request interception. Fixture records and labels never written to the static export.",
+  "cases": [
+    {
+      "mode": "organic",
+      "route": "/",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Daily research brief \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/trading-terminal/organic-overview-1440-light.png"
+    },
+    {
+      "mode": "organic",
+      "route": "/signals/",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Signal archive \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/analytics/",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Modeled outcomes \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/architecture/",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Engineering notebook \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/trading-terminal/organic-engineering-1440-light.png"
+    },
+    {
+      "mode": "organic",
+      "route": "/",
+      "viewport": 1440,
+      "theme": "dark",
+      "document_width": 1440,
+      "title": "Daily research brief \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/trading-terminal/organic-overview-1440-dark.png"
+    },
+    {
+      "mode": "organic",
+      "route": "/signals/",
+      "viewport": 1440,
+      "theme": "dark",
+      "document_width": 1440,
+      "title": "Signal archive \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/analytics/",
+      "viewport": 1440,
+      "theme": "dark",
+      "document_width": 1440,
+      "title": "Modeled outcomes \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/architecture/",
+      "viewport": 1440,
+      "theme": "dark",
+      "document_width": 1440,
+      "title": "Engineering notebook \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/trading-terminal/organic-engineering-1440-dark.png"
+    },
+    {
+      "mode": "organic",
+      "route": "/",
+      "viewport": 390,
+      "theme": "light",
+      "document_width": 390,
+      "title": "Daily research brief \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/trading-terminal/organic-overview-390-light.png"
+    },
+    {
+      "mode": "organic",
+      "route": "/signals/",
+      "viewport": 390,
+      "theme": "light",
+      "document_width": 390,
+      "title": "Signal archive \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/analytics/",
+      "viewport": 390,
+      "theme": "light",
+      "document_width": 390,
+      "title": "Modeled outcomes \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/architecture/",
+      "viewport": 390,
+      "theme": "light",
+      "document_width": 390,
+      "title": "Engineering notebook \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/",
+      "viewport": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "title": "Daily research brief \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/trading-terminal/organic-overview-390-dark.png"
+    },
+    {
+      "mode": "organic",
+      "route": "/signals/",
+      "viewport": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "title": "Signal archive \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/analytics/",
+      "viewport": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "title": "Modeled outcomes \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/architecture/",
+      "viewport": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "title": "Engineering notebook \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/",
+      "viewport": 320,
+      "theme": "light",
+      "document_width": 320,
+      "title": "Daily research brief \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/signals/",
+      "viewport": 320,
+      "theme": "light",
+      "document_width": 320,
+      "title": "Signal archive \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/analytics/",
+      "viewport": 320,
+      "theme": "light",
+      "document_width": 320,
+      "title": "Modeled outcomes \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/architecture/",
+      "viewport": 320,
+      "theme": "light",
+      "document_width": 320,
+      "title": "Engineering notebook \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "title": "Daily research brief \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/signals/",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "title": "Signal archive \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/analytics/",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "title": "Modeled outcomes \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "organic",
+      "route": "/architecture/",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "title": "Engineering notebook \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Daily research brief \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/trading-terminal/fixture-overview-1440-light.png"
+    },
+    {
+      "mode": "fixture",
+      "route": "/signals/",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Signal archive \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/trading-terminal/fixture-signals-1440-light.png"
+    },
+    {
+      "mode": "fixture",
+      "route": "/analytics/",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Modeled outcomes \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/architecture/",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "title": "Engineering notebook \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/",
+      "viewport": 1440,
+      "theme": "dark",
+      "document_width": 1440,
+      "title": "Daily research brief \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/trading-terminal/fixture-overview-1440-dark.png"
+    },
+    {
+      "mode": "fixture",
+      "route": "/signals/",
+      "viewport": 1440,
+      "theme": "dark",
+      "document_width": 1440,
+      "title": "Signal archive \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/trading-terminal/fixture-signals-1440-dark.png"
+    },
+    {
+      "mode": "fixture",
+      "route": "/analytics/",
+      "viewport": 1440,
+      "theme": "dark",
+      "document_width": 1440,
+      "title": "Modeled outcomes \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/architecture/",
+      "viewport": 1440,
+      "theme": "dark",
+      "document_width": 1440,
+      "title": "Engineering notebook \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/",
+      "viewport": 390,
+      "theme": "light",
+      "document_width": 390,
+      "title": "Daily research brief \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/signals/",
+      "viewport": 390,
+      "theme": "light",
+      "document_width": 390,
+      "title": "Signal archive \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/analytics/",
+      "viewport": 390,
+      "theme": "light",
+      "document_width": 390,
+      "title": "Modeled outcomes \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/architecture/",
+      "viewport": 390,
+      "theme": "light",
+      "document_width": 390,
+      "title": "Engineering notebook \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/",
+      "viewport": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "title": "Daily research brief \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/signals/",
+      "viewport": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "title": "Signal archive \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/analytics/",
+      "viewport": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "title": "Modeled outcomes \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/architecture/",
+      "viewport": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "title": "Engineering notebook \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/",
+      "viewport": 320,
+      "theme": "light",
+      "document_width": 320,
+      "title": "Daily research brief \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/signals/",
+      "viewport": 320,
+      "theme": "light",
+      "document_width": 320,
+      "title": "Signal archive \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/analytics/",
+      "viewport": 320,
+      "theme": "light",
+      "document_width": 320,
+      "title": "Modeled outcomes \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/architecture/",
+      "viewport": 320,
+      "theme": "light",
+      "document_width": 320,
+      "title": "Engineering notebook \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "title": "Daily research brief \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/signals/",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "title": "Signal archive \u2014 Catalyst",
+      "errors": [],
+      "screenshot": "docs/verification/screenshots/trading-terminal/fixture-signals-320-dark.png"
+    },
+    {
+      "mode": "fixture",
+      "route": "/analytics/",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "title": "Modeled outcomes \u2014 Catalyst",
+      "errors": []
+    },
+    {
+      "mode": "fixture",
+      "route": "/architecture/",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "title": "Engineering notebook \u2014 Catalyst",
+      "errors": []
+    }
+  ],
+  "interactions": [
+    "Inspector settled viewport bounds, focus trap, Escape, opener focus restoration",
+    "Missing public chart history remains unavailable",
+    "Expanded signal rationale, real supplied provenance, saved quote",
+    "Theme switch and saved theme reload",
+    "200% zoom-equivalent viewport without horizontal overflow"
+  ],
+  "validation": {
+    "frontend_tests": {
+      "passed": 189,
+      "files": 33
+    },
+    "lint": "passed, no errors or warnings",
+    "typecheck": "passed",
+    "ordinary_build": "passed",
+    "public_static_build": "passed",
+    "diff_check": "passed",
+    "backend_suites": "Not rerun for this frontend change."
+  },
+  "local_api_cases": [
+    {
+      "route": "/",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "status": 200,
+      "errors": [],
+      "title": "Catalyst \u2014 Market signal research"
+    },
+    {
+      "route": "/signals",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "status": 200,
+      "errors": [],
+      "title": "Signal archive \u2014 Catalyst"
+    },
+    {
+      "route": "/analytics",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "status": 200,
+      "errors": [],
+      "title": "Modeled outcomes \u2014 Catalyst"
+    },
+    {
+      "route": "/architecture",
+      "viewport": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "status": 200,
+      "errors": [],
+      "title": "Engineering notebook \u2014 Catalyst"
+    },
+    {
+      "route": "/",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "status": 200,
+      "errors": [],
+      "title": "Catalyst \u2014 Market signal research"
+    },
+    {
+      "route": "/signals",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "status": 200,
+      "errors": [],
+      "title": "Signal archive \u2014 Catalyst"
+    },
+    {
+      "route": "/analytics",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "status": 200,
+      "errors": [],
+      "title": "Modeled outcomes \u2014 Catalyst"
+    },
+    {
+      "route": "/architecture",
+      "viewport": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "status": 200,
+      "errors": [],
+      "title": "Engineering notebook \u2014 Catalyst"
+    }
+  ],
+  "local_fixture_handling": "Read-only temporary SSR API stub and browser interception, outside the public export.",
+  "first_visit": "OS dark preference still defaults to light",
+  "command_and_motion_checks": [
+    "Native command dialog: input focus, keyboard containment, Escape, opener focus restoration",
+    "Ctrl+K, arrow selection, Enter navigation",
+    "Cmd+K ticker command trims/capitalizes ticker and opens actual signal archive filter",
+    "Notebook command and replay of explicitly labeled architecture illustration",
+    "Alt+1 function shortcut",
+    "Regime readout uses recorded VIX and SPY/200-session average",
+    "All public nav functions and command menu fit 390px and 320px",
+    "Reduced motion disables branding, topology replay, dialog and CSS motion at desktop/mobile widths"
+  ],
+  "browser_summary": {
+    "public_cases": 48,
+    "local_api_cases": 8,
+    "page_errors": 0,
+    "document_overflow": 0,
+    "command_and_motion_checks": 8
+  },
+  "screenshots": [
+    "docs/verification/screenshots/trading-terminal/command-menu-1440-dark.png",
+    "docs/verification/screenshots/trading-terminal/command-menu-320-dark.png",
+    "docs/verification/screenshots/trading-terminal/fixture-inspector-1440-light.png",
+    "docs/verification/screenshots/trading-terminal/fixture-inspector-390-dark.png",
+    "docs/verification/screenshots/trading-terminal/fixture-local-overview-1440-light.png",
+    "docs/verification/screenshots/trading-terminal/fixture-overview-1440-dark.png",
+    "docs/verification/screenshots/trading-terminal/fixture-overview-1440-light.png",
+    "docs/verification/screenshots/trading-terminal/fixture-signals-1440-dark.png",
+    "docs/verification/screenshots/trading-terminal/fixture-signals-1440-light.png",
+    "docs/verification/screenshots/trading-terminal/fixture-signals-320-dark.png",
+    "docs/verification/screenshots/trading-terminal/organic-engineering-1440-dark.png",
+    "docs/verification/screenshots/trading-terminal/organic-engineering-1440-light.png",
+    "docs/verification/screenshots/trading-terminal/organic-overview-1440-dark.png",
+    "docs/verification/screenshots/trading-terminal/organic-overview-1440-light.png",
+    "docs/verification/screenshots/trading-terminal/organic-overview-390-dark.png",
+    "docs/verification/screenshots/trading-terminal/organic-overview-390-light.png"
+  ],
+  "references": [
+    {
+      "title": "Bloomberg Terminal and official product imagery",
+      "url": "https://professional.bloomberg.com/products/bloomberg-terminal/"
+    },
+    {
+      "title": "Bloomberg Charts",
+      "url": "https://professional.bloomberg.com/products/bloomberg-terminal/charts/"
+    },
+    {
+      "title": "TradingView watchlist documentation",
+      "url": "https://www.tradingview.com/support/solutions/43000745825-mastering-the-tradingview-watchlists/"
+    }
+  ],
+  "publication": "Local design branch only. Public deployment and data manifest were not changed."
+}

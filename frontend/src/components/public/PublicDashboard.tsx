@@ -2,11 +2,13 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { loadSnapshot, loadRunStatus, type RunStatus, filterRows, paginate, downloadCsv, type PublicSnapshot } from "@/lib/snapshot";
 import { StatsBar } from "@/components/dashboard/StatsBar";
 import { FilterBar } from "@/components/dashboard/FilterBar";
 import { TradeList } from "@/components/dashboard/TradeList";
 import { MarketOverviewBar } from "@/components/dashboard/MarketOverviewBar";
+import { MarketTape } from "@/components/dashboard/MarketTape";
 import { SignalTable } from "@/components/signals/SignalTable";
 import { SignalFilterBar } from "@/components/signals/SignalFilterBar";
 import { Pagination } from "@/components/ui/Pagination";
@@ -14,12 +16,13 @@ import { StrategyBreakdown, ConvictionHistogram, SignalTimeline, PerformanceSumm
 import { KellySimulator } from "@/components/analytics/KellySimulator";
 import { SnapshotStatus } from "./SnapshotStatus";
 import { EmptyResults } from "./EmptyResults";
+import { RegimeReadout } from "./RegimeReadout";
 
 type View = "orders" | "signals" | "analytics";
 const PAGE_COPY = {
-  orders: { title: "Signal Dashboard", description: "Market catalysts filtered for evidence and sized for risk." },
-  signals: { title: "Validated signals", description: "Search-grounded catalysts that passed the pipeline’s validation checks." },
-  analytics: { title: "Analytics", description: "Recommendation quality and modeled outcomes from scheduled price checks." },
+  orders: { title: "Daily research brief", description: "Five hunters collect market events. Catalyst checks source agreement, grounds the analysis, and sizes recommendations for risk." },
+  signals: { title: "Signal archive", description: "Inspect the rationale, sources, and risks of catalysts that passed validation." },
+  analytics: { title: "Modeled outcomes", description: "Recommendation history and outcomes measured from scheduled price checks." },
 };
 
 export function PublicDashboard({ view }: { view: View }) {
@@ -52,10 +55,12 @@ function Content({ view }: { view: View }) {
   }
 
   const copy = PAGE_COPY[view];
-  const header = <header className="page-heading">
-    <p className="page-eyebrow">Daily research · Read only</p>
-    <h1>{copy.title}</h1>
-    <p className="page-description">{copy.description}</p>
+  const header = <header className="page-heading terminal-page-heading">
+    <div className="terminal-title-copy"><p className="page-eyebrow">{view === "orders" ? "Research / Daily snapshot" : view === "signals" ? "Research / Validated catalysts" : "Research / Measurement & sizing"}</p>
+      <h1>{copy.title}</h1>
+      <p className="page-description">{copy.description}</p>
+    </div>
+    <div className="terminal-function-stamp" aria-hidden="true"><span>CATALYST</span><strong>{view === "orders" ? "OVW" : view === "signals" ? "SIG" : "P&L"}<span>↗</span></strong><span>{view === "orders" ? "01 / RESEARCH" : view === "signals" ? "02 / ARCHIVE" : "03 / OUTCOMES"}</span></div>
   </header>;
 
   if (!data) return <>{header}<div className="empty-results" aria-busy={!error}>
@@ -87,9 +92,13 @@ function Content({ view }: { view: View }) {
     : "No catalyst passed all validation and sizing checks in this snapshot. New results appear after the next weekday scan.";
 
   return <>
+    <MarketTape quotes={data.benchmarks} asOf={data.benchmarks_as_of ?? data.as_of} />
     {header}
-    <SnapshotStatus data={data} attempt={attempt} error={error} now={now} reportRef={reportRef} />
+    <div className={view === "orders" ? "research-workspace" : "research-workspace research-workspace--full"}>
+    <div className="research-primary">
+    <SnapshotStatus data={data} attempt={attempt} error={error} now={now} reportRef={reportRef} prominent={view === "orders"} />
     {view === "orders" && <>
+      <section className="recommendations-section" aria-label="Published recommendations">
       {data.order_stats.total_orders > 0 && <StatsBar stats={data.order_stats} snapshot />}
       {(data.orders.length > 0 || hasOrderFilters) && <>
         <FilterBar key={sp.toString()} initialStrategy={strategy as "all"} initialDateRange={dateRange as "all"} initialStatus={status as "all"} initialTicker={ticker} />
@@ -102,7 +111,8 @@ function Content({ view }: { view: View }) {
         {hasOrderFilters ? "Try another ticker, strategy, or date range, or clear the filters to see all published recommendations." : emptyExplanation}
       </EmptyResults> : <TradeList orders={ordersPage.items} hasActiveFilters={hasOrderFilters} />}
       <Pagination page={ordersPage.page} total={rows.length} perPage={15} basePath="/" query={query} />
-      <MarketOverviewBar key={data.run_id} initialQuotes={data.benchmarks} asOf={data.as_of} />
+      </section>
+      <MarketOverviewBar key={data.run_id} initialQuotes={data.benchmarks} asOf={data.benchmarks_as_of ?? data.as_of} />
     </>}
     {view === "signals" && <>
       {(data.signals.length > 0 || hasSignalFilters) && <>
@@ -120,6 +130,7 @@ function Content({ view }: { view: View }) {
       <Pagination page={signalsPage.page} total={signals.length} perPage={15} basePath="/signals" query={query} />
     </>}
     {view === "analytics" && <>
+      <section className="measurement-note" aria-label="How outcomes are measured"><p className="record-label">Measurement scope</p><h2>{data.order_stats.total_orders} recorded recommendations</h2><p>Stop and target outcomes use sampled reference prices and recommended allocation. They do not measure brokerage profit. A daily check can miss an intraday crossing.</p></section>
       {data.order_stats.total_orders > 0 ? <div className="public-analytics-grid">
         <PerformanceSummary stats={data.order_stats} snapshot />
         <div className="analytics-distribution-grid"><StrategyBreakdown stats={data.order_stats} /><ConvictionHistogram stats={data.order_stats} /><SignalTimeline stats={data.order_stats} /></div>
@@ -128,5 +139,20 @@ function Content({ view }: { view: View }) {
       </EmptyResults>}
       <KellySimulator />
     </>}
+    </div>
+    {view === "orders" && <aside className="research-context" aria-label="Research methodology">
+      <div className="terminal-panel-title"><span>POL / 01</span><p className="record-label">Acceptance rules</p><span aria-hidden="true">↗</span></div>
+      <h2>What makes it through?</h2>
+      <dl className="terminal-parameter-readout" aria-label="Public screening parameters"><div><dt>Source minimum</dt><dd>02 <span>feeds</span></dd></div><div><dt>Confluence window</dt><dd>05:00 <span>min:sec</span></dd></div><div><dt>Conviction floor</dt><dd>50 <span>/ 100</span></dd></div><div><dt>Allocation cap</dt><dd>25<span>% / rec.</span></dd></div></dl>
+      <ol className="acceptance-rules">
+        <li><span aria-hidden="true">01</span><div><h3>Independent sources</h3><p>At least two hunters must agree on a ticker within five minutes. Price and liquidity checks also apply.</p></div></li>
+        <li><span aria-hidden="true">02</span><div><h3>Grounded analysis</h3><p>Gemini uses Google Search. A signal needs grounding and a conviction score of at least 50/100.</p></div></li>
+        <li><span aria-hidden="true">03</span><div><h3>Risk & market regime</h3><p>Half-Kelly sizing is capped by allocation and SPY/VIX conditions. Missing or stale regime data halts sizing.</p></div></li>
+      </ol>
+      <Link className="inline-action" href="/architecture">How it works <span aria-hidden="true">→</span></Link>
+      <RegimeReadout regime={data.regime} />
+      <div className="research-boundary"><p className="record-label">About this project</p><p>This is an engineering demonstration of a market-signal pipeline. The public worker publishes one bounded scan each weekday; brokerage execution is disabled.</p><a className="inline-action" href="https://github.com/Alesiobarquin/catalyst" target="_blank" rel="noreferrer">Code, tests & runbooks <span aria-hidden="true">↗</span></a></div>
+    </aside>}
+    </div>
   </>;
 }

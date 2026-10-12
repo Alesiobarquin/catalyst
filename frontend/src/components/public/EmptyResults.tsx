@@ -11,6 +11,7 @@ interface EmptyResultsProps {
 export function EmptyResults({ title, children, onViewReport, filtered, resetPath = "/" }: EmptyResultsProps) {
   return (
     <section className="empty-results">
+      <span className="empty-record-mark" aria-hidden="true">—</span>
       <div className="empty-results-copy">
         <h2>{title}</h2>
         <p>{children}</p>

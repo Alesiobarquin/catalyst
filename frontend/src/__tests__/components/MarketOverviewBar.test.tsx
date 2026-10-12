@@ -95,8 +95,8 @@ describe("MarketOverviewBar", () => {
   it("labels public benchmark quotes as scan-time values", () => {
     render(<MarketOverviewBar initialQuotes={mockQuotes} asOf="2026-10-05T14:00:00Z" />);
 
-    expect(screen.getByTitle("Captured with the public scan")).toBeInTheDocument();
-    expect(screen.getByText(/At scan ·/)).toBeInTheDocument();
+    expect(screen.getByTitle("Market quote collection time")).toBeInTheDocument();
+    expect(screen.getByText(/Captured · Oct 5/)).toBeInTheDocument();
     expect(screen.queryByTitle("Refresh benchmark quotes")).not.toBeInTheDocument();
   });
 

@@ -1,11 +1,18 @@
 import json
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
 from ai_layer.ai_service import AIAnalysisService
 from ai_layer.request_budget import reserve_request
-from deploy.export_snapshot import empty_snapshot, validate_snapshot
+from deploy.export_snapshot import (
+    BENCHMARK_SYMBOLS,
+    collect_benchmarks,
+    empty_snapshot,
+    validate_snapshot,
+)
 from hunters import squeeze_hunter
 from hunters.main import run_hunter
 
@@ -78,3 +85,39 @@ async def test_public_hunter_report_redacts_provider_exception(monkeypatch):
     outcome = await run_hunter("squeeze", once=True)
     assert outcome["error"] == "RuntimeError"
     assert not outcome["success"]
+
+
+def test_benchmark_collection_encodes_index_symbols_and_records_utc_retrieval():
+    response = MagicMock()
+    response.json.return_value = [
+        {"ticker": symbol, "price": 100.0} for symbol in BENCHMARK_SYMBOLS
+    ]
+    client = MagicMock()
+    client.get.return_value = response
+    quotes, retrieved = collect_benchmarks(client)
+    path = client.get.call_args.args[0]
+    assert "%5E" in path
+    assert parse_qs(urlsplit(path).query)["symbols"] == [",".join(BENCHMARK_SYMBOLS)]
+    assert len(quotes) == 19
+    assert datetime.fromisoformat(retrieved).utcoffset().total_seconds() == 0
+
+
+def test_missing_benchmark_prices_do_not_get_retrieval_timestamp():
+    client = MagicMock()
+    client.get.return_value.json.return_value = [{"ticker": symbol} for symbol in BENCHMARK_SYMBOLS]
+    quotes, retrieved = collect_benchmarks(client)
+    assert len(quotes) == 19
+    assert retrieved is None
+
+
+def test_snapshot_rejects_unbounded_benchmark_response():
+    data = empty_snapshot("test", "2026-10-04T12:00:00Z")
+    data["benchmarks"] = [{"ticker": "SPY"}] * 20
+    with pytest.raises(ValueError, match="benchmark bound"):
+        validate_snapshot(data)
+
+
+def test_benchmark_collection_retains_no_data_from_unexpected_symbols():
+    client = MagicMock()
+    client.get.return_value.json.return_value = [{"ticker": "UNEXPECTED", "price": 100.0}]
+    assert collect_benchmarks(client) == ([], None)
