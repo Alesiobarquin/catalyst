@@ -221,8 +221,10 @@ def fetch_yahoo_squeeze_targets(
             code = "source_unavailable"
         raise ProviderError("yahoo", code, payload.get("status"))
     events = payload.get("events")
-    if not isinstance(events, list) or len(events) > limit or any(
-        not isinstance(event, dict) for event in events
+    if (
+        not isinstance(events, list)
+        or len(events) > limit
+        or any(not isinstance(event, dict) for event in events)
     ):
         raise ProviderError("yahoo", "response_schema")
     return events

@@ -39,9 +39,7 @@ def _info(**overrides):
 def _mock_source(monkeypatch, quotes, info=None):
     screen = Mock(return_value={"quotes": quotes, "total": len(quotes)})
     ticker = Mock(
-        return_value=SimpleNamespace(
-            get_info=Mock(return_value=_info() if info is None else info)
-        )
+        return_value=SimpleNamespace(get_info=Mock(return_value=_info() if info is None else info))
     )
     session = Mock()
     session.__enter__ = Mock(return_value=session)
@@ -64,7 +62,10 @@ def test_preserves_measured_metrics_dates_and_bounded_query(monkeypatch):
     assert event["source"] == "yahoo_equity_screener"
     assert event["source_hunter"] == "squeeze"
     assert event["quote_timestamp_utc"] == datetime.fromtimestamp(1_791_576_000, UTC).isoformat()
-    assert event["short_interest_timestamp_utc"] == datetime.fromtimestamp(1_790_726_400, UTC).isoformat()
+    assert (
+        event["short_interest_timestamp_utc"]
+        == datetime.fromtimestamp(1_790_726_400, UTC).isoformat()
+    )
     assert datetime.fromisoformat(event["timestamp_utc"]).tzinfo is not None
     assert event["screener_candidate_limit"] == 40
     query = screen.call_args.args[0].to_dict()
