@@ -23,7 +23,7 @@ HUNTERS = {
 HUNTER_PROVIDERS = {
     "insider": "sec_edgar",
     "whale": "barchart",
-    "biotech": "biopharmcatalyst",
+    "biotech": "pdufa",
     "drifter": "fmp",
 }
 
@@ -41,11 +41,14 @@ async def run_hunter(
         }
 
     start = time.perf_counter()
-    provider = (
-        ("yahoo_equity_screener" if squeeze_hunter.SQUEEZE_PROVIDER == "yahoo" else "finviz")
-        if name == "squeeze"
-        else HUNTER_PROVIDERS[name]
-    )
+    if name == "squeeze":
+        provider = (
+            "yahoo_equity_screener" if squeeze_hunter.SQUEEZE_PROVIDER == "yahoo" else "finviz"
+        )
+    elif name == "biotech":
+        provider = "pdufa" if biotech_hunter.BIOTECH_PROVIDER == "pdufa" else "biopharmcatalyst"
+    else:
+        provider = HUNTER_PROVIDERS[name]
     token = CURRENT_HUNTER.set(name)
     before = KafkaClient.sent_counts[(name, "raw-events")]
     try:

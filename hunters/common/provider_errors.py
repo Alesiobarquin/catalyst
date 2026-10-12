@@ -6,6 +6,7 @@ _PROVIDERS = {
     "biopharm": "BioPharmCatalyst",
     "fmp": "FMP",
     "yahoo": "Yahoo Finance",
+    "pdufa": "PDUFA.bio",
 }
 _ERRORS = {
     "http_error": "HTTP error",
@@ -20,6 +21,7 @@ _ERRORS = {
     "deadline": "source lookup exceeded the scan deadline",
     "source_unavailable": "source data is unavailable",
     "invalid_session": "provided account session is unavailable or invalid",
+    "stale_data": "calendar data is stale",
 }
 _CHALLENGE_MARKERS = (
     "in order to continue, we need to verify that you're not a robot",

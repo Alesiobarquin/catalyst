@@ -127,6 +127,9 @@ def configure(environment: Path, github: bool = True) -> None:
     squeeze_provider = values.get("SQUEEZE_PROVIDER") or previous.get("SQUEEZE_PROVIDER", "yahoo")
     if squeeze_provider not in {"finviz", "yahoo"}:
         raise ValueError("SQUEEZE_PROVIDER must be finviz or yahoo")
+    biotech_provider = values.get("BIOTECH_PROVIDER") or previous.get("BIOTECH_PROVIDER", "pdufa")
+    if biotech_provider not in {"pdufa", "biopharm"}:
+        raise ValueError("BIOTECH_PROVIDER must be pdufa or biopharm")
     runtime = {
         "KAFKA_BOOTSTRAP_SERVERS": "kafka:29092",
         "REDIS_HOST": "redis",
@@ -156,6 +159,7 @@ def configure(environment: Path, github: bool = True) -> None:
         "GATEKEEPER_CONFLUENCE_THRESHOLD": "2",
         "HUNTER_STRICT_DELIVERY": "true",
         "SQUEEZE_PROVIDER": squeeze_provider,
+        "BIOTECH_PROVIDER": biotech_provider,
         "PORTFOLIO_VALUE": "100000",
         "MAX_KELLY_FRACTION": "0.25",
         "VIX_HALT_THRESHOLD": "40",

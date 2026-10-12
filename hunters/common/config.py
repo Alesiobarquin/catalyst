@@ -28,6 +28,9 @@ if SQUEEZE_PROVIDER not in {"finviz", "yahoo"}:
 BIOTECH_INTERVAL_SECONDS = int(
     os.getenv("BIOTECH_INTERVAL_SECONDS", "1800")
 )  # 30 min (Playwright + rate limits)
+BIOTECH_PROVIDER = os.getenv("BIOTECH_PROVIDER", "pdufa").strip().lower()
+if BIOTECH_PROVIDER not in {"pdufa", "biopharm"}:
+    raise ValueError("BIOTECH_PROVIDER must be pdufa or biopharm")
 DRIFTER_INTERVAL_SECONDS = int(
     os.getenv("DRIFTER_INTERVAL_SECONDS", "3600")
 )  # 1 h — earnings calendar polling

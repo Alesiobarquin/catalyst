@@ -1,0 +1,110 @@
+{
+  "scope": "Free anonymous Biotech replacement for the EC2 daily worker",
+  "provider": "pdufa.bio",
+  "provider_documentation": "https://www.pdufa.bio/developers",
+  "attribution_url": "https://www.pdufa.bio",
+  "api_endpoint": "https://www.pdufa.bio/api/v1/pdufa",
+  "account_required": false,
+  "api_key_required": false,
+  "paid_endpoints_used": false,
+  "ssm_probe": {
+    "command_id": "9f5b690c-ffe6-4192-8b3b-2f671bdf98b3",
+    "status": "Success",
+    "started_at_utc": "2026-10-12T03:17:35.154Z",
+    "http": {
+      "http_status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "anonymous_tier": "anonymous",
+      "quota_remaining": "999",
+      "bytes": 49246
+    },
+    "envelope": {
+      "root_keys": [
+        "meta",
+        "data"
+      ],
+      "data_type": "list",
+      "records": 36
+    },
+    "provider_metadata": {
+      "source": "pdufa.bio",
+      "tier": "anonymous",
+      "quota_state": "ok",
+      "as_of": "2026-10-11",
+      "data_built_at": "2026-10-12T01:31:15+00:00",
+      "total": 36,
+      "limit": 40,
+      "returned": 36
+    },
+    "source_examples": [
+      {
+        "id": "pdufa_rhhby_2026-10-15",
+        "ticker": "RHHBY",
+        "company": "Roche Holding AG",
+        "name": "Enspryng (satralizumab) - (thyroid eye disease)",
+        "date": "2026-10-15",
+        "date_precision": "day",
+        "type": "PDUFA",
+        "status": "Upcoming",
+        "source": "Genentech press release 2026-06-29",
+        "source_url": "https://www.gene.com/media/press-releases/15118/2026-06-29/fda-grants-priority-review-to-genentechs",
+        "url": "https://www.pdufa.bio/pdufa/RHHBY-enspryng",
+        "updated_at": "2026-10-12T01:25:24Z",
+        "goal_unsourced": null,
+        "decision_date_unsourced": null
+      },
+      {
+        "id": "pdufa_ird_2026-10-17",
+        "ticker": "IRD",
+        "company": "Opus Genetics, Inc.",
+        "name": "Phentolamine ophthalmic solution 0.75%",
+        "date": "2026-10-17",
+        "date_precision": "day",
+        "type": "PDUFA",
+        "status": "Upcoming",
+        "source": "company press release",
+        "source_url": "https://www.biospace.com/press-releases/opus-genetics-announces-fda-acceptance-of-supplemental-new-drug-application-for-phentolamine-ophthalmic-solution-0-75-for-the-treatment-of-presbyopia",
+        "url": "https://www.pdufa.bio/pdufa/IRD-phentolamine-ophthalmic",
+        "updated_at": "2026-10-12T01:25:24Z",
+        "goal_unsourced": null,
+        "decision_date_unsourced": null
+      },
+      {
+        "id": "pdufa_vtrs_2026-10-17",
+        "ticker": "VTRS",
+        "company": "Viatris Inc.",
+        "name": "MR-141 (phentolamine ophthalmic solution 0.75%)",
+        "date": "2026-10-17",
+        "date_precision": "day",
+        "type": "PDUFA",
+        "status": "Upcoming",
+        "source": "Viatris Inc 8-K 2026-02-26",
+        "source_url": "https://www.sec.gov/Archives/edgar/data/1792044/000179204426000010/exhibit991-4q25earningsrel.htm",
+        "url": "https://www.pdufa.bio/pdufa/IRD-phentolamine-ophthalmic",
+        "updated_at": "2026-10-12T01:25:24Z",
+        "goal_unsourced": null,
+        "decision_date_unsourced": null
+      }
+    ]
+  },
+  "collector": {
+    "request_limit_per_sweep": 1,
+    "row_limit": 40,
+    "lookahead_days": 90,
+    "response_byte_limit": 524288,
+    "acquisition_deadline_seconds": 25,
+    "requires_exact_day": true,
+    "requires_upcoming_pdufa": true,
+    "requires_source_link": true,
+    "rejects_unsourced_goals_and_registry_estimates": true,
+    "uses_current_date_instead_of_stable_id_date": true,
+    "account_state_loaded_on_free_branch": false,
+    "acceptance": "pending released EC2 collector/batch"
+  },
+  "runtime": {
+    "parameter_version": 5,
+    "biotech_provider": "pdufa",
+    "all_other_values_preserved": true,
+    "account_session_disabled": true
+  }
+}

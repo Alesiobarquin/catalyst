@@ -10,6 +10,7 @@ const providerLabels: Record<string, string> = {
   sec_edgar: "SEC EDGAR",
   barchart: "Barchart",
   biopharmcatalyst: "BioPharmCatalyst",
+  pdufa: "pdufa.bio",
   fmp: "FMP",
 };
 
@@ -41,6 +42,9 @@ export function SnapshotStatus({ data, attempt, error, now, reportRef }: Snapsho
         <p>{waiting ? "Waiting for the first published results" : <>Collected <time dateTime={data.as_of}>{collected}</time></>}</p>
       </div>
       <p className="scan-summary-note">Weekday collection · Prices and modeled outcomes use scheduled checks.</p>
+      {data.hunters.some((hunter) => hunter.provider === "pdufa") && (
+        <p className="scan-summary-note">Biotech catalyst data from <a className="text-link underline" href="https://www.pdufa.bio">pdufa.bio</a>.</p>
+      )}
       {newerAttempt && (attempt.status === "failed" || attempt.status === "running") && (
         <p role="status" className="scan-summary-warning">
           {attempt.status === "running" ? "A new scan is running. Previous results remain available." : "The latest run failed to publish. Previous results are retained; the next weekday scan retries automatically."}

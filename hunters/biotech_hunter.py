@@ -6,10 +6,11 @@ from datetime import datetime, timezone
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from .common.biopharm_auth import load_biopharm_storage_state
-from .common.config import BIOPHARM_URL, BIOTECH_INTERVAL_SECONDS
+from .common.config import BIOPHARM_URL, BIOTECH_INTERVAL_SECONDS, BIOTECH_PROVIDER
 from .common.kafka_client import KafkaClient
 from .common.liquidity_lookup import fetch_liquidity_metrics
 from .common.logger import get_logger
+from .common.pdufa_calendar import fetch_pdufa_targets
 from .common.playwright_context import BrowserContext
 from .common.provider_errors import ProviderError, check_browser_response
 from .common.topics import KAFKA_TOPIC_BIOTECH, RAW_EVENTS_TOPIC
@@ -185,40 +186,50 @@ async def scrape_biopharm(page):
 
 
 async def _one_sweep(kafka: KafkaClient) -> None:
-    """Single Playwright scrape + Kafka publish."""
-    state_file = os.getenv("BIOPHARM_STORAGE_STATE_FILE", "").strip()
-    storage_state = load_biopharm_storage_state(state_file) if state_file else None
-    browser_context = BrowserContext(storage_state=storage_state)
-    async with browser_context as browser:
-        page = await browser.new_page()
-        found_catalysts = await scrape_biopharm(page)
+    """Acquire the selected source, enrich real tickers, and publish observed candidates."""
+    if BIOTECH_PROVIDER == "pdufa":
+        found_catalysts = await fetch_pdufa_targets()
+    else:
+        state_file = os.getenv("BIOPHARM_STORAGE_STATE_FILE", "").strip()
+        storage_state = load_biopharm_storage_state(state_file) if state_file else None
+        browser_context = BrowserContext(storage_state=storage_state)
+        async with browser_context as browser:
+            page = await browser.new_page()
+            found_catalysts = await scrape_biopharm(page)
 
-        if not found_catalysts:
-            logger.warning("No high-impact biotech catalysts found in this sweep.")
-            return
+    if not found_catalysts:
+        logger.info("No eligible sourced biotech catalysts found in this sweep.")
+        return
 
-        pushed = 0
-        for entry in found_catalysts:
-            ticker = entry.get("ticker")
-            if not ticker:
-                continue
-            liquidity = await asyncio.to_thread(fetch_liquidity_metrics, ticker)
-            if not liquidity:
-                logger.debug("Skipping %s: liquidity lookup failed", ticker)
-                continue
-            entry["price"] = liquidity["price"]
-            entry["volume"] = liquidity["volume"]
-            entry["relative_volume"] = liquidity["relative_volume"]
-            entry["source_hunter"] = "biotech"
-            logger.info("Found Catalyst: %s - %s", entry["ticker"], entry["catalyst_type"])
-            kafka.send_message(KAFKA_TOPIC_BIOTECH, entry)
-            kafka.send_message(RAW_EVENTS_TOPIC, entry)
-            pushed += 1
-        logger.info("Successfully pushed %d signals to Kafka.", pushed)
+    pushed = 0
+    liquidity_by_ticker = {}
+    for entry in found_catalysts:
+        ticker = entry.get("ticker")
+        if not ticker:
+            continue
+        if ticker not in liquidity_by_ticker:
+            liquidity_by_ticker[ticker] = await asyncio.to_thread(fetch_liquidity_metrics, ticker)
+        liquidity = liquidity_by_ticker[ticker]
+        if not liquidity:
+            logger.debug("Skipping %s: liquidity lookup failed", ticker)
+            continue
+        entry["price"] = liquidity["price"]
+        entry["volume"] = liquidity["volume"]
+        entry["relative_volume"] = liquidity["relative_volume"]
+        entry["source_hunter"] = "biotech"
+        logger.info("Found Catalyst: %s - %s", entry["ticker"], entry["catalyst_type"])
+        kafka.send_message(KAFKA_TOPIC_BIOTECH, entry)
+        kafka.send_message(RAW_EVENTS_TOPIC, entry)
+        pushed += 1
+    logger.info("Successfully pushed %d signals to Kafka.", pushed)
 
 
 async def run(once: bool = False):
-    logger.info("Biotech Hunter starting (interval=%ss)...", BIOTECH_INTERVAL_SECONDS)
+    logger.info(
+        "Biotech Hunter starting (provider=%s, interval=%ss)...",
+        BIOTECH_PROVIDER,
+        BIOTECH_INTERVAL_SECONDS,
+    )
     kafka = KafkaClient()
 
     while True:

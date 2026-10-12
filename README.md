@@ -16,7 +16,7 @@
 
 The portfolio dashboard is available continuously. To keep costs below the $10/month target, the full AWS Docker/Kafka pipeline collects once each weekday at 10:00 AM New York time, exports its FastAPI results, and shuts down. Collection timestamps and per-source run outcomes are displayed; zero qualifying signals and unavailable sources are reported honestly. The public profile uses strict two-source confluence, grounded Gemini 3.8 Flash, Java 21 virtual threads, Half-Kelly sizing, and TimescaleDB persistence. The static dashboard stays available between scans. Its PnL reflects modeled recommendations checked at sampled prices; public brokerage execution and notification dispatch are disabled.
 
-The October 11 EC2 verification published 31 raw events: 3 Yahoo Squeeze, 20 SEC Insider, and 8 Barchart options events. Four of five hunters completed; BioPharmCatalyst drug/date fields required account access. No events passed the public filters, so no AI-validated signals or recommendations were published. The worker saved its database backup and job logs, then stopped automatically. See the [EC2 verification record](docs/verification/2026-10-11-ec2-daily-repair.json) and [deployment operations](docs/PUBLIC_DEMO_OPERATIONS.md).
+The latest October 11 EC2 verification published 31 raw events: 3 Yahoo Squeeze, 20 SEC Insider, and 8 Barchart options events. Four of five hunters completed; BioPharmCatalyst drug/date fields required account access. Twenty-two events had only one source and nine failed price/RVOL filters, so no AI-validated signals or recommendations were published. The repaired launcher prepared a fresh release, retained startup diagnostics and preserved database/report state. The worker saved its database backup and job logs, then stopped automatically. See the [source verification](docs/verification/2026-10-11-ec2-daily-repair.json), [startup acceptance](docs/verification/2026-10-11-ec2-startup-followup.json), and [deployment operations](docs/PUBLIC_DEMO_OPERATIONS.md).
 
 ## Why Catalyst?
 
@@ -34,7 +34,7 @@ Explore the [How It Works](https://d36bndaw2y0rrh.cloudfront.net/architecture/) 
 graph TD
     subgraph Layer 1: Ingestion
         H1[Squeeze Hunter: Yahoo or Finviz] -->|signal-squeeze| RE[Kafka: raw-events]
-        H2[Biotech Hunter: BioPharmCatalyst] -->|signal-biotech| RE
+        H2[Biotech Hunter: pdufa.bio] -->|signal-biotech| RE
         H3[Insider Hunter: SEC Form 4] -->|signal-insider| RE
         H4[Whale Hunter: Barchart Options] -->|signal-whale| RE
         H5[Drifter Hunter: FMP Earnings] -->|signal-earnings| RE

@@ -1,0 +1,272 @@
+{
+  "scope": "EC2 scheduled-run follow-up; no local application tests or sweeps",
+  "recorded_at_utc": "2026-10-12T03:08:01.300291+00:00",
+  "instance_id": "i-0597d111f82782b5d",
+  "region": "us-east-1",
+  "release": {
+    "commit": "559cc8a1b21c8d1f0cb4f6e4b5455e93b5e941f8",
+    "ci_url": "https://github.com/Alesiobarquin/catalyst/actions/runs/38197172397",
+    "codeql_url": "https://github.com/Alesiobarquin/catalyst/actions/runs/38197172236",
+    "publication_url": "https://github.com/Alesiobarquin/catalyst/actions/runs/38197172324",
+    "published_at_utc": "2026-10-12T02:52:38Z",
+    "archive_bytes": 10251,
+    "ci": "success",
+    "codeql": "success",
+    "publication": "success"
+  },
+  "existing_remote_checks": {
+    "python_tests": 342,
+    "java_tests": 36,
+    "frontend_tests": 188,
+    "total": 566,
+    "ordinary_frontend_build": "success",
+    "public_static_build": "success"
+  },
+  "migration_run": {
+    "run_id": "20261012T025646Z",
+    "as_of": "2026-10-12T02:56:46.415640+00:00",
+    "commit": "559cc8a1b21c8d1f0cb4f6e4b5455e93b5e941f8",
+    "status": "partial",
+    "event_counts": {
+      "raw-events": 31,
+      "triage-priority": 0,
+      "validated-signals": 0
+    },
+    "hunters": [
+      {
+        "hunter": "squeeze",
+        "provider": "yahoo_equity_screener",
+        "success": true,
+        "error": null,
+        "duration_sec": 2.574,
+        "emitted_events": 3
+      },
+      {
+        "hunter": "insider",
+        "provider": "sec_edgar",
+        "success": true,
+        "error": null,
+        "duration_sec": 16.3,
+        "emitted_events": 20
+      },
+      {
+        "hunter": "whale",
+        "provider": "barchart",
+        "success": true,
+        "error": null,
+        "duration_sec": 40.105,
+        "emitted_events": 8
+      },
+      {
+        "hunter": "biotech",
+        "provider": "biopharmcatalyst",
+        "success": false,
+        "error": "BioPharmCatalyst: catalyst details require provider account access",
+        "emitted_events": 0,
+        "duration_sec": 12.907
+      },
+      {
+        "hunter": "drifter",
+        "provider": "fmp",
+        "success": true,
+        "error": null,
+        "duration_sec": 0.052,
+        "emitted_events": 0
+      }
+    ],
+    "regime": {
+      "spy": 778.57,
+      "spy_200_sma": 722.9283996582031,
+      "vix": 14.84,
+      "captured_at": "2026-10-12T02:54:52.835044094Z",
+      "fresh": true
+    },
+    "public_snapshot_url": "https://d36bndaw2y0rrh.cloudfront.net/data/runs/20261012T025646Z/snapshot.json",
+    "orders": 0,
+    "signals": 0,
+    "private_log_key": "logs/20261012T025650Z.log",
+    "automatic_stop_at_utc": "2026-10-12T02:57:26Z"
+  },
+  "canonical_launcher_run": {
+    "run_id": "20261012T030040Z",
+    "as_of": "2026-10-12T03:00:40.360085+00:00",
+    "commit": "559cc8a1b21c8d1f0cb4f6e4b5455e93b5e941f8",
+    "status": "partial",
+    "event_counts": {
+      "raw-events": 31,
+      "triage-priority": 0,
+      "validated-signals": 0
+    },
+    "hunters": [
+      {
+        "hunter": "squeeze",
+        "provider": "yahoo_equity_screener",
+        "success": true,
+        "error": null,
+        "duration_sec": 2.649,
+        "emitted_events": 3
+      },
+      {
+        "hunter": "insider",
+        "provider": "sec_edgar",
+        "success": true,
+        "error": null,
+        "duration_sec": 17.891,
+        "emitted_events": 20
+      },
+      {
+        "hunter": "whale",
+        "provider": "barchart",
+        "success": true,
+        "error": null,
+        "duration_sec": 19.009,
+        "emitted_events": 8
+      },
+      {
+        "hunter": "biotech",
+        "provider": "biopharmcatalyst",
+        "success": false,
+        "error": "BioPharmCatalyst: catalyst details require provider account access",
+        "emitted_events": 0,
+        "duration_sec": 14.055
+      },
+      {
+        "hunter": "drifter",
+        "provider": "fmp",
+        "success": true,
+        "error": null,
+        "duration_sec": 0.079,
+        "emitted_events": 0
+      }
+    ],
+    "regime": {
+      "fresh": true,
+      "spy": 778.57,
+      "spy_200_sma": 722.9283996582031,
+      "vix": 14.84,
+      "captured_at": "2026-10-12T02:59:22.546020235Z"
+    },
+    "public_snapshot_url": "https://d36bndaw2y0rrh.cloudfront.net/data/runs/20261012T030040Z/snapshot.json",
+    "orders": 0,
+    "signals": 0,
+    "private_log_key": "logs/20261012T030044Z.log",
+    "automatic_stop_at_utc": "2026-10-12T03:01:19Z"
+  },
+  "ssm_checks": [
+    {
+      "command_id": "91306d93-b7da-40e5-87e6-bed79aaedd49",
+      "status": "Success",
+      "readback": {
+        "release_commit": "559cc8a1b21c8d1f0cb4f6e4b5455e93b5e941f8",
+        "installed_launcher_sha256": "6636a39830f2845b379e55d81fed59c88028d47722df9a6fb7fd291439deb61f",
+        "env_mode": "0o600",
+        "reports_symlink": false,
+        "exports_symlink": false,
+        "secrets_mode": "0o700",
+        "biopharm_state_present": false,
+        "bootstrap_logs": 0
+      }
+    },
+    {
+      "command_id": "41c7f46c-f129-47f4-849d-fd8f642b6641",
+      "status": "Success",
+      "readback": {
+        "release_commit": "559cc8a1b21c8d1f0cb4f6e4b5455e93b5e941f8",
+        "installed_launcher_sha256": "6636a39830f2845b379e55d81fed59c88028d47722df9a6fb7fd291439deb61f",
+        "env_mode": "0o600",
+        "reports_symlink": true,
+        "exports_symlink": true,
+        "secrets_mode": "0o700",
+        "biopharm_state_present": false,
+        "bootstrap_logs": 1
+      }
+    }
+  ],
+  "bootstrap": {
+    "expected_launcher_sha256": "6636a39830f2845b379e55d81fed59c88028d47722df9a6fb7fd291439deb61f",
+    "private_log_key": "logs/bootstrap-20261012T025845Z-2000.log",
+    "private_log_bytes": 429,
+    "private_log_encryption": "AES256",
+    "registry_login_succeeded": true,
+    "batch_handoff_completed": true,
+    "failed": false,
+    "public_status_versions": [
+      {
+        "status": "running",
+        "updated_at": "2026-10-12T02:58:50.948515+00:00"
+      },
+      {
+        "status": "running",
+        "updated_at": "2026-10-12T02:58:45.607025+00:00",
+        "stage": "watchdog"
+      }
+    ],
+    "fresh_pointer_and_clean_staging": "verified by the canonical launcher run and filesystem readback"
+  },
+  "final_gatekeeper": {
+    "accounted_for_raw_events": 31,
+    "buffered": 22,
+    "buffered_by_source": {
+      "squeeze": 3,
+      "insider": 19
+    },
+    "all_buffered_confluence_counts": 1,
+    "dropped": 9,
+    "drop_categories": {
+      "price": 1,
+      "relative_volume": 8
+    },
+    "processing_errors": 0,
+    "schema_errors": 0
+  },
+  "final_publication": {
+    "private_backup_created_at_utc": "2026-10-12T03:00:44Z",
+    "private_backup_bytes": 26098,
+    "private_backup_encryption": "AES256",
+    "private_log_bytes": 362779,
+    "baseline_hunter_export_logs_retained": true,
+    "pipeline_drain_failed": false,
+    "cloudfront_manifest_matches": true,
+    "final_worker_state": "stopped"
+  },
+  "worker_stop_cloudtrail": [
+    {
+      "time": "2026-10-12T03:01:20Z",
+      "role": "CatalystPublicDemoStack-WorkerRole8DD27D41-lGlhkQgX3ai7",
+      "error": null
+    },
+    {
+      "time": "2026-10-12T02:57:26Z",
+      "role": "CatalystPublicDemoStack-WorkerRole8DD27D41-lGlhkQgX3ai7",
+      "error": null
+    }
+  ],
+  "schedules": {
+    "start": {
+      "state": "ENABLED",
+      "cron": "cron(0 10 ? * MON-FRI *)",
+      "timezone": "America/New_York"
+    },
+    "hard_stop": {
+      "state": "ENABLED",
+      "cron": "cron(30 11 ? * MON-FRI *)",
+      "timezone": "America/New_York"
+    }
+  },
+  "authentication": {
+    "supported": true,
+    "configured": false,
+    "authenticated_feed_verified": false,
+    "runtime_parameter_version": 4,
+    "user_has_account": false,
+    "next_action": "User declined subscription/account dependency; investigate and verify a free public Biotech replacement.",
+    "free_account_url": "https://www.biopharmcatalyst.com/sign-up",
+    "free_account_selection": "Just exploring? -> Create a free account",
+    "login_url": "https://www.biopharmcatalyst.com/account/login",
+    "free_access_limit": "Limited calendar/basic catalyst access; required field entitlement remains unverified.",
+    "private_key_if_enabled": "secrets/biopharm-storage-state.json",
+    "session_size_limit_bytes": 65536,
+    "passwords_in_configuration": false,
+    "account_setup_requested": false
+  }
+}

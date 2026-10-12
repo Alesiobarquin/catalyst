@@ -15,7 +15,7 @@ Catalyst employs independent ingestion agents ("hunters") that monitor financial
 | Hunter | Module | Primary Source | Protocol / Tech | Kafka Topics | Interval / Rate Limit |
 |---|---|---|---|---|---|
 | **Squeeze** | `hunters/squeeze_hunter.py` | Finviz screener | HTTP / BeautifulSoup | `signal-squeeze`, `raw-events` | 900s (15 min) |
-| **Biotech** | `hunters/biotech_hunter.py` | BioPharmCatalyst | HTTP / BeautifulSoup | `signal-biotech`, `raw-events` | 1800s (30 min) |
+| **Biotech** | `hunters/biotech_hunter.py` | pdufa.bio anonymous core API; optional legacy BioPharmCatalyst | Bounded HTTP JSON; optional Playwright | `signal-biotech`, `raw-events` | 1800s (30 min) |
 | **Insider** | `hunters/insider_hunter.py` | SEC EDGAR Form 4 | HTTP / XML parser | `signal-insider`, `raw-events` | On demand / scheduled |
 | **Whale** | `hunters/whale_hunter.py` | Barchart unusual options | Playwright headless | `signal-whale`, `raw-events` | 3600s (1 hr) |
 | **Drifter** | `hunters/drifter_hunter.py` | Financial Modeling Prep (FMP) | REST API / JSON | `signal-earnings`, `raw-events` | 3600s (1 hr) |
@@ -87,9 +87,11 @@ Only stocks that pass all 5 criteria reach `raw-events`:
    - Never use generic `python-requests` headers or SEC will return HTTP 403.
    - Max 10 requests per second across all SEC endpoints.
 
-2. **BioPharmCatalyst (`biotech_hunter.py`)**:
-   - Strict rate limits; keep sweep intervals at $\ge 1800$ seconds (30 minutes).
-   - Ticker cleaning: Cleans company suffixes (e.g., `NASDAQ:`, `.TO`) before emitting.
+2. **Biotech (`biotech_hunter.py`)**:
+   - `BIOTECH_PROVIDER=pdufa` uses the anonymous pdufa.bio core API: one request per sweep, up to 40 rows/90 days/512 KiB, with a 25-second acquisition deadline.
+   - Accept exact-day Upcoming PDUFA events with primary source links; exclude estimated windows, unsourced goal dates and resolved events. Visible attribution links back to pdufa.bio.
+   - Optional `BIOTECH_PROVIDER=biopharm` retains the legacy Playwright parser and explicit account-gated failure. It is not required for the public free-source profile.
+   - Keep loop intervals at $\ge 1800$ seconds (30 minutes). Public EC2 runs one sweep per weekday; no API key or account is configured for pdufa.bio.
 
 3. **Barchart (`whale_hunter.py`)**:
    - Uses Playwright headless Chromium.
