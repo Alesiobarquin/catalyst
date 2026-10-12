@@ -23,6 +23,7 @@ export interface PublicSnapshot {
   order_stats: OrderStats;
   signal_stats: SignalStats;
   benchmarks: MarketQuote[];
+  benchmarks_as_of?: string;
   quotes: Record<string, MarketQuote>;
   history: Record<string, PriceBar[]>;
   performance: BatchPerformance[];

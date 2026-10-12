@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import math
 import os
 import time
 from datetime import datetime, timedelta, timezone
@@ -12,6 +13,52 @@ import httpx
 import psycopg
 
 from kafka import KafkaConsumer, TopicPartition
+
+BENCHMARK_SYMBOLS = (
+    "SPY",
+    "QQQ",
+    "DIA",
+    "IWM",
+    "VOO",
+    "VTI",
+    "VEA",
+    "VWO",
+    "TLT",
+    "HYG",
+    "GLD",
+    "XLK",
+    "XLF",
+    "XLE",
+    "^GSPC",
+    "^IXIC",
+    "^DJI",
+    "^RUT",
+    "^VIX",
+)
+
+
+def collect_benchmarks(client: httpx.Client) -> tuple[list[dict], str | None]:
+    """Fetch the bounded quote universe; date only a collection with a usable price."""
+    query = urlencode({"symbols": ",".join(BENCHMARK_SYMBOLS)})
+    try:
+        response = client.get(f"/market/overview?{query}")
+        response.raise_for_status()
+        quotes = response.json()
+        if not isinstance(quotes, list) or len(quotes) > len(BENCHMARK_SYMBOLS):
+            raise ValueError("Benchmark response violates bounded contract")
+        if any(not isinstance(q, dict) or q.get("ticker") not in BENCHMARK_SYMBOLS for q in quotes):
+            raise ValueError("Unexpected benchmark symbol")
+        priced = any(
+            isinstance(q.get("price"), (int, float))
+            and not isinstance(q.get("price"), bool)
+            and math.isfinite(q["price"])
+            and q["price"] > 0
+            for q in quotes
+        )
+        return quotes, datetime.now(timezone.utc).isoformat() if priced else None
+    except (httpx.HTTPError, ValueError):
+        return [], None
+
 
 GROUPS = {
     "gatekeeper-service": "raw-events",
@@ -95,6 +142,8 @@ def empty_snapshot(run_id: str, as_of: str) -> dict:
 def validate_snapshot(data: dict) -> None:
     if data["schema_version"] != 1 or len(data["orders"]) > 200 or len(data["signals"]) > 200:
         raise ValueError("Snapshot violates bounded contract")
+    if len(data.get("benchmarks", [])) > len(BENCHMARK_SYMBOLS):
+        raise ValueError("Snapshot violates benchmark bound")
     if any(s.get("analysis_method") != "gemini" for s in data["signals"]):
         raise ValueError("Ungrounded provenance in public dataset")
     serialized = json.dumps(data, allow_nan=False)
@@ -156,7 +205,9 @@ def export(output: Path) -> dict:
             order.pop("execution", None)
         data["order_stats"] = get("/orders/stats")
         data["signal_stats"] = get("/signals/stats")
-        data["benchmarks"] = optional("/market/overview?symbols=SPY,QQQ,DIA,IWM", [])
+        data["benchmarks"], benchmarks_as_of = collect_benchmarks(client)
+        if benchmarks_as_of:
+            data["benchmarks_as_of"] = benchmarks_as_of
         try:
             state = httpx.get("http://engine:8081/market-state", timeout=15)
             state.raise_for_status()

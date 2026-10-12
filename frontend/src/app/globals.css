@@ -61,15 +61,15 @@
   --color-category-fallback-bg: #E9ECE6;
   --color-category-fallback-border: #C7D0C7;
 
-  --color-terminal-chrome: #0B1114;
-  --color-terminal-raised: #182226;
-  --color-terminal-ink: #E5ECE7;
-  --color-terminal-muted: #9EAEA4;
-  --color-terminal-line: #303E38;
-  --color-terminal-accent: #FFAB4F;
-  --color-terminal-profit: #79D9A2;
-  --color-terminal-loss: #FF9187;
-  --color-terminal-warning: #E2C075;
+  --color-terminal-chrome: var(--color-bg-page);
+  --color-terminal-raised: var(--color-bg-row);
+  --color-terminal-ink: var(--color-text-primary);
+  --color-terminal-muted: var(--color-text-muted);
+  --color-terminal-line: var(--color-border-subtle);
+  --color-terminal-accent: var(--color-link);
+  --color-terminal-profit: var(--color-profit);
+  --color-terminal-loss: var(--color-loss);
+  --color-terminal-warning: var(--color-warning);
   --color-terminal-grid: #E0E5DC;
 
   /* Compatibility aliases remain semantic so older components theme correctly. */

@@ -12,6 +12,7 @@ import type {
   MarketQuote,
   PipelineHealth,
 } from "@/types";
+import { MARKET_TAPE_SYMBOLS } from "./market-universe";
 import { MOCK_ORDERS, MOCK_SIGNALS, MOCK_STATS } from "./mock-data";
 import { PUBLIC_DEMO, loadSnapshot, filterRows, paginate } from "./snapshot";
 
@@ -231,22 +232,22 @@ export async function getMyExecutionSummary(token: string): Promise<ExecutionSum
 /** GET /market/{ticker}/quote — real-time quote metrics */
 export async function getQuote(ticker: string): Promise<MarketQuote | null> {
   if (PUBLIC_DEMO) return (await loadSnapshot()).quotes[ticker] ?? null;
-  const res = await fetch(`${apiBaseUrl()}/market/${ticker}/quote`, {
+  const res = await fetch(`${apiBaseUrl()}/market/${encodeURIComponent(ticker)}/quote`, {
     next: { revalidate: 15 },
   });
   if (!res.ok) return null;
   return res.json();
 }
 
-/** Fetch major market benchmark indices concurrently */
+/** Fetch the configured ETF and index quote universe concurrently. */
 export async function getMarketBenchmarks(): Promise<MarketQuote[]> {
   if (PUBLIC_DEMO) return (await loadSnapshot()).benchmarks;
-  const tickers = ["SPY", "QQQ", "DIA", "IWM"];
+  const tickers = MARKET_TAPE_SYMBOLS;
   if (USE_MOCK) {
     return tickers.map((t) => ({ ticker: t, price: 100 }));
   }
   try {
-    const res = await fetch(`${apiBaseUrl()}/market/overview?symbols=${tickers.join(",")}`, {
+    const res = await fetch(`${apiBaseUrl()}/market/overview?symbols=${encodeURIComponent(tickers.join(","))}`, {
       next: { revalidate: 15 },
     });
     if (res.ok) {

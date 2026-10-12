@@ -4,6 +4,7 @@ import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import type { MarketQuote } from "@/types";
 import { getMarketBenchmarks } from "@/lib/api";
+import { CORE_BENCHMARK_SYMBOLS } from "@/lib/market-universe";
 
 const BENCHMARK_NAMES: Record<string, string> = {
   SPY: "S&P 500",
@@ -21,9 +22,10 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
   const [quotes, setQuotes] = useState<MarketQuote[]>(initialQuotes);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshFailed, setRefreshFailed] = useState(false);
+  const coreQuotes = quotes.filter(quote => CORE_BENCHMARK_SYMBOLS.includes(quote.ticker));
   const [lastUpdated, setLastUpdated] = useState(() =>
-    new Date(asOf ?? Date.now()).toLocaleTimeString("en-US", {
-      timeZone: "America/New_York", hour: "numeric", minute: "2-digit", timeZoneName: "short",
+    new Date(asOf ?? Date.now()).toLocaleString("en-US", {
+      timeZone: "America/New_York", ...(asOf ? { month: "short", day: "numeric" } as const : {}), hour: "numeric", minute: "2-digit", timeZoneName: "short",
     })
   );
 
@@ -50,8 +52,8 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
           <p>Index ETFs · USD · Change from previous close</p>
         </div>
         <div className="market-overview-tools">
-          <span suppressHydrationWarning title={asOf ? "Captured with the public scan" : "Live quote refresh available"}>
-            {asOf ? "At scan · " : "Updated · "}{lastUpdated}
+          <span suppressHydrationWarning title={asOf ? "Market quote collection time" : "Live quote refresh available"}>
+            {asOf ? "Captured · " : "Updated · "}{lastUpdated}
           </span>
           {!asOf && <button type="button" className="button-secondary" onClick={handleRefresh} disabled={isRefreshing} title="Refresh benchmark quotes">
             <RefreshCw size={14} aria-hidden="true" />
@@ -60,8 +62,8 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
         </div>
       </div>
       {refreshFailed && <p className="market-refresh-error" role="status">Refresh unavailable. Showing the last loaded quotes.</p>}
-      {quotes.length === 0 ? <p className="market-quotes-empty">Benchmark quotes were unavailable at collection.</p> : <div className="market-benchmarks-grid">
-        {quotes.map((quote) => {
+      {coreQuotes.length === 0 ? <p className="market-quotes-empty">Benchmark quotes were unavailable at collection.</p> : <div className="market-benchmarks-grid">
+        {coreQuotes.map((quote) => {
           const change = quote.change_percent;
           const isFlat = change == null || change === 0;
           const isUp = (change ?? 0) > 0;

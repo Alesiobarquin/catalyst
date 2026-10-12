@@ -92,7 +92,7 @@ function Content({ view }: { view: View }) {
     : "No catalyst passed all validation and sizing checks in this snapshot. New results appear after the next weekday scan.";
 
   return <>
-    <MarketTape quotes={data.benchmarks} asOf={data.as_of} />
+    <MarketTape quotes={data.benchmarks} asOf={data.benchmarks_as_of ?? data.as_of} />
     {header}
     <div className={view === "orders" ? "research-workspace" : "research-workspace research-workspace--full"}>
     <div className="research-primary">
@@ -112,7 +112,7 @@ function Content({ view }: { view: View }) {
       </EmptyResults> : <TradeList orders={ordersPage.items} hasActiveFilters={hasOrderFilters} />}
       <Pagination page={ordersPage.page} total={rows.length} perPage={15} basePath="/" query={query} />
       </section>
-      <MarketOverviewBar key={data.run_id} initialQuotes={data.benchmarks} asOf={data.as_of} />
+      <MarketOverviewBar key={data.run_id} initialQuotes={data.benchmarks} asOf={data.benchmarks_as_of ?? data.as_of} />
     </>}
     {view === "signals" && <>
       {(data.signals.length > 0 || hasSignalFilters) && <>

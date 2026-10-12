@@ -145,6 +145,7 @@ export interface SignalStats {
 
 export interface MarketQuote {
   ticker: string;
+  price_date?: string;
   price?: number | null;
   change?: number | null;
   change_percent?: number | null;

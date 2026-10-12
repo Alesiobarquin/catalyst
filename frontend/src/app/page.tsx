@@ -8,6 +8,7 @@ import { TradeList } from "@/components/dashboard/TradeList";
 import { Pagination } from "@/components/ui/Pagination";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { MarketOverviewBar } from "@/components/dashboard/MarketOverviewBar";
+import { MarketTape } from "@/components/dashboard/MarketTape";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   return (
     <>
+      <MarketTape quotes={marketBenchmarks} asOf={new Date().toISOString()} />
       <DashboardHeader />
       <StatsBar stats={stats} />
       <FilterBar

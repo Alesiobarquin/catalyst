@@ -130,6 +130,18 @@ describe("api", () => {
   });
 
   describe("market endpoints", () => {
+    it("requests the expanded ETF/index universe with encoded index carets", async () => {
+      vi.mocked(global.fetch).mockResolvedValueOnce({ ok: true, json: async () => [] } as unknown as Response);
+      const { getMarketBenchmarks } = await import("@/lib/api");
+      await getMarketBenchmarks();
+      const url = vi.mocked(global.fetch).mock.calls[0][0] as string;
+      const symbols = new URL(url).searchParams.get("symbols")?.split(",");
+      expect(symbols).toHaveLength(19);
+      expect(symbols).toContain("^VIX");
+      expect(symbols).toContain("VOO");
+      expect(url).toContain("%5E");
+    });
+
     it("getQuote fetches quote for given ticker", async () => {
       const mockQuote = { ticker: "NVDA", price: 125.5, change: 5.5, change_percent: 4.58 };
       vi.mocked(global.fetch).mockResolvedValueOnce({
@@ -174,7 +186,8 @@ describe("api", () => {
 
       expect(res).toEqual(mockOverview);
       const url = vi.mocked(global.fetch).mock.calls[0][0] as string;
-      expect(url).toContain("/market/overview?symbols=SPY,QQQ,DIA,IWM");
+      expect(new URL(url).pathname).toBe("/market/overview");
+      expect(new URL(url).searchParams.get("symbols")?.split(",")).toEqual(expect.arrayContaining(["SPY", "QQQ", "DIA", "IWM"]));
     });
   });
 });
