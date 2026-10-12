@@ -22,6 +22,9 @@ HEADLESS_MODE = os.getenv("HEADLESS_MODE", "True").lower() == "true"
 # Hunter loop intervals (seconds between end of one sweep and start of next).
 # Set in Docker Compose or .env so squeeze/biotech repeat without one-shot exits.
 SQUEEZE_INTERVAL_SECONDS = int(os.getenv("SQUEEZE_INTERVAL_SECONDS", "900"))  # 15 min
+SQUEEZE_PROVIDER = os.getenv("SQUEEZE_PROVIDER", "finviz").strip().lower()
+if SQUEEZE_PROVIDER not in {"finviz", "yahoo"}:
+    raise ValueError("SQUEEZE_PROVIDER must be finviz or yahoo")
 BIOTECH_INTERVAL_SECONDS = int(
     os.getenv("BIOTECH_INTERVAL_SECONDS", "1800")
 )  # 30 min (Playwright + rate limits)

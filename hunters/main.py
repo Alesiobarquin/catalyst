@@ -9,6 +9,7 @@ from typing import Any
 from hunters import biotech_hunter, drifter_hunter, insider_hunter, squeeze_hunter, whale_hunter
 from hunters.common.kafka_client import CURRENT_HUNTER, KafkaClient
 from hunters.common.logger import get_logger
+from hunters.common.provider_errors import ProviderError
 
 logger = get_logger("main_cli")
 
@@ -18,6 +19,12 @@ HUNTERS = {
     "whale": whale_hunter,
     "biotech": biotech_hunter,
     "drifter": drifter_hunter,
+}
+HUNTER_PROVIDERS = {
+    "insider": "sec_edgar",
+    "whale": "barchart",
+    "biotech": "biopharmcatalyst",
+    "drifter": "fmp",
 }
 
 
@@ -34,6 +41,11 @@ async def run_hunter(
         }
 
     start = time.perf_counter()
+    provider = (
+        ("yahoo_equity_screener" if squeeze_hunter.SQUEEZE_PROVIDER == "yahoo" else "finviz")
+        if name == "squeeze"
+        else HUNTER_PROVIDERS[name]
+    )
     token = CURRENT_HUNTER.set(name)
     before = KafkaClient.sent_counts[(name, "raw-events")]
     try:
@@ -47,6 +59,7 @@ async def run_hunter(
         logger.info("Finished hunter %s in %.3fs", name, elapsed)
         return {
             "hunter": name,
+            "provider": provider,
             "success": True,
             "error": None,
             "duration_sec": elapsed,
@@ -57,6 +70,7 @@ async def run_hunter(
         logger.error("Hunter %s timed out after %.3fs", name, elapsed)
         return {
             "hunter": name,
+            "provider": provider,
             "success": False,
             "error": f"Timed out after {timeout_sec}s",
             "emitted_events": KafkaClient.sent_counts[(name, "raw-events")] - before,
@@ -67,8 +81,9 @@ async def run_hunter(
         logger.error("Error running hunter %s in %.3fs: %s", name, elapsed, e, exc_info=True)
         return {
             "hunter": name,
+            "provider": provider,
             "success": False,
-            "error": type(e).__name__ if once else str(e),
+            "error": str(e) if isinstance(e, ProviderError) or not once else type(e).__name__,
             "emitted_events": KafkaClient.sent_counts[(name, "raw-events")] - before,
             "duration_sec": elapsed,
         }

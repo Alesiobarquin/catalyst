@@ -78,7 +78,7 @@ export default function ArchitecturePage() {
         <PipelineStage
           icon={<Radar size={20} color="var(--color-link)" />}
           title="1. Ingestion"
-          desc="5 autonomous hunters scan Finviz, SEC EDGAR Form 4, BioPharmCatalyst, Barchart options flow, and FMP earnings."
+          desc="Five hunters collect short-interest screens, SEC EDGAR Form 4 filings, biotech catalysts, Barchart options activity, and FMP earnings. The public Squeeze scan uses Yahoo Finance; Finviz remains an optional source. Feed access limits appear in the scan report."
           tech={["Python 3.12", "Playwright", "HTTPX", "BeautifulSoup"]}
         />
         <PipelineConnector />

@@ -23,6 +23,7 @@ from .common.http_retry import async_http_get_with_retry
 from .common.kafka_client import KafkaClient
 from .common.liquidity_lookup import fetch_liquidity_metrics
 from .common.logger import get_logger
+from .common.provider_errors import ProviderError
 from .common.topics import KAFKA_TOPIC_DRIFTER, RAW_EVENTS_TOPIC
 
 logger = get_logger("drifter_hunter")
@@ -84,11 +85,16 @@ async def _fetch_calendar(client: httpx.AsyncClient) -> list[dict]:
         timeout=30.0,
         custom_logger=logger,
     )
-    r.raise_for_status()
-    data = r.json()
-    if not isinstance(data, list):
-        logger.warning("Unexpected FMP calendar response shape: %s", type(data))
-        return []
+    try:
+        r.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise ProviderError("fmp", "http_error", r.status_code) from exc
+    try:
+        data = r.json()
+    except ValueError as exc:
+        raise ProviderError("fmp", "response_schema") from exc
+    if not isinstance(data, list) or any(not isinstance(row, dict) for row in data):
+        raise ProviderError("fmp", "response_schema")
     return data
 
 
@@ -112,7 +118,7 @@ async def _run_sweep(client: httpx.AsyncClient, kafka: KafkaClient) -> int:
 
         date_str = str(row.get("date") or "")
         dedupe_key = f"{symbol}:{date_str}"
-        if not _remember(dedupe_key):
+        if dedupe_key in _SEEN_SET:
             continue
 
         liq = await asyncio.to_thread(fetch_liquidity_metrics, symbol)
@@ -144,6 +150,7 @@ async def _run_sweep(client: httpx.AsyncClient, kafka: KafkaClient) -> int:
 
         kafka.send_message(KAFKA_TOPIC_DRIFTER, payload)
         kafka.send_message(RAW_EVENTS_TOPIC, payload)
+        _remember(dedupe_key)
         pushed += 1
         logger.info(
             "Drifter beat: %s EPS surprise=%.2f%% (est=%s act=%s)",
@@ -159,7 +166,7 @@ async def _run_sweep(client: httpx.AsyncClient, kafka: KafkaClient) -> int:
 async def run(once: bool = False) -> None:
     if not FMP_API_KEY:
         if once:
-            raise RuntimeError("FMP_API_KEY is unavailable")
+            raise ProviderError("fmp", "missing_configuration")
         logger.warning(
             "FMP_API_KEY is empty — drifter hunter idle. Set it in .env and recreate hunter-drifter."
         )

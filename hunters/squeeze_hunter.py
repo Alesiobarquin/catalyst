@@ -8,10 +8,11 @@ from datetime import datetime
 import pandas as pd
 from redis import Redis
 
-from .common.config import REDIS_HOST, REDIS_PORT, SQUEEZE_INTERVAL_SECONDS
+from .common.config import REDIS_HOST, REDIS_PORT, SQUEEZE_INTERVAL_SECONDS, SQUEEZE_PROVIDER
 from .common.kafka_client import KafkaClient
 from .common.logger import get_logger
 from .common.playwright_context import BrowserContext
+from .common.provider_errors import ProviderError, check_browser_response
 from .common.topics import KAFKA_TOPIC_SQUEEZE, RAW_EVENTS_TOPIC
 
 logger = get_logger("squeeze_hunter")
@@ -124,15 +125,18 @@ async def fetch_squeeze_targets():
             try:
                 # 'domcontentloaded' is faster than 'networkidle'
                 response = await page.goto(url, wait_until="domcontentloaded")
-                if response and isinstance(response.status, int) and response.status >= 400:
-                    raise RuntimeError("Finviz returned an HTTP error")
+                check_browser_response("finviz", response)
 
                 # Extract the page HTML content
                 content = await page.content()
+                check_browser_response("finviz", response, await page.inner_text("body"))
 
                 # Use Pandas to find the table automatically
                 # WRAPPED in StringIO to silence FutureWarning
-                dfs = pd.read_html(io.StringIO(content))
+                try:
+                    dfs = pd.read_html(io.StringIO(content))
+                except ValueError as exc:
+                    raise ProviderError("finviz", "table_schema") from exc
 
                 target_df = None
 
@@ -164,8 +168,7 @@ async def fetch_squeeze_targets():
                             best_len = len(df)
 
                 if target_df is None:
-                    logger.info("   -> No valid data tables found. Stopping.")
-                    break
+                    raise ProviderError("finviz", "table_schema")
 
                 # --- DATA CLEANING ---
                 # Normalize columns
@@ -337,7 +340,12 @@ async def fetch_squeeze_targets():
 async def run(once: bool = False):
     while True:
         try:
-            signals = await fetch_squeeze_targets()
+            if SQUEEZE_PROVIDER == "yahoo":
+                from .common.yahoo_screener import fetch_yahoo_squeeze_targets
+
+                signals = await asyncio.to_thread(fetch_yahoo_squeeze_targets)
+            else:
+                signals = await fetch_squeeze_targets()
 
             if signals:
                 for signal in signals:

@@ -3,11 +3,14 @@ import os
 import re
 from datetime import datetime, timezone
 
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+
 from .common.config import BIOPHARM_URL, BIOTECH_INTERVAL_SECONDS
 from .common.kafka_client import KafkaClient
 from .common.liquidity_lookup import fetch_liquidity_metrics
 from .common.logger import get_logger
 from .common.playwright_context import BrowserContext
+from .common.provider_errors import ProviderError, check_browser_response
 from .common.topics import KAFKA_TOPIC_BIOTECH, RAW_EVENTS_TOPIC
 
 logger = get_logger("biotech_hunter")
@@ -63,40 +66,89 @@ def _clean_ticker(raw: str | None) -> str | None:
     return cleaned
 
 
+def _biopharm_columns(headers: list[str]) -> dict[str, int] | None:
+    aliases = {
+        "ticker": "ticker",
+        "symbol": "ticker",
+        "drug": "drug",
+        "drugname": "drug",
+        "stage": "stage",
+        "phase": "stage",
+        "catalyst": "date",
+        "catalystdate": "date",
+        "date": "date",
+        "pdufadate": "pdufa_date",
+    }
+    columns = {}
+    for index, text in enumerate(headers):
+        name = re.sub(r"[^a-z]", "", text.lower())
+        if name in aliases:
+            columns[aliases[name]] = index
+    if "pdufa_date" in columns:
+        columns["date"] = columns["pdufa_date"]
+    required = {"ticker", "drug", "date"}
+    valid_stage = "stage" in columns or "pdufa_date" in columns
+    return columns if required <= columns.keys() and valid_stage else None
+
+
+def _locked_catalyst(value: str) -> bool:
+    text = value.lower()
+    return any(marker in text for marker in ("locked", "signup now", "sign up", "log in"))
+
+
 async def scrape_biopharm(page):
     """
     Scrapes the BioPharmCatalyst calendar and extracts ticker data.
     """
     catalysts = []
     try:
-        # 1. Navigate with a longer timeout and less strict 'wait_until'
-        # 'networkidle' is often blocked or hangs on ad-heavy sites.
+        # 'networkidle' can wait indefinitely for third-party advertisements.
         logger.info("Navigating to %s", BIOPHARM_URL)
-        response = await page.goto(BIOPHARM_URL, wait_until="domcontentloaded", timeout=60000)
-        if response and isinstance(response.status, int) and response.status >= 400:
-            raise RuntimeError("Biotech provider returned an HTTP error")
+        try:
+            response = await page.goto(BIOPHARM_URL, wait_until="domcontentloaded", timeout=45000)
+        except PlaywrightTimeoutError as exc:
+            raise ProviderError("biopharm", "navigation_timeout") from exc
+        check_browser_response("biopharm", response)
+        check_browser_response("biopharm", response, await page.inner_text("body"))
 
-        # 2. Give the JavaScript a few seconds to actually build the table
-        await asyncio.sleep(5)
-
-        # 3. Wait up to 60 seconds for the specific table class to appear
+        # Wait for a populated calendar, then identify its named fields.
         logger.info("Waiting for table selector...")
-        await page.wait_for_selector("table", timeout=60000)
+        try:
+            await page.wait_for_selector("table tbody tr", timeout=45000)
+        except PlaywrightTimeoutError as exc:
+            check_browser_response("biopharm", response, await page.inner_text("body"))
+            raise ProviderError("biopharm", "table_timeout") from exc
+        columns = None
+        rows = []
+        for table in await page.query_selector_all("table"):
+            headings = await table.query_selector_all("th")
+            headers = [((await heading.inner_text()) or "").strip() for heading in headings]
+            columns = _biopharm_columns(headers)
+            if columns is not None:
+                rows = await table.query_selector_all("tbody tr")
+                break
+        if columns is None:
+            raise ProviderError("biopharm", "table_schema")
 
-        # Extract rows
-        rows = await page.query_selector_all("tr")
-
+        locked_count = 0
         for row in rows:
             cells = await row.query_selector_all("td")
 
-            if len(cells) >= 4:
-                raw_ticker = await cells[0].inner_text()
+            if len(cells) > max(columns.values()):
+                raw_ticker = await cells[columns["ticker"]].inner_text()
                 ticker = _clean_ticker(raw_ticker)
                 if not ticker:
                     continue
-                drug = (await cells[1].inner_text()).strip()
-                stage = (await cells[2].inner_text()).strip()
-                catalyst_date = (await cells[3].inner_text()).strip()
+                drug = (await cells[columns["drug"]].inner_text()).strip()
+                stage = (
+                    (await cells[columns["stage"]].inner_text()).strip()
+                    if "stage" in columns
+                    else "PDUFA"
+                )
+                catalyst_date = (await cells[columns["date"]].inner_text()).strip()
+                if _locked_catalyst(drug) or _locked_catalyst(catalyst_date):
+                    locked_count += 1
+                    continue
 
                 # Filter for high-impact phases
                 if any(x in stage.upper() for x in ["PHASE 3", "PDUFA", "NDA", "BLA"]):
@@ -114,6 +166,8 @@ async def scrape_biopharm(page):
                             "source_hunter": "biotech",
                         }
                     )
+        if locked_count and not catalysts:
+            raise ProviderError("biopharm", "subscription_required")
 
     except Exception as e:
         # await page.screenshot(path="debug_biotech.png")

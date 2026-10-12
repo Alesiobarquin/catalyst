@@ -16,8 +16,34 @@ from hunters.insider_hunter import (
 )
 from hunters.whale_hunter import (
     _first_float,
+    _option_columns,
     _parse_option_type,
 )
+
+
+def _mock_table_page(headers, rows):
+    from unittest.mock import AsyncMock
+
+    page = AsyncMock()
+    page.content.return_value = ""
+    page.query_selector.return_value = None
+    table = AsyncMock()
+    headings = []
+    for text in headers:
+        heading = AsyncMock()
+        heading.inner_text.return_value = text
+        headings.append(heading)
+
+    async def query(selector):
+        return headings if selector == "th" else rows
+
+    table.query_selector_all.side_effect = query
+
+    async def page_query(selector):
+        return [table] if selector == "table" else []
+
+    page.query_selector_all.side_effect = page_query
+    return page
 
 
 class TestDrifterHunterHelpers:
@@ -64,6 +90,21 @@ class TestDrifterHunterHelpers:
 
 
 class TestWhaleHunterHelpers:
+    def test_option_columns_distinguishes_underlying_price_and_strike(self):
+        columns = _option_columns(
+            ["Symbol", "Price", "Type", "Strike", "Exp Date", "Volume", "Delta"]
+        )
+        assert columns == {
+            "ticker": 0,
+            "option_type": 2,
+            "strike_price": 3,
+            "expiration_date": 4,
+            "option_volume": 5,
+        }
+
+    def test_option_columns_rejects_unrelated_table(self):
+        assert _option_columns(["Symbol", "Price", "Change", "Volume"]) is None
+
     def test_parse_option_type(self):
         assert _parse_option_type("call") == "call"
         assert _parse_option_type("PUT") == "put"
@@ -450,6 +491,7 @@ class TestBiotechScraper:
         row1 = AsyncMock()
         row1.query_selector_all.return_value = [
             make_cell("BIIB"),
+            make_cell("$100.00"),
             make_cell("Aducanumab"),
             make_cell("Phase 3 readout"),
             make_cell("2026-06-30"),
@@ -459,6 +501,7 @@ class TestBiotechScraper:
         row2 = AsyncMock()
         row2.query_selector_all.return_value = [
             make_cell("PFE"),
+            make_cell("$25.00"),
             make_cell("PF-001"),
             make_cell("Phase 1 trial"),
             make_cell("2026-07-15"),
@@ -468,12 +511,15 @@ class TestBiotechScraper:
         row3 = AsyncMock()
         row3.query_selector_all.return_value = [
             make_cell("MRNA"),
+            make_cell("$30.00"),
             make_cell("mRNA-1273"),
             make_cell("PDUFA Decision"),
             make_cell("2026-08-01"),
         ]
 
-        mock_page.query_selector_all.return_value = [row1, row2, row3]
+        mock_page = _mock_table_page(
+            ["Ticker", "Price", "Drug", "Stage", "Catalyst"], [row1, row2, row3]
+        )
 
         catalysts = await scrape_biopharm(mock_page)
 
@@ -484,6 +530,8 @@ class TestBiotechScraper:
         assert "PFE" not in tickers
         assert catalysts[0]["hunter"] == "biotech"
         assert catalysts[0]["source_hunter"] == "biotech"
+        assert catalysts[0]["drug_name"] == "Aducanumab"
+        assert catalysts[0]["event_date"] == "2026-06-30"
 
 
 class TestDrifterSweep:
@@ -568,11 +616,17 @@ class TestWhaleScraper:
         row1.query_selector.return_value = mock_link
         row1.query_selector_all.return_value = [
             make_cell("TSLA"),
-            make_cell("$220.00 Call"),
+            make_cell("$215.25"),
+            make_cell("Call"),
+            make_cell("$220.00"),
+            make_cell("10/16/26"),
             make_cell("5,000"),
+            make_cell("0.34"),
         ]
 
-        mock_page.query_selector_all.return_value = [row1]
+        mock_page = _mock_table_page(
+            ["Symbol", "Price", "Type", "Strike", "Exp Date", "Volume", "Delta"], [row1]
+        )
 
         with patch("asyncio.sleep", new_callable=AsyncMock):
             results = await scrape_whale(mock_page)
@@ -581,6 +635,8 @@ class TestWhaleScraper:
         assert results[0]["ticker"] == "TSLA"
         assert results[0]["option_type"] == "call"
         assert results[0]["strike_price"] == 220.0
+        assert results[0]["option_volume"] == 5000
+        assert results[0]["expiration_date"] == "10/16/26"
         assert results[0]["hunter"] == "whale"
         assert results[0]["source_hunter"] == "whale"
 
@@ -604,12 +660,13 @@ class TestWhaleScraper:
         row.query_selector.return_value = mock_link
         row.query_selector_all.return_value = [
             make_cell("TSLA"),
-            make_cell("$220.00 Call"),
+            make_cell("Call"),
+            make_cell("$220.00"),
             make_cell("5,000"),
         ]
 
         # Two identical rows in table
-        mock_page.query_selector_all.return_value = [row, row]
+        mock_page = _mock_table_page(["Symbol", "Type", "Strike", "Volume"], [row, row])
 
         with patch("asyncio.sleep", new_callable=AsyncMock):
             results = await scrape_whale(mock_page)

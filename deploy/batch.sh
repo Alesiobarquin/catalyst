@@ -1,8 +1,12 @@
 #!/bin/bash
 set -euo pipefail
+umask 077
 cd /opt/catalyst/current/deploy
 mkdir -p reports exports
 chmod 700 reports exports
+for job in baseline hunters export; do
+  : > "reports/${job}.log"
+done
 compose=(docker compose -f compose.batch.yml)
 publish_status() {
   python3 - "$1" <<'PY_STATUS'
@@ -18,6 +22,12 @@ cleanup() {
   trap - EXIT
   if [ "$result" -ne 0 ]; then publish_status failed || true; fi
   "${compose[@]}" logs --no-color > /opt/catalyst/batch.log 2>&1 || true
+  # Finite jobs use --rm, so Compose cannot retrieve their output afterward.
+  # Preserve these private logs before publishing or removing any containers.
+  for job in baseline hunters export; do
+    printf '\nJob output: %s\n' "$job" >> /opt/catalyst/batch.log
+    cat "reports/${job}.log" >> /opt/catalyst/batch.log || true
+  done
   aws s3 cp /opt/catalyst/batch.log "s3://${ARTIFACT_BUCKET}/logs/$(date -u +%Y%m%dT%H%M%SZ).log" --only-show-errors || true
   "${compose[@]}" down --timeout 30 || true
   # Retain only the image IDs of the active release, including the finite job image.
@@ -45,9 +55,9 @@ for topic in raw-events triage-priority validated-signals trade-orders trade-res
   "${compose[@]}" exec -T kafka kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$topic" --partitions 1 --replication-factor 1
 done
 "${compose[@]}" up -d resolver
-"${compose[@]}" run --rm -T snapshot python -m deploy.export_snapshot --baseline
-"${compose[@]}" run --rm -T hunters
-"${compose[@]}" run --rm -T snapshot
+"${compose[@]}" run --rm -T snapshot python -m deploy.export_snapshot --baseline 2>&1 | tee reports/baseline.log
+"${compose[@]}" run --rm -T hunters 2>&1 | tee reports/hunters.log
+"${compose[@]}" run --rm -T snapshot 2>&1 | tee reports/export.log
 run_id=$(python3 -c 'import json; print(json.load(open("exports/manifest.json"))["run_id"])')
 aws s3 cp exports/snapshot.json "s3://${SITE_BUCKET}/data/runs/${run_id}/snapshot.json" --content-type application/json --cache-control 'public,max-age=31536000,immutable' --only-show-errors
 "${compose[@]}" exec -T timescaledb sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > /opt/catalyst/database.dump

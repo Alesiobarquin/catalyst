@@ -4,6 +4,15 @@ import type { RefObject } from "react";
 import { ChevronDown } from "lucide-react";
 import type { PublicSnapshot, RunStatus } from "@/lib/snapshot";
 
+const providerLabels: Record<string, string> = {
+  finviz: "Finviz",
+  yahoo_equity_screener: "Yahoo Finance",
+  sec_edgar: "SEC EDGAR",
+  barchart: "Barchart",
+  biopharmcatalyst: "BioPharmCatalyst",
+  fmp: "FMP",
+};
+
 interface SnapshotStatusProps {
   data: PublicSnapshot;
   attempt: RunStatus | null;
@@ -50,7 +59,7 @@ export function SnapshotStatus({ data, attempt, error, now, reportRef }: Snapsho
               <table className="scan-report-table">
                 <thead><tr><th scope="col">Hunter</th><th scope="col">Outcome</th><th scope="col">Events</th><th scope="col">Duration</th></tr></thead>
                 <tbody>{data.hunters.map((hunter) => <tr key={hunter.hunter}>
-                  <th scope="row">{hunter.hunter}</th>
+                  <th scope="row">{hunter.hunter}{hunter.provider && providerLabels[hunter.provider] && <div className="font-normal text-xs text-text-secondary">{providerLabels[hunter.provider]}</div>}</th>
                   <td><span className={hunter.success ? "" : "scan-report-failure"}>{hunter.success ? "Sweep completed" : hunter.error ?? "Unavailable"}</span></td>
                   <td>{hunter.emitted_events ?? "—"}</td><td>{hunter.duration_sec.toFixed(1)}s</td>
                 </tr>)}</tbody>

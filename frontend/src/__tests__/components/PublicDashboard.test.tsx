@@ -133,6 +133,15 @@ describe("PublicDashboard snapshot states", () => {
     expect(summary?.parentElement).toHaveProperty("open", true);
   });
 
+  it("names the source used by a completed hunter sweep", async () => {
+    await renderDashboard("orders", makeSnapshot({
+      hunters: [{ hunter: "squeeze", provider: "yahoo_equity_screener", success: true, emitted_events: 1, error: null, duration_sec: 3 }],
+    }));
+
+    expect(screen.getByText("Yahoo Finance")).toBeInTheDocument();
+    expect(screen.queryByText("Finviz")).not.toBeInTheDocument();
+  });
+
   it("distinguishes a filtered signal mismatch and links Clear filters to signals", async () => {
     navigation.query = "ticker=MSFT";
     await renderDashboard("signals", makeSnapshot({ status: "completed", signals: [signal] }));

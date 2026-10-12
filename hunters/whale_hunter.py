@@ -10,11 +10,14 @@ import asyncio
 import re
 from datetime import datetime, timezone
 
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+
 from .common.config import BARCHART_URL, WHALE_INTERVAL_SECONDS
 from .common.kafka_client import KafkaClient
 from .common.liquidity_lookup import fetch_liquidity_metrics
 from .common.logger import get_logger
 from .common.playwright_context import BrowserContext
+from .common.provider_errors import ProviderError, check_browser_response
 from .common.topics import KAFKA_TOPIC_WHALE, RAW_EVENTS_TOPIC
 
 logger = get_logger("whale_hunter")
@@ -42,42 +45,146 @@ def _first_float(cells: list[str]) -> float | None:
     return None
 
 
+def _option_columns(headers: list[str]) -> dict[str, int] | None:
+    """Read named contract fields; the underlying price is not the strike price."""
+    aliases = {
+        "symbol": "ticker",
+        "ticker": "ticker",
+        "type": "option_type",
+        "optiontype": "option_type",
+        "optionstype": "option_type",
+        "strike": "strike_price",
+        "strikeprice": "strike_price",
+        "volume": "option_volume",
+        "optionvolume": "option_volume",
+        "expdate": "expiration_date",
+        "expiration": "expiration_date",
+        "expirationdate": "expiration_date",
+    }
+    columns = {}
+    for index, text in enumerate(headers):
+        name = re.sub(r"[^a-z]", "", text.lower())
+        if name in aliases:
+            columns[aliases[name]] = index
+    required = {"ticker", "option_type", "strike_price", "option_volume"}
+    return columns if required <= columns.keys() else None
+
+
+async def _rendered_text(element, binding: str | None = None) -> str:
+    """Barchart renders quote values inside the shadow root of text-binding."""
+    text = await element.evaluate(
+        """(element, field) => {
+            const bindings = [...element.querySelectorAll('text-binding')];
+            const fields = field === 'expirationDate' ? ['expirationDate', 'expiration'] : [field];
+            const preferred = bindings.find(item => {
+                const tokens = (item.getAttribute('binding') || '').split(/[^a-zA-Z0-9_.]+/);
+                return fields.some(name => tokens.includes(`this.${name}`));
+            });
+            if (field && !preferred) return '';
+            const values = (preferred ? [preferred] : bindings)
+                .map(item => (item.shadowRoot?.textContent || item.textContent || '').trim())
+                .filter(Boolean);
+            return values[0] || '';
+        }""",
+        binding,
+    )
+    if isinstance(text, str) and text.strip():
+        return text.strip()
+    text = ((await element.inner_text()) or "").strip()
+    return "" if text in {"()", "( )"} else text
+
+
 async def scrape_whale(page) -> list[dict]:
-    """Best-effort parse of Barchart unusual-activity table (layout may change)."""
+    """Parse named Barchart option columns and disclose unavailable source data."""
     found: list[dict] = []
     logger.info("Navigating to %s", BARCHART_URL)
-    await page.goto(BARCHART_URL, wait_until="domcontentloaded", timeout=120000)
-    await asyncio.sleep(5)
-    await page.wait_for_selector("table tbody tr", timeout=90000)
-    rows = await page.query_selector_all("table tbody tr")
-    seen: set[tuple[str, float, str]] = set()
+    try:
+        response = await page.goto(BARCHART_URL, wait_until="domcontentloaded", timeout=45000)
+    except PlaywrightTimeoutError as exc:
+        raise ProviderError("barchart", "navigation_timeout") from exc
+    check_browser_response("barchart", response)
+    check_browser_response("barchart", response, await page.inner_text("body"))
+    try:
+        await page.wait_for_selector(
+            "[role='grid'] [role='row'] [role='cell'], "
+            "[role='grid'] [role='row'] [role='gridcell'], table tbody tr",
+            timeout=45000,
+        )
+        strike_binding = await page.query_selector(
+            "[role='grid'] [role='row'] .strikePrice text-binding"
+        )
+        if strike_binding is not None:
+            await page.wait_for_function(
+                "(element) => (element.shadowRoot?.textContent || element.textContent || '').trim()",
+                arg=strike_binding,
+                timeout=30000,
+            )
+    except PlaywrightTimeoutError as exc:
+        check_browser_response("barchart", response, await page.inner_text("body"))
+        raise ProviderError("barchart", "table_timeout") from exc
+
+    columns = None
+    rows = []
+    cell_selector = "td"
+    layouts = (
+        (
+            "[role='grid']",
+            "[role='columnheader']",
+            "[role='row']",
+            "[role='cell'], [role='gridcell']",
+        ),
+        ("table", "th", "tbody tr", "td"),
+    )
+    for root_selector, heading_selector, row_selector, candidate_cells in layouts:
+        for table in await page.query_selector_all(root_selector):
+            headings = await table.query_selector_all(heading_selector)
+            headers = [((await heading.inner_text()) or "").strip() for heading in headings]
+            columns = _option_columns(headers)
+            if columns is not None:
+                rows = await table.query_selector_all(row_selector)
+                cell_selector = candidate_cells
+                break
+        if columns is not None:
+            break
+    if columns is None:
+        raise ProviderError("barchart", "table_schema")
+    seen: set[tuple[str, float, str, str | None]] = set()
+    eligible_rows = 0
+    bindings = {
+        "ticker": "baseSymbol",
+        "option_type": "symbolType",
+        "strike_price": "strikePrice",
+        "option_volume": "volume",
+        "expiration_date": "expirationDate",
+    }
 
     for row in rows[:120]:
-        cells_el = await row.query_selector_all("td")
-        if len(cells_el) < 2:
+        cells_el = await row.query_selector_all(cell_selector)
+        if len(cells_el) <= max(columns.values()):
             continue
-        texts = [((await c.inner_text()) or "").strip() for c in cells_el]
-        joined = " ".join(texts)
+        eligible_rows += 1
+        texts = {}
+        for name, index in columns.items():
+            texts[name] = await _rendered_text(cells_el[index], bindings.get(name))
 
         ticker = ""
-        link = await row.query_selector("a[href*='stock'], a[href*='quote'], a[href*='symbol']")
-        if link:
-            raw = ((await link.inner_text()) or "").strip().upper()
-            raw = re.sub(r"[^A-Z]", "", raw)
-            if _TICKER_CLEAN.match(raw):
-                ticker = raw
-        if not ticker:
-            first = re.sub(r"[^A-Z]", "", (texts[0] or "").upper())
-            if _TICKER_CLEAN.match(first):
-                ticker = first
+        raw = re.sub(r"[^A-Z]", "", texts["ticker"].upper())
+        if _TICKER_CLEAN.match(raw):
+            ticker = raw
         if not ticker:
             continue
 
-        opt_type = _parse_option_type(joined)
-        strike = _first_float(texts[1:]) or 0.0
-        vol_hint = _first_float(texts[-3:])  # rough heuristic
+        type_text = texts["option_type"]
+        if not _CALL_PUT.search(type_text):
+            continue
+        opt_type = _parse_option_type(type_text)
+        strike = _first_float([texts["strike_price"]])
+        vol_hint = _first_float([texts["option_volume"]])
+        if strike is None or vol_hint is None:
+            continue
+        expiration = texts.get("expiration_date")
 
-        key = (ticker, round(strike, 4), opt_type)
+        key = (ticker, round(strike, 4), opt_type, expiration)
         if key in seen:
             continue
         seen.add(key)
@@ -88,7 +195,8 @@ async def scrape_whale(page) -> list[dict]:
                 "ticker": ticker,
                 "option_type": opt_type,
                 "strike_price": strike,
-                "option_volume": int(vol_hint) if vol_hint and vol_hint > 10 else None,
+                "option_volume": int(vol_hint),
+                "expiration_date": expiration,
                 "source": "barchart_unusual",
                 "timestamp": now_iso,
                 "timestamp_utc": now_iso,
@@ -97,6 +205,8 @@ async def scrape_whale(page) -> list[dict]:
             }
         )
 
+    if eligible_rows and not found:
+        raise ProviderError("barchart", "response_schema")
     return found
 
 
@@ -111,11 +221,14 @@ async def _one_sweep(kafka: KafkaClient) -> int:
         return 0
 
     pushed = 0
+    liquidity_by_ticker = {}
     for entry in rows:
         ticker = entry.get("ticker")
         if not ticker:
             continue
-        liq = await asyncio.to_thread(fetch_liquidity_metrics, ticker)
+        if ticker not in liquidity_by_ticker:
+            liquidity_by_ticker[ticker] = await asyncio.to_thread(fetch_liquidity_metrics, ticker)
+        liq = liquidity_by_ticker[ticker]
         if not liq:
             logger.debug("Skipping %s: liquidity lookup failed", ticker)
             continue

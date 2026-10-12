@@ -51,7 +51,11 @@ def configure(environment: Path, github: bool = True) -> None:
         ],
         missing_ok=True,
     )
-    password = json.loads(old)["TIMESCALE_PASSWORD"] if old else secrets.token_hex(24)
+    previous = json.loads(old) if old else {}
+    password = previous.get("TIMESCALE_PASSWORD") or secrets.token_hex(24)
+    squeeze_provider = values.get("SQUEEZE_PROVIDER") or previous.get("SQUEEZE_PROVIDER", "yahoo")
+    if squeeze_provider not in {"finviz", "yahoo"}:
+        raise ValueError("SQUEEZE_PROVIDER must be finviz or yahoo")
     runtime = {
         "KAFKA_BOOTSTRAP_SERVERS": "kafka:29092",
         "REDIS_HOST": "redis",
@@ -80,6 +84,7 @@ def configure(environment: Path, github: bool = True) -> None:
         "GATEKEEPER_REQUIRE_CONFLUENCE": "true",
         "GATEKEEPER_CONFLUENCE_THRESHOLD": "2",
         "HUNTER_STRICT_DELIVERY": "true",
+        "SQUEEZE_PROVIDER": squeeze_provider,
         "PORTFOLIO_VALUE": "100000",
         "MAX_KELLY_FRACTION": "0.25",
         "VIX_HALT_THRESHOLD": "40",

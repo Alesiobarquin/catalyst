@@ -4,6 +4,7 @@ export const PUBLIC_DEMO = process.env.NEXT_PUBLIC_DEMO_MODE === "snapshot";
 
 export interface HunterOutcome {
   hunter: string;
+  provider?: string;
   success: boolean;
   emitted_events?: number;
   error: string | null;
