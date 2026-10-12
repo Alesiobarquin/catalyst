@@ -5,7 +5,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16%20App%20Router-black.svg)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/Tests-524%20Passing-emerald.svg)](https://github.com/Alesiobarquin/catalyst)
+[![Tests](https://img.shields.io/badge/Tests-566%20Passing-emerald.svg)](https://github.com/Alesiobarquin/catalyst)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
 
 **Catalyst** is an event-driven quantitative trading and market signal discovery platform. It ingests volatile market events across disparate financial feeds (scrapers, SEC EDGAR Form 4 filings, unusual options flow, earnings surprises), filters them through a stateful Redis confluence gatekeeper, validates theses in real-time via Gemini with Google Search grounding, sizes orders via a Java Spring Boot quantitative engine (Half-Kelly criterion and SPY/VIX regime filtering), executes paper orders via Alpaca Markets, tracks closed-loop lifecycle PnL via an autonomous resolver daemon, broadcasts real-time alerts to Discord/Slack/Telegram, and provides an executive analytics dashboard built on Next.js 16 and FastAPI.
@@ -16,7 +16,7 @@
 
 The portfolio dashboard is available continuously. To keep costs below the $10/month target, the full AWS Docker/Kafka pipeline collects once each weekday at 10:00 AM New York time, exports its FastAPI results, and shuts down. Collection timestamps and per-source run outcomes are displayed; zero qualifying signals and unavailable sources are reported honestly. The public profile uses strict two-source confluence, grounded Gemini 3.8 Flash, Java 21 virtual threads, Half-Kelly sizing, and TimescaleDB persistence. The static dashboard stays available between scans. Its PnL reflects modeled recommendations checked at sampled prices; public brokerage execution and notification dispatch are disabled.
 
-The latest published organic AWS scan is October 5: three of five hunters completed, while Squeeze failed and Whale timed out. It produced no qualifying recommendations, which the dashboard reports alongside the partial-run status and collection time. The worker stopped automatically. See the [verification record](docs/verification/2026-10-05-theme-verification.json) and [deployment operations](docs/PUBLIC_DEMO_OPERATIONS.md). The local API-backed development experience and optional execution services remain available in the repository.
+The October 11 EC2 verification published 31 raw events: 3 Yahoo Squeeze, 20 SEC Insider, and 8 Barchart options events. Four of five hunters completed; BioPharmCatalyst drug/date fields required account access. No events passed the public filters, so no AI-validated signals or recommendations were published. The worker saved its database backup and job logs, then stopped automatically. See the [EC2 verification record](docs/verification/2026-10-11-ec2-daily-repair.json) and [deployment operations](docs/PUBLIC_DEMO_OPERATIONS.md).
 
 ## Why Catalyst?
 
@@ -33,7 +33,7 @@ Explore the [How It Works](https://d36bndaw2y0rrh.cloudfront.net/architecture/) 
 ```mermaid
 graph TD
     subgraph Layer 1: Ingestion
-        H1[Squeeze Hunter: Finviz] -->|signal-squeeze| RE[Kafka: raw-events]
+        H1[Squeeze Hunter: Yahoo or Finviz] -->|signal-squeeze| RE[Kafka: raw-events]
         H2[Biotech Hunter: BioPharmCatalyst] -->|signal-biotech| RE
         H3[Insider Hunter: SEC Form 4] -->|signal-insider| RE
         H4[Whale Hunter: Barchart Options] -->|signal-whale| RE
@@ -82,7 +82,7 @@ graph TD
 
 | Subsystem | Tech Stack | Status | Primary Responsibility |
 |---|---|---|---|
-| **Hunters** (`hunters/`) | Python 3.12, Playwright, BeautifulSoup, HTTPX | ✅ 5 Active | Autonomous scrapers scanning Finviz (Squeeze), BioPharmCatalyst (FDA readouts), SEC EDGAR (Form 4 insider buys), Barchart (unusual options flow), and FMP (post-earnings beats). |
+| **Hunters** (`hunters/`) | Python 3.12, Playwright, BeautifulSoup, HTTPX | 4/5 completed in EC2 verification | Collects Yahoo short-interest screens (Finviz optional), SEC EDGAR insider purchases, Barchart options activity, and FMP earnings beats. BioPharmCatalyst fields require account access; source failures are shown in the scan report. |
 | **Gatekeeper** (`gatekeeper/`) | Python 3.12, Redis 7, Kafka | ✅ Hardened | Stateful noise filter using Redis Sorted Sets (`gk:sources_zset:{ticker}`) for sliding 5-min confluence ($\ge 2$ sources) and atomic `SET NX EX` deduplication. Enforces volume ($\ge 50\text{k}$), RVOL ($\ge 1.5\times$), and price bounds. |
 | **AI Layer** (`ai_layer/`) | Python 3.12, Google GenAI SDK | ✅ Active | Synthesizes catalysts using Gemini with Google Search grounding. Generates structured JSON (catalyst type, conviction score, stop loss, profit target, trap indicators). Drops signals with conviction $< 50$. |
 | **Strategy Engine** (`engine/`) | Java 21, Spring Boot 3.4, JPA, Spring Kafka | ✅ 36 Tests | Quantitative risk engine. Assesses SPY versus its 200-day SMA and VIX to classify market regime (`PASS`, `SCALPER_ONLY`, `PASS_BEARISH`, `HALT`). Calculates position sizing via Half-Kelly criterion ($f^* = (bp - q) / 2b$), capped at 25% of a $100,000 book per recommendation by default. Routes to 4 specialized strategies (Supernova, Scalper, Drifter, Follower). |
@@ -91,27 +91,27 @@ graph TD
 | **Trade Resolver** (`resolver/`) | Python 3.12, TimescaleDB, Yahoo Finance | ✅ Active | Resolves `ACTIVE` recommendations against sampled Yahoo prices and a 14-calendar-day holding limit. Persists modeled recommendation PnL and `HIT_TARGET`, `HIT_STOP`, or `EXPIRED`; this daemon does not query broker fills or close positions. |
 | **Notification Dispatcher** (`notifier/`) | Python 3.12, Webhooks, HTTPX | ✅ Active | Real-time multi-channel notification engine consuming `validated-signals` and dispatching rich alerts to Discord embeds, Slack Block Kit, and Telegram HTML for high-conviction events ($\ge 70$). |
 | **FastAPI Read Layer** (`api/`) | Python 3.12, FastAPI, asyncpg, Redis | ✅ Active | Asynchronous REST and Server-Sent Events (SSE) streaming API (`/signals/stream`). Exposes KPI statistics (`/signals/stats`, `/orders/stats`), CSV exports, market quotes, pipeline health (`/health/pipeline`), and Prometheus metrics (`/metrics`). |
-| **Frontend Dashboard** (`frontend/`) | Next.js 16, React 19, Tailwind CSS 4, Vitest | ✅ 187 Tests | Read-only public daily snapshot plus API-backed local dashboard, responsive labeled signal table, clear collection freshness and partial-run status, readable chart summaries, accessible keyboard-navigable filters, and persistent light/dark themes. |
+| **Frontend Dashboard** (`frontend/`) | Next.js 16, React 19, Tailwind CSS 4, Vitest | ✅ 188 Tests | Read-only public daily snapshot plus API-backed local dashboard, responsive labeled signal table, clear collection freshness and partial-run status, readable chart summaries, accessible keyboard-navigable filters, and persistent light/dark themes. |
 
 ---
 
 ## 3. Test Coverage & Quality Gates
 
-The codebase maintains rigorous multi-stack automated testing with **524 passing tests** across 3 language ecosystems:
+[GitHub CI for the EC2 repair](https://github.com/Alesiobarquin/catalyst/actions/runs/38194083651) verified **566 passing tests**, lint, types, and both Next.js builds on October 11, 2026:
 
 ```text
 ================================ TEST SUITE SUMMARY ================================
-✅ Python Microservices (Pytest):   301 tests passed (0 failures, 100% pass rate)
+✅ Python Microservices (Pytest):   342 tests passed (0 failures, 100% pass rate)
 ✅ Java Quantitative Engine (JUnit 5): 36 tests passed (0 failures, 100% pass rate)
-✅ Next.js Frontend (Vitest):        187 tests passed (0 failures, 100% pass rate)
+✅ Next.js Frontend (Vitest):        188 tests passed (0 failures, 100% pass rate)
 ------------------------------------------------------------------------------------
-TOTAL VERIFIED AUTOMATED TESTS:      524 tests passing across stack
+TOTAL VERIFIED AUTOMATED TESTS:      566 tests passing across stack
 ====================================================================================
 ```
 
 ### Running the Test Suites
 
-#### 1. Python Test Suite (301 tests)
+#### 1. Python Test Suite (342 tests)
 ```bash
 .venv/bin/pytest
 .venv/bin/ruff check .
@@ -124,7 +124,7 @@ TOTAL VERIFIED AUTOMATED TESTS:      524 tests passing across stack
 cd engine && mvn -B test && cd ..
 ```
 
-#### 3. Frontend Vitest Suite (187 tests)
+#### 3. Frontend Vitest Suite (188 tests)
 ```bash
 npm --prefix frontend run test
 npm --prefix frontend run typecheck
@@ -183,11 +183,15 @@ python scripts/inject_synthetic_signals.py --ticker NVDA --sources squeeze,insid
 
 ## 6. AWS Deployment & Cost Efficiency
 
-The current hosting target is a **public read-only dashboard available 24/7**, refreshed by **one weekday pipeline run**, for **at most $10/month** excluding domain registration. The proposed public mode uses private S3 + CloudFront for HTTPS and an EC2 Docker worker for collection, validation, sizing, and FastAPI snapshot export. It is **not yet implemented or published**.
+The [public dashboard](https://d36bndaw2y0rrh.cloudfront.net) is deployed through private S3 and CloudFront. EventBridge starts the EC2 worker each weekday at 10:00 AM New York time. The batch publishes a bounded snapshot and private backup, retains job logs, and stops the worker; a boot watchdog and an independent 11:30 AM stop bound its runtime.
 
-The [Public Demo Deployment Plan](docs/PUBLIC_DEMO_DEPLOYMENT_PLAN.md) records the AWS inventory, an estimated $6–$9 combined operating cost under bounded usage, implementation gaps, and the evidence needed for the résumé claims. The site will display actual collection timestamps and distinguish live-source, heuristic, and controlled test results. Processing-rate measurements describe active runs rather than continuous collection.
+The [public CDK stack](infra/public_demo_stack.py) owns this deployment. The operating target is at most $10/month excluding domain registration and tax, with finite runs, AI request limits, and retention controls. See [deployment operations](docs/PUBLIC_DEMO_OPERATIONS.md) for configuration, logs, safeguards, and the cost model. Legacy market-hours runbooks are labeled separately.
 
-The existing [CDK stack](infra/catalyst_stack.py) provides legacy EC2 start/stop functions and disabled UTC EventBridge rules. Stopping that same instance would take an instance-hosted dashboard offline; the new design separates public availability from worker runtime. Older market-hours runbooks describe the previous target.
+```bash
+.venv/bin/python scripts/public_demo.py status
+# Run one additional finite production scan.
+.venv/bin/python scripts/public_demo.py run
+```
 
 ---
 

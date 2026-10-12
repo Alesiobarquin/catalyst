@@ -1,0 +1,284 @@
+{
+  "scope": "Scheduled production EC2 daily batch; task date October 11 America/New_York",
+  "instance_id": "i-0597d111f82782b5d",
+  "region": "us-east-1",
+  "diagnosis": {
+    "schedule": "Enabled weekday 10:00 and 11:30 America/New_York; October 5-9 starts and self-stops observed",
+    "initial_snapshot": "20261009T140408Z",
+    "initial_release": "46b72a5579878db721b03c5a02d9463201d8a2f7",
+    "initial_raw_events": 10,
+    "initial_regime_fresh": true,
+    "finviz": "EC2 browser HTTP 403 Cloudflare security verification",
+    "barchart": "Rendered div grid and text-binding shadow roots incompatible with legacy table selector",
+    "biopharmcatalyst": "PDUFA headers changed; drug/date data locked behind provider signup",
+    "job_logging": "Removed finite job containers were absent from archived Compose logs"
+  },
+  "collector_acceptance": {
+    "ssm_command_id": "57de431b-61ae-4bfa-87be-a6f4bbc4aeed",
+    "observed_at_utc": "2026-10-12T01:42:33Z",
+    "execution": "Repaired sources mounted read-only into the deployed x86 hunter image on EC2",
+    "kafka_writes": false,
+    "ai_requests": false,
+    "brokerage_calls": false,
+    "yahoo_squeeze": {
+      "success": true,
+      "candidate_limit": 40,
+      "matching_events": 3,
+      "duration_seconds": 2.87,
+      "tickers": [
+        "NVAX",
+        "MMED",
+        "PCRX"
+      ],
+      "quote_date": "2026-10-09",
+      "short_interest_reporting_date": "2026-09-30",
+      "scope": "Existing Squeeze thresholds, bounded first forty screen matches; not AI-validated recommendations"
+    },
+    "barchart": {
+      "success": true,
+      "parsed_contracts": 8,
+      "duration_seconds": 39.15,
+      "example": {
+        "ticker": "ABR",
+        "type": "put",
+        "strike": 3.0,
+        "option_volume": 19715,
+        "expiration": "10/16/26"
+      },
+      "scope": "Rendered contract rows; not a complete options feed or identified institutional sweeps"
+    },
+    "biopharmcatalyst": {
+      "success": false,
+      "error": "BioPharmCatalyst: catalyst details require a provider subscription"
+    }
+  },
+  "configuration": {
+    "runtime_parameter_version": 4,
+    "squeeze_provider": "yahoo",
+    "other_values_preserved": true
+  },
+  "release": {
+    "commit": "7bbe2a8a501fdd71dbca0b5e028add3919819ee8",
+    "status": "success",
+    "change": "Use provider account access wording; no pricing claim",
+    "published_at_utc": "2026-10-12T02:05:45Z",
+    "ci": "https://github.com/Alesiobarquin/catalyst/actions/runs/38194083651",
+    "release": "https://github.com/Alesiobarquin/catalyst/actions/runs/38194083643",
+    "codeql": "https://github.com/Alesiobarquin/catalyst/actions/runs/38194083196",
+    "ec2_verification": "passed",
+    "github_run": "https://github.com/Alesiobarquin/catalyst/actions/runs/38194083643",
+    "full_batch_verification": "passed; account-gated source retains partial status"
+  },
+  "remote_checks": {
+    "python_tests": 342,
+    "java_tests": 36,
+    "frontend_tests": 188,
+    "total_tests": 566,
+    "python_lint": true,
+    "python_format": true,
+    "frontend_lint": true,
+    "frontend_types": true,
+    "ordinary_next_build": true,
+    "public_static_build": true
+  },
+  "full_batch": {
+    "trigger": "manual finite EC2 verification of the scheduled runner",
+    "snapshot_run_id": "20261012T021037Z",
+    "snapshot_url": "https://d36bndaw2y0rrh.cloudfront.net/data/runs/20261012T021037Z/snapshot.json",
+    "as_of_utc": "2026-10-12T02:10:37.739093+00:00",
+    "commit": "7bbe2a8a501fdd71dbca0b5e028add3919819ee8",
+    "status": "partial",
+    "hunters": [
+      {
+        "hunter": "squeeze",
+        "provider": "yahoo_equity_screener",
+        "success": true,
+        "error": null,
+        "duration_sec": 2.755,
+        "emitted_events": 3
+      },
+      {
+        "hunter": "insider",
+        "provider": "sec_edgar",
+        "success": true,
+        "error": null,
+        "duration_sec": 16.108,
+        "emitted_events": 20
+      },
+      {
+        "hunter": "whale",
+        "provider": "barchart",
+        "success": true,
+        "error": null,
+        "duration_sec": 17.29,
+        "emitted_events": 8
+      },
+      {
+        "hunter": "biotech",
+        "provider": "biopharmcatalyst",
+        "success": false,
+        "error": "BioPharmCatalyst: catalyst details require provider account access",
+        "emitted_events": 0,
+        "duration_sec": 11.684
+      },
+      {
+        "hunter": "drifter",
+        "provider": "fmp",
+        "success": true,
+        "error": null,
+        "duration_sec": 0.066,
+        "emitted_events": 0
+      }
+    ],
+    "event_counts": {
+      "raw-events": 31,
+      "triage-priority": 0,
+      "validated-signals": 0
+    },
+    "regime": {
+      "spy_200_sma": 722.9283996582031,
+      "vix": 14.84,
+      "captured_at": "2026-10-12T02:09:07.092314481Z",
+      "fresh": true,
+      "spy": 778.57
+    },
+    "orders": 0,
+    "signals": 0,
+    "private_backup": {
+      "created_at_utc": "2026-10-12T02:10:41Z",
+      "size_bytes": 26098,
+      "encryption": "AES256"
+    },
+    "private_log": {
+      "key": "logs/20261012T021042Z.log",
+      "size_bytes": 370368,
+      "baseline_job_output_retained": true,
+      "hunter_job_output_retained": true,
+      "exporter_job_output_retained": true,
+      "hunter_start_lines": 5,
+      "pipeline_drain_failure": false
+    },
+    "cloudfront_manifest_matches": true,
+    "worker_state": "stopped",
+    "automatic_stop_at_utc": "2026-10-12T02:11:18Z"
+  },
+  "remaining_access_requirement": {
+    "provider": "BioPharmCatalyst",
+    "verified": "Drug/date fields are gated behind account signup; credentials are not configured",
+    "payment_requirement": "not established",
+    "free_drop_in_replacement": "not verified; FDA approvals and trial completion dates do not supply equivalent upcoming catalyst/ticker fields"
+  },
+  "final_wording_release": {
+    "commit": "7bbe2a8a501fdd71dbca0b5e028add3919819ee8",
+    "status": "published",
+    "change": "Use provider account access wording; no pricing claim",
+    "published_at_utc": "2026-10-12T02:05:45Z",
+    "ci": "https://github.com/Alesiobarquin/catalyst/actions/runs/38194083651",
+    "release": "https://github.com/Alesiobarquin/catalyst/actions/runs/38194083643",
+    "codeql": "https://github.com/Alesiobarquin/catalyst/actions/runs/38194083196",
+    "ec2_verification": "passed"
+  },
+  "schedules": {
+    "start": {
+      "state": "ENABLED",
+      "cron": "cron(0 10 ? * MON-FRI *)",
+      "timezone": "America/New_York"
+    },
+    "hard_stop": {
+      "state": "ENABLED",
+      "cron": "cron(30 11 ? * MON-FRI *)",
+      "timezone": "America/New_York"
+    }
+  },
+  "earlier_full_batch": {
+    "trigger": "manual finite EC2 verification of the scheduled runner",
+    "snapshot_run_id": "20261012T015207Z",
+    "snapshot_url": "https://d36bndaw2y0rrh.cloudfront.net/data/runs/20261012T015207Z/snapshot.json",
+    "as_of_utc": "2026-10-12T01:52:07.740896+00:00",
+    "commit": "7e5b4de077cee67428910a6a7404f7afa1416c48",
+    "status": "partial",
+    "hunters": [
+      {
+        "hunter": "squeeze",
+        "provider": "yahoo_equity_screener",
+        "success": true,
+        "error": null,
+        "duration_sec": 2.546,
+        "emitted_events": 3
+      },
+      {
+        "hunter": "insider",
+        "provider": "sec_edgar",
+        "success": true,
+        "error": null,
+        "duration_sec": 15.318,
+        "emitted_events": 20
+      },
+      {
+        "hunter": "whale",
+        "provider": "barchart",
+        "success": true,
+        "error": null,
+        "duration_sec": 17.05,
+        "emitted_events": 8
+      },
+      {
+        "hunter": "biotech",
+        "provider": "biopharmcatalyst",
+        "success": false,
+        "error": "BioPharmCatalyst: catalyst details require a provider subscription",
+        "emitted_events": 0,
+        "duration_sec": 10.816
+      },
+      {
+        "hunter": "drifter",
+        "provider": "fmp",
+        "success": true,
+        "error": null,
+        "duration_sec": 0.061,
+        "emitted_events": 0
+      }
+    ],
+    "event_counts": {
+      "raw-events": 31,
+      "triage-priority": 0,
+      "validated-signals": 0
+    },
+    "regime": {
+      "spy": 778.57,
+      "fresh": true,
+      "captured_at": "2026-10-12T01:50:37.702324219Z",
+      "vix": 14.84,
+      "spy_200_sma": 722.9283996582031
+    },
+    "orders": 0,
+    "signals": 0,
+    "private_backup": {
+      "created_at_utc": "2026-10-12T01:52:11Z",
+      "size_bytes": 26098,
+      "encryption": "AES256"
+    },
+    "private_log": {
+      "key": "logs/20261012T015211Z.log",
+      "size_bytes": 366920,
+      "baseline_job_output_retained": true,
+      "hunter_job_output_retained": true,
+      "exporter_job_output_retained": true,
+      "hunter_start_lines": 5,
+      "pipeline_drain_failure": false
+    },
+    "cloudfront_manifest_matches": true,
+    "worker_state": "stopped",
+    "automatic_stop_at_utc": "2026-10-12T01:52:48Z"
+  },
+  "initial_repair_release": {
+    "commit": "7e5b4de077cee67428910a6a7404f7afa1416c48",
+    "github_run": "https://github.com/Alesiobarquin/catalyst/actions/runs/38192940839",
+    "status": "success",
+    "full_batch_verification": "passed; partial source status explicitly retained",
+    "published_at_utc": "2026-10-12T01:47:58Z",
+    "ci": "https://github.com/Alesiobarquin/catalyst/actions/runs/38192940833",
+    "codeql": "https://github.com/Alesiobarquin/catalyst/actions/runs/38192940382"
+  },
+  "next_scheduled_start_local": "2026-10-12 10:00 America/New_York"
+}
