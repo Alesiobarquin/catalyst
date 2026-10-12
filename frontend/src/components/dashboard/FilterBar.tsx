@@ -134,7 +134,7 @@ export function FilterBar({
       display: "inline-flex",
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: 4,
+      borderRadius: 0,
       fontSize: 12,
       fontWeight: 500,
       cursor: "pointer",
@@ -155,7 +155,7 @@ export function FilterBar({
         padding: "14px 16px",
         background: "var(--color-bg-page)",
         border: "1px solid var(--color-border-subtle)",
-        borderRadius: 6,
+        borderRadius: 0,
       }}
     >
       <div className="signal-filter-mobile-header">
@@ -358,7 +358,7 @@ export function FilterBar({
               gap: 5,
               background: "var(--color-bg-row)",
               border: "1px solid var(--color-border-subtle)",
-              borderRadius: 4,
+              borderRadius: 0,
               color: "var(--color-text-muted)",
               fontSize: 12,
               fontWeight: 500,

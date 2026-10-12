@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import "./terminal-workspace.css";
 import { Navbar } from "@/components/layout/Navbar";
+import { WorkspaceTransition } from "@/components/layout/WorkspaceTransition";
 import { Providers } from "@/components/Providers";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme-config";
 
@@ -37,12 +39,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }} />
       </head>
-      <body>
+      <body className="terminal-workspace">
         <Providers>
           <a href="#main-content" className="skip-link">Skip to content</a>
           <Navbar />
           <main id="main-content" className="site-main" tabIndex={-1}>
-            {children}
+            <WorkspaceTransition>{children}</WorkspaceTransition>
           </main>
           <footer className="site-footer">
             <span className="footer-identity">Catalyst <span>/ Engineering project</span></span>

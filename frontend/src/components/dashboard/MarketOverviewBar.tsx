@@ -43,7 +43,7 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
   }
 
   return (
-    <section className="market-overview" aria-label="Market benchmarks">
+    <section id="market-benchmarks" className="market-overview" aria-label="Market benchmarks">
       <div className="market-overview-heading">
         <div>
           <h2>Market Benchmarks</h2>
@@ -66,6 +66,7 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
           const isFlat = change == null || change === 0;
           const isUp = (change ?? 0) > 0;
           const changeColor = isFlat ? "var(--color-text-muted)" : isUp ? "var(--color-profit)" : "var(--color-loss)";
+          const rangePosition = quote.price != null && quote.day_low != null && quote.day_high != null && Number.isFinite(quote.price) && Number.isFinite(quote.day_low) && Number.isFinite(quote.day_high) && quote.day_high > quote.day_low && quote.price >= quote.day_low && quote.price <= quote.day_high ? (quote.price - quote.day_low) / (quote.day_high - quote.day_low) * 100 : null;
           return (
             <article className="market-benchmark" key={quote.ticker} aria-label={quote.ticker + " benchmark"}>
               <div className="market-benchmark-name">
@@ -78,6 +79,7 @@ export function MarketOverviewBar({ initialQuotes, asOf }: MarketOverviewBarProp
                   {isUp ? "+" : ""}{change.toFixed(2)}%
                 </span>}
               </div>
+              {rangePosition != null && <div className="market-benchmark-position" role="img" aria-label={`${quote.ticker} captured price at ${rangePosition.toFixed(0)} percent of the day-low to day-high range`}><span style={{ left: `${rangePosition}%` }} /></div>}
               {quote.day_low != null && quote.day_high != null && <dl className="market-benchmark-range">
                 <div><dt>Day low</dt><dd>{"$" + quote.day_low.toFixed(2)}</dd></div>
                 <div><dt>Day high</dt><dd>{"$" + quote.day_high.toFixed(2)}</dd></div>

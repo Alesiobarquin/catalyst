@@ -22,6 +22,9 @@ describe("ArchitecturePage", () => {
     expect(within(pipeline).getByText(/public profile requires two sources/i)).toBeInTheDocument();
     expect(within(pipeline).getByText(/Missing or stale regime data halts sizing/i)).toBeInTheDocument();
     expect(within(pipeline).getByText(/public brokerage execution is disabled/i)).toBeInTheDocument();
+    const illustration = screen.getByRole("figure", { name: /Architecture illustration/ });
+    expect(illustration).toHaveTextContent("not live events");
+    expect(illustration).toHaveTextContent("SPY + VIX");
   });
 
   it("provides working in-page section destinations", () => {

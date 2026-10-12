@@ -7,6 +7,7 @@ import { SignalDetailPanel } from "./SignalDetailPanel";
 import { getBatchPerformance, fetchSignalDetail } from "@/lib/api";
 import { orderToSignalDetail } from "@/lib/signalDetailUtils";
 import { PUBLIC_DEMO } from "@/lib/snapshot";
+import styles from "./TerminalRecords.module.css";
 
 interface TradeListProps {
   orders: TradeOrder[];
@@ -21,36 +22,50 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
   // then replaced by the server response when /orders/{id}/detail resolves.
   const [panelSignal, setPanelSignal] = useState<SignalDetail | null>(null);
   const [panelOrder, setPanelOrder] = useState<TradeOrder | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [panelLoading, setPanelLoading] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const detailGenerationRef = useRef(0);
   const orderIdsKey = orders.map((o) => o.id).join(",");
+
+  useEffect(() => () => { detailGenerationRef.current += 1; }, []);
 
   const handleViewAnalysis = useCallback(
     (order: TradeOrder, trigger: HTMLButtonElement) => {
+      const generation = ++detailGenerationRef.current;
       triggerRef.current = trigger;
 
       // Phase 1 — open immediately with locally-derived data (prices, risk params, etc.)
       setPanelOrder(order);
       setPanelSignal(orderToSignalDetail(order));
+      setPanelOpen(true);
       setPanelLoading(true);
 
       // Phase 2 — replace with server-generated detail (AI thesis, structured confluence)
       fetchSignalDetail(order.id)
-        .then((detail) => setPanelSignal(detail))
+        .then((detail) => {
+          if (generation === detailGenerationRef.current) setPanelSignal(detail);
+        })
         .catch(() => {
           // Backend endpoint not yet deployed or returned an error.
           // Local mapper data already showing — leave it as-is.
         })
-        .finally(() => setPanelLoading(false));
+        .finally(() => {
+          if (generation === detailGenerationRef.current) setPanelLoading(false);
+        });
     },
     []
   );
 
   const handlePanelClose = useCallback(() => {
-    setPanelSignal(null);
-    setPanelOrder(null);
+    const generation = ++detailGenerationRef.current;
+    const closingTrigger = triggerRef.current;
+    // Keep the last record mounted while AnimatePresence finishes the exit.
+    setPanelOpen(false);
     setPanelLoading(false);
-    requestAnimationFrame(() => triggerRef.current?.focus());
+    requestAnimationFrame(() => {
+      if (generation === detailGenerationRef.current) closingTrigger?.focus();
+    });
   }, []);
 
   useEffect(() => {
@@ -95,6 +110,10 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
   return (
     <>
       <section className="rec-ledger" aria-label="Recommendation records">
+        <div className={`terminal-record-command ${styles.command}`}>
+          <span><span className={`terminal-function-key ${styles.functionKey}`}>REC</span>RECOMMENDATION RECORDS</span>
+          <span>{orders.length} displayed · {PUBLIC_DEMO ? "CAPTURED DATA" : "READ LAYER"}</span>
+        </div>
         <p className="rec-ledger-note">Prices and allocation at recommendation. Returns use sampled reference prices.</p>
         {perfUnavailable && (
           <p className="rec-ledger-notice" role="status">
@@ -105,7 +124,7 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
         )}
         <table className="rec-ledger-table" role="table" aria-label="Recommendations">
           <RecommendationTableHeader />
-        {orders.map((order) => {
+        {orders.map((order, index) => {
           const livePerf = perf[order.id];
           const enriched: TradeOrder = {
             ...(livePerf
@@ -121,6 +140,7 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
             <TradeCard
               key={order.id}
               order={enriched}
+              index={index}
               withinTable
               onViewAnalysis={handleViewAnalysis}
             />
@@ -136,7 +156,7 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
         <SignalDetailPanel
           signal={panelSignal}
           order={panelOrder ?? undefined}
-          isOpen={panelSignal !== null}
+          isOpen={panelOpen}
           isLoading={panelLoading}
           onClose={handlePanelClose}
         />

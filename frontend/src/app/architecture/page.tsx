@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Topology } from "./Topology";
+import styles from "./notebook.module.css";
 import { ExpandableCard } from "@/components/architecture/ExpandableCard";
 
 export const metadata: Metadata = {
@@ -19,12 +21,12 @@ const stages = [
 ];
 
 function Evidence({ links }: { links: Array<[string, string]> }) {
-  return <div className="notebook-evidence">{links.map(([label, path]) => <a key={path} href={source(path)}>{label} <span aria-hidden="true">↗</span></a>)}</div>;
+  return <div className="notebook-evidence">{links.map(([label, path]) => <a key={path} href={source(path)}><span className={styles.evidenceType}>{/test|verification/i.test(path) ? "CHECK" : path.startsWith("docs/") ? "DOC" : "SOURCE"}</span>{label} <span aria-hidden="true">↗</span></a>)}</div>;
 }
 
 export default function ArchitecturePage() {
   return (
-    <article className="engineering-page">
+    <article className={`engineering-page ${styles.notebook}`}>
       <header className="page-heading engineering-intro">
         <p className="page-eyebrow">Project notes · Implementation and evidence</p>
         <h1>Engineering notebook</h1>
@@ -36,7 +38,8 @@ export default function ArchitecturePage() {
           <section id="pipeline" className="notebook-section" aria-labelledby="pipeline-heading">
             <header className="notebook-section-heading"><p className="page-eyebrow">01 / Data path</p><h2 id="pipeline-heading">Five stages, one published snapshot</h2></header>
             <p>The public dashboard stays available through S3 and CloudFront. An EC2 worker collects once each weekday at 10:00 AM New York time, runs the pipeline, publishes results, and stops. The local application retains an API-backed dashboard and optional execution services.</p>
-            <ol className="notebook-pipeline">{stages.map((stage, index) => <li className="notebook-stage" key={stage.title}><span className="notebook-stage-number" aria-hidden="true">0{index + 1}</span><div><div className="notebook-stage-heading"><h3>{stage.title}</h3><code>{stage.topic}</code></div><p>{stage.description}</p><Evidence links={[[stage.label, stage.path]]} /></div></li>)}</ol>
+            <Topology />
+            <ol className="notebook-pipeline">{stages.map((stage, index) => <li className="notebook-stage" key={stage.title}><span className="notebook-stage-number" aria-hidden="true">0{index + 1}</span><div><div className="notebook-stage-heading"><h3>{stage.title}</h3><code>{stage.topic}</code></div><p>{stage.description}</p><code className={styles.sourcePath}>{stage.path}</code><Evidence links={[[stage.label, stage.path]]} /></div></li>)}</ol>
           </section>
 
           <section id="decisions" className="notebook-section" aria-labelledby="decisions-heading">

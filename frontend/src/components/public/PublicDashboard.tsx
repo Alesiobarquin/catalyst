@@ -8,6 +8,7 @@ import { StatsBar } from "@/components/dashboard/StatsBar";
 import { FilterBar } from "@/components/dashboard/FilterBar";
 import { TradeList } from "@/components/dashboard/TradeList";
 import { MarketOverviewBar } from "@/components/dashboard/MarketOverviewBar";
+import { MarketTape } from "@/components/dashboard/MarketTape";
 import { SignalTable } from "@/components/signals/SignalTable";
 import { SignalFilterBar } from "@/components/signals/SignalFilterBar";
 import { Pagination } from "@/components/ui/Pagination";
@@ -15,6 +16,7 @@ import { StrategyBreakdown, ConvictionHistogram, SignalTimeline, PerformanceSumm
 import { KellySimulator } from "@/components/analytics/KellySimulator";
 import { SnapshotStatus } from "./SnapshotStatus";
 import { EmptyResults } from "./EmptyResults";
+import { RegimeReadout } from "./RegimeReadout";
 
 type View = "orders" | "signals" | "analytics";
 const PAGE_COPY = {
@@ -53,10 +55,12 @@ function Content({ view }: { view: View }) {
   }
 
   const copy = PAGE_COPY[view];
-  const header = <header className="page-heading">
-    <p className="page-eyebrow">{view === "orders" ? "Research / Daily snapshot" : view === "signals" ? "Research / Validated catalysts" : "Research / Measurement & sizing"}</p>
-    <h1>{copy.title}</h1>
-    <p className="page-description">{copy.description}</p>
+  const header = <header className="page-heading terminal-page-heading">
+    <div className="terminal-title-copy"><p className="page-eyebrow">{view === "orders" ? "Research / Daily snapshot" : view === "signals" ? "Research / Validated catalysts" : "Research / Measurement & sizing"}</p>
+      <h1>{copy.title}</h1>
+      <p className="page-description">{copy.description}</p>
+    </div>
+    <div className="terminal-function-stamp" aria-hidden="true"><span>CATALYST</span><strong>{view === "orders" ? "OVW" : view === "signals" ? "SIG" : "P&L"}<span>↗</span></strong><span>{view === "orders" ? "01 / RESEARCH" : view === "signals" ? "02 / ARCHIVE" : "03 / OUTCOMES"}</span></div>
   </header>;
 
   if (!data) return <>{header}<div className="empty-results" aria-busy={!error}>
@@ -88,6 +92,7 @@ function Content({ view }: { view: View }) {
     : "No catalyst passed all validation and sizing checks in this snapshot. New results appear after the next weekday scan.";
 
   return <>
+    <MarketTape quotes={data.benchmarks} asOf={data.as_of} />
     {header}
     <div className={view === "orders" ? "research-workspace" : "research-workspace research-workspace--full"}>
     <div className="research-primary">
@@ -136,14 +141,16 @@ function Content({ view }: { view: View }) {
     </>}
     </div>
     {view === "orders" && <aside className="research-context" aria-label="Research methodology">
-      <p className="record-label">Acceptance rules</p>
+      <div className="terminal-panel-title"><span>POL / 01</span><p className="record-label">Acceptance rules</p><span aria-hidden="true">↗</span></div>
       <h2>What makes it through?</h2>
+      <dl className="terminal-parameter-readout" aria-label="Public screening parameters"><div><dt>Source minimum</dt><dd>02 <span>feeds</span></dd></div><div><dt>Confluence window</dt><dd>05:00 <span>min:sec</span></dd></div><div><dt>Conviction floor</dt><dd>50 <span>/ 100</span></dd></div><div><dt>Allocation cap</dt><dd>25<span>% / rec.</span></dd></div></dl>
       <ol className="acceptance-rules">
         <li><span aria-hidden="true">01</span><div><h3>Independent sources</h3><p>At least two hunters must agree on a ticker within five minutes. Price and liquidity checks also apply.</p></div></li>
         <li><span aria-hidden="true">02</span><div><h3>Grounded analysis</h3><p>Gemini uses Google Search. A signal needs grounding and a conviction score of at least 50/100.</p></div></li>
         <li><span aria-hidden="true">03</span><div><h3>Risk & market regime</h3><p>Half-Kelly sizing is capped by allocation and SPY/VIX conditions. Missing or stale regime data halts sizing.</p></div></li>
       </ol>
       <Link className="inline-action" href="/architecture">How it works <span aria-hidden="true">→</span></Link>
+      <RegimeReadout regime={data.regime} />
       <div className="research-boundary"><p className="record-label">About this project</p><p>This is an engineering demonstration of a market-signal pipeline. The public worker publishes one bounded scan each weekday; brokerage execution is disabled.</p><a className="inline-action" href="https://github.com/Alesiobarquin/catalyst" target="_blank" rel="noreferrer">Code, tests & runbooks <span aria-hidden="true">↗</span></a></div>
     </aside>}
     </div>

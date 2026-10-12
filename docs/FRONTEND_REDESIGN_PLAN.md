@@ -1,6 +1,6 @@
 # Catalyst frontend redesign plan
 
-October 11, 2026. Implemented locally and verified; no public deployment changes.
+October 11, 2026. Implemented locally and verified; no public deployment changes. This research workspace is saved on `design/research-workspace-20261011` at `96e5af1`. The subsequent trading terminal iteration is recorded in [AGENTS.md](../AGENTS.md#trading-terminal-design-branch-october-11-2026) and developed on `design/trading-terminal`.
 
 ## Purpose and audience
 

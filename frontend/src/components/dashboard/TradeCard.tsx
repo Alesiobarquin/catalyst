@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, type CSSProperties } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { TradeOrder, PriceBar, TradeExecution } from "@/types";
 import { PriceChart } from "@/components/charts/PriceChart";
 import { getPriceHistory } from "@/lib/api";
 import { PUBLIC_DEMO } from "@/lib/snapshot";
+import styles from "./TerminalRecords.module.css";
 import {
   formatCurrency,
   formatDateTime,
@@ -52,7 +53,7 @@ export function RecommendationTableHeader() {
   );
 }
 
-export function TradeCard({ order, withinTable = false, onViewAnalysis }: TradeCardProps) {
+export function TradeCard({ order, index = 0, withinTable = false, onViewAnalysis }: TradeCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [bars, setBars] = useState<PriceBar[]>([]);
   const [historyStatus, setHistoryStatus] = useState<"idle" | "loading" | "live" | "synthetic" | "unavailable">("idle");
@@ -84,16 +85,20 @@ export function TradeCard({ order, withinTable = false, onViewAnalysis }: TradeC
   const pnlPct = typeof measuredPnl === "number" && Number.isFinite(measuredPnl) ? measuredPnl : undefined;
   const referencePrice = order.resolved_price ?? order.current_price;
   const record = (
-    <tbody className={`rec-ledger-record${expanded ? " is-expanded" : ""}`} role="rowgroup">
+    <tbody className={`rec-ledger-record ${styles.row}${expanded ? " is-expanded" : ""}`} role="rowgroup" style={{ "--record-order": Math.min(index, 8) } as CSSProperties}>
       <tr className="rec-ledger-row" role="row">
         <th scope="row" className="rec-ledger-identity-cell" role="rowheader">
           <div className="rec-ledger-identity">
             <strong className="rec-ledger-ticker">{order.ticker}</strong>
             <span className="rec-ledger-action">{order.action}</span>
           </div>
+          <code className={`terminal-record-id ${styles.recordId}`}>REC-{String(order.id).padStart(5, "0")}</code>
           <span className="rec-ledger-strategy">{order.strategy_used}</span>
           <span className="rec-ledger-conviction" aria-label={`Conviction ${order.conviction_score} out of 100`}>
             Conviction {order.conviction_score}/100
+          </span>
+          <span className={`terminal-conviction-meter ${styles.meter}`} aria-hidden="true">
+            <span style={{ width: `${Math.min(100, Math.max(0, order.conviction_score))}%` }} />
           </span>
           <time className="rec-ledger-date" dateTime={order.timestamp_utc} title={order.timestamp_utc}>
             {formatDateTime(order.timestamp_utc)}
@@ -166,7 +171,7 @@ export function TradeCard({ order, withinTable = false, onViewAnalysis }: TradeC
       {expanded && (
         <tr className="rec-ledger-chart-row" role="row">
           <td colSpan={7} role="cell">
-            <div className="rec-ledger-chart" id={chartId} role="region" aria-label={`Price history for ${order.ticker}`}>
+            <div className={`rec-ledger-chart ${styles.detail}`} id={chartId} role="region" aria-label={`Price history for ${order.ticker}`}>
               <div className="rec-ledger-chart-heading">
                 <div className="rec-ledger-chart-legend">
                   <span data-level="entry">Entry</span>

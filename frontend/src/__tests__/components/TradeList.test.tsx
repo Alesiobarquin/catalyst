@@ -1,8 +1,9 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act, within } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TradeList } from "@/components/dashboard/TradeList";
-import type { TradeOrder, BatchPerformance } from "@/types";
+import type { TradeOrder, BatchPerformance, SignalDetail } from "@/types";
 import * as api from "@/lib/api";
+import { orderToSignalDetail } from "@/lib/signalDetailUtils";
 
 vi.mock("@/lib/api", () => ({
   getBatchPerformance: vi.fn(),
@@ -177,5 +178,35 @@ describe("TradeList", () => {
     await waitFor(() => {
       expect(api.fetchSignalDetail).toHaveBeenCalledWith(1);
     });
+  });
+
+  it("keeps the reopened record and its loading state when an earlier detail request finishes late", async () => {
+    let resolveFirst!: (detail: SignalDetail) => void;
+    let resolveSecond!: (detail: SignalDetail) => void;
+    const firstRequest = new Promise<SignalDetail>((resolve) => { resolveFirst = resolve; });
+    const secondRequest = new Promise<SignalDetail>((resolve) => { resolveSecond = resolve; });
+    const firstDetail = orderToSignalDetail(mockOrders[0]);
+    firstDetail.thesis.bodyParagraphs = ["Delayed NVDA server detail"];
+    const secondDetail = orderToSignalDetail(mockOrders[1]);
+    secondDetail.thesis.bodyParagraphs = ["Current TSLA server detail"];
+    vi.mocked(api.getBatchPerformance).mockResolvedValueOnce([]);
+    vi.mocked(api.fetchSignalDetail)
+      .mockReturnValueOnce(firstRequest)
+      .mockReturnValueOnce(secondRequest);
+
+    render(<TradeList orders={mockOrders} hasActiveFilters={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "View analysis for NVDA" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close panel" }));
+    fireEvent.click(screen.getByRole("button", { name: "View analysis for TSLA" }));
+
+    await act(async () => { resolveFirst(firstDetail); });
+    const inspector = within(screen.getByRole("dialog"));
+    expect(inspector.getByRole("heading", { name: "TSLA" })).toBeInTheDocument();
+    expect(inspector.queryByText("Delayed NVDA server detail")).not.toBeInTheDocument();
+    expect(inspector.getByText("Fetching pipeline analysis…")).toBeInTheDocument();
+
+    await act(async () => { resolveSecond(secondDetail); });
+    expect(inspector.getByText("Current TSLA server detail")).toBeInTheDocument();
+    expect(inspector.queryByText("Fetching pipeline analysis…")).not.toBeInTheDocument();
   });
 });

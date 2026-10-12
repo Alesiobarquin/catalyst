@@ -6,6 +6,7 @@ let mockPathname = "/";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mockPathname,
+  useRouter: () => ({ push: vi.fn() }),
 }));
 
 describe("Navbar", () => {
@@ -31,11 +32,11 @@ describe("Navbar", () => {
   it("renders all core navigation links including How it works", () => {
     render(<Navbar />);
 
-    const dashboardLink = screen.getByText("Overview").closest("a");
-    const analyticsLink = screen.getByText("Outcomes").closest("a");
-    const signalsLink = screen.getByText("Signals").closest("a");
-    const howItWorksLink = screen.getByText("How it works").closest("a");
-    const settingsLink = screen.getByText("Settings").closest("a");
+    const dashboardLink = screen.getByRole("link", { name: "Overview" });
+    const analyticsLink = screen.getByRole("link", { name: "Outcomes" });
+    const signalsLink = screen.getByRole("link", { name: "Signals" });
+    const howItWorksLink = screen.getByRole("link", { name: "How it works" });
+    const settingsLink = screen.getByRole("link", { name: "Settings" });
 
     expect(dashboardLink).toHaveAttribute("href", "/");
     expect(analyticsLink).toHaveAttribute("href", "/analytics");
@@ -48,21 +49,21 @@ describe("Navbar", () => {
     mockPathname = "/";
     render(<Navbar />);
 
-    expect(screen.getByText("Overview").closest("a")).toHaveAttribute("aria-current", "page");
-    expect(screen.getByText("Signals").closest("a")).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Signals" })).not.toHaveAttribute("aria-current");
   });
 
   it("marks How it works as the current page on /architecture", () => {
     mockPathname = "/architecture";
     render(<Navbar />);
 
-    expect(screen.getByText("How it works").closest("a")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "How it works" })).toHaveAttribute("aria-current", "page");
   });
 
   it("marks Signals as the current page on /signals", () => {
     mockPathname = "/signals";
     render(<Navbar />);
 
-    expect(screen.getByText("Signals").closest("a")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Signals" })).toHaveAttribute("aria-current", "page");
   });
 });
