@@ -70,7 +70,7 @@ def parse_pdufa_response(payload: object, *, collected_at: datetime) -> list[dic
     candidates = []
     seen = set()
     for record in records[:MAX_RECORDS]:
-        if not isinstance(record, dict) or not _REQUIRED_FIELDS <= record.keys():
+        if not isinstance(record, dict) or not _REQUIRED_FIELDS.issubset(record):
             raise ProviderError("pdufa", "response_schema")
         if (
             _text(record["type"]).upper() != "PDUFA"
