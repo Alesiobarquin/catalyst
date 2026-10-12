@@ -81,12 +81,13 @@ describe("DashboardPage", () => {
 
     render(page);
 
-    expect(screen.getByRole("heading", { level: 1, name: /Signal Dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: /Overview/i })).toBeInTheDocument();
     expect(screen.getByText("SPY")).toBeInTheDocument();
     expect(screen.getByText("QQQ")).toBeInTheDocument();
     expect(screen.getByText("Recommendations")).toBeInTheDocument();
     expect(screen.getByText("15")).toBeInTheDocument();
     expect(screen.getByText("NVDA")).toBeInTheDocument();
+    expect(screen.getByText("NVDA").compareDocumentPosition(screen.getByText("SPY")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("passes default query parameters when searchParams is empty", async () => {

@@ -63,7 +63,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   return (
     <>
       <DashboardHeader />
-      <MarketOverviewBar initialQuotes={marketBenchmarks} />
       <StatsBar stats={stats} />
       <FilterBar
         initialStrategy={strategy}
@@ -84,6 +83,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           ticker: ticker,
         }}
       />
+      <MarketOverviewBar initialQuotes={marketBenchmarks} />
     </>
   );
 }

@@ -88,16 +88,18 @@ describe("TradeList", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders trade cards when orders are present", () => {
+  it("renders recommendation records with shared price columns when orders are present", () => {
     vi.mocked(api.getBatchPerformance).mockResolvedValueOnce([]);
 
     render(<TradeList orders={mockOrders} hasActiveFilters={false} />);
 
     expect(screen.getByText("NVDA")).toBeInTheDocument();
     expect(screen.getByText("TSLA")).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Recommendations" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Modeled return" })).toBeInTheDocument();
   });
 
-  it("enriches trade cards with batch performance data", async () => {
+  it("enriches recommendation records with batch performance data", async () => {
     const mockBatch: BatchPerformance[] = [
       {
         order_id: 1,

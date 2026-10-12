@@ -20,9 +20,9 @@ const jetbrainsMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Catalyst — Signal Intelligence Platform",
+  title: "Catalyst — Market signal research",
   description:
-    "Multi-factor confluence analysis. Quantitative signal generation with Gemini, Half-Kelly position sizing, and VIX regime filtering.",
+    "A market-signal pipeline with source confluence, grounded analysis, risk sizing, and inspectable daily scan results.",
   icons: { icon: "/icon.svg" },
 };
 
@@ -45,10 +45,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </main>
           <footer className="site-footer">
+            <span className="footer-identity">Catalyst <span>/ Engineering project</span></span>
             <p>
-              Signal intelligence provided for informational purposes only. Not investment advice.
-              Past performance does not guarantee future results. All signals are algorithmically
-              generated and may not reflect current market conditions. Trade at your own risk.
+              Recommendations are algorithmic research outputs. Modeled outcomes use sampled prices
+              and may miss intraday crossings. The public demo does not execute trades. Not investment advice.
             </p>
           </footer>
         </Providers>

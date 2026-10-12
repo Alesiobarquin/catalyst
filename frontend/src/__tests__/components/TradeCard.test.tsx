@@ -3,6 +3,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TradeCard } from "@/components/dashboard/TradeCard";
 import type { TradeOrder } from "@/types";
 
+const snapshotMode = vi.hoisted(() => ({ publicDemo: false }));
+
+vi.mock("@/lib/snapshot", () => ({
+  get PUBLIC_DEMO() { return snapshotMode.publicDemo; },
+}));
+
 vi.mock("@/components/charts/PriceChart", () => ({
   PriceChart: () => <div data-testid="mock-price-chart">PriceChart</div>,
 }));
@@ -48,6 +54,7 @@ const baseOrder: TradeOrder = {
 describe("TradeCard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    snapshotMode.publicDemo = false;
   });
 
   it("renders order ticker, strategy, and risk-reward metrics", () => {
@@ -121,5 +128,19 @@ describe("TradeCard", () => {
 
     expect(mockOnView).toHaveBeenCalledTimes(1);
     expect(mockOnView.mock.calls[0][0].ticker).toBe("NVDA");
+  });
+
+  it.each(["empty", "failed"])("keeps %s snapshot history unavailable instead of drawing illustrative prices", async (response) => {
+    snapshotMode.publicDemo = true;
+    if (response === "empty") mockGetPriceHistory.mockResolvedValueOnce([]);
+    else mockGetPriceHistory.mockRejectedValueOnce(new Error("No exported history"));
+
+    render(<TradeCard order={baseOrder} />);
+    fireEvent.click(screen.getByRole("button", { name: "View chart for NVDA" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Price history was not included in this snapshot.")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("mock-price-chart")).not.toBeInTheDocument();
   });
 });

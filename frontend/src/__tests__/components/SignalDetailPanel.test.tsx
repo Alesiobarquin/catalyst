@@ -185,13 +185,16 @@ describe("SignalDetailPanel", () => {
     });
   });
 
-  it("renders risk parameters, scenarios, and expected value", () => {
+  it("shows actual recommendation levels without presenting supplied scenario probabilities or timeline as observations", () => {
     render(<SignalDetailPanel signal={mockSignal} isOpen={true} onClose={vi.fn()} />);
 
-    expect(screen.getByText("Account Risk")).toBeInTheDocument();
-    expect(screen.getByText("Bullish Extension")).toBeInTheDocument();
-    expect(screen.getByText("+20.3%")).toBeInTheDocument();
-    expect(screen.getByText("Adverse Reversal")).toBeInTheDocument();
-    expect(screen.getByText("-7.1%")).toBeInTheDocument();
+    expect(screen.getByText("$120.50")).toBeInTheDocument();
+    expect(screen.getByText("$112.00")).toBeInTheDocument();
+    expect(screen.getByText("$145.00")).toBeInTheDocument();
+    expect(screen.getByText(/sampled reference prices/)).toBeInTheDocument();
+    expect(screen.queryByText("65%")).not.toBeInTheDocument();
+    expect(screen.queryByText("Finviz scraper hit")).not.toBeInTheDocument();
+    expect(screen.queryByText("NASDAQ")).not.toBeInTheDocument();
+    expect(screen.queryByText("v1.4.2")).not.toBeInTheDocument();
   });
 });

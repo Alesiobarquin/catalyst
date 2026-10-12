@@ -11,9 +11,9 @@ import { Pagination } from "@/components/ui/Pagination";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Signals — Catalyst",
+  title: "Signal archive — Catalyst",
   description:
-    "Raw Gemini AI output — validated signals before strategy routing and risk sizing.",
+    "API-backed catalyst analyses before strategy routing and risk sizing.",
 };
 
 const SIGNALS_PER_PAGE = 15;
@@ -77,40 +77,12 @@ export default async function SignalsPage({ searchParams }: PageProps) {
   return (
     <>
       {/* ── Page header ─────────────────────────────────── */}
-      <div style={{ marginBottom: 20 }}>
-        <h1
-          style={{
-            fontSize: 24,
-            fontWeight: 600,
-            color: "var(--color-text-primary)",
-            letterSpacing: "-0.01em",
-            marginBottom: 4,
-            lineHeight: 1.25,
-          }}
-        >
-          Validated signals
-        </h1>
-        <p style={{ fontSize: 13, color: "var(--color-text-secondary)", margin: "0 0 6px" }}>
-          Raw Gemini output · Before strategy routing ·{" "}
-          <code
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 12,
-              padding: "1px 6px",
-              borderRadius: 3,
-              background: "var(--color-bg-row)",
-              border: "1px solid var(--color-border-subtle)",
-              color: "var(--color-text-muted)",
-            }}
-          >
-            validated-signals
-          </code>{" "}
-          Kafka topic
-        </p>
-        <p style={{ fontSize: 12, color: "var(--color-text-muted)", margin: 0 }}>
-          {total} total signals {hasActiveFilters && "(filtered)"}
-        </p>
-      </div>
+      <header className="page-heading">
+        <p className="page-eyebrow">Local workspace · Analysis archive</p>
+        <h1>Signal archive</h1>
+        <p className="page-description">Recorded catalyst analyses before strategy routing and risk sizing. Inspect rationale, contributing sources, risks, and analysis method.</p>
+        <p className="page-eyebrow">{total} total signals {hasActiveFilters && "(filtered)"} · API-backed results</p>
+      </header>
 
       {/* ── Live real-time stream status ─────────────────── */}
       <LiveStreamBanner />
@@ -157,13 +129,13 @@ export default async function SignalsPage({ searchParams }: PageProps) {
 
         <div className="stat-card" style={{ padding: "14px 16px" }}>
           <span style={{ fontSize: 12, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            Trap Protection
+            Flagged traps
           </span>
           <p style={{ fontFamily: "var(--font-mono)", fontSize: 22, fontWeight: 700, color: "var(--color-warning)", margin: "4px 0 2px" }}>
             {stats.trap_count}
           </p>
           <span style={{ fontSize: 12, color: "var(--color-text-muted)" }}>
-            {stats.trap_rate_percent}% rejected
+            {stats.trap_rate_percent}% of validated signals flagged
           </span>
         </div>
       </div>

@@ -1,121 +1,81 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect } from "vitest";
 import ArchitecturePage from "@/app/architecture/page";
 
 describe("ArchitecturePage", () => {
-  it("renders the page header with title and subtitle", () => {
+  it("explains the project and provides routes to the source and current scan", () => {
     render(<ArchitecturePage />);
-
-    expect(
-      screen.getByRole("heading", { level: 1, name: "How It Works" })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/engineering behind Catalyst/i)
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Engineering notebook" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Browse the repository/ })).toHaveAttribute("href", "https://github.com/Alesiobarquin/catalyst");
+    expect(screen.getByRole("link", { name: /Read the latest scan/ })).toHaveAttribute("href", "/");
+    expect(screen.getByText(/local application retains an API-backed dashboard/i)).toBeInTheDocument();
   });
 
-  it("renders the three problem cards in the hero section", () => {
+  it("connects the five processing stages to inspectable implementations", () => {
     render(<ArchitecturePage />);
-
-    expect(screen.getByText("The Noise Problem")).toBeInTheDocument();
-    expect(screen.getByText("The Cost Problem")).toBeInTheDocument();
-    expect(screen.getByText("The Math Problem")).toBeInTheDocument();
+    const pipeline = screen.getByRole("region", { name: "Five stages, one published snapshot" });
+    for (const name of ["Collect", "Find confluence", "Validate evidence", "Size a recommendation", "Publish and observe"]) {
+      expect(within(pipeline).getByRole("heading", { level: 3, name })).toBeInTheDocument();
+    }
+    expect(within(pipeline).getByRole("link", { name: /Confluence filter/ })).toHaveAttribute("href", expect.stringContaining("gatekeeper/gatekeeper.py"));
+    expect(within(pipeline).getByText(/public profile requires two sources/i)).toBeInTheDocument();
+    expect(within(pipeline).getByText(/Missing or stale regime data halts sizing/i)).toBeInTheDocument();
+    expect(within(pipeline).getByText(/public brokerage execution is disabled/i)).toBeInTheDocument();
   });
 
-  it("renders all 5 pipeline stages", () => {
+  it("provides working in-page section destinations", () => {
     render(<ArchitecturePage />);
-
-    expect(screen.getByText("1. Ingestion")).toBeInTheDocument();
-    expect(screen.getByText("2. Confluence Filter")).toBeInTheDocument();
-    expect(screen.getByText("3. AI Validation")).toBeInTheDocument();
-    expect(screen.getByText("4. Quantitative Sizing")).toBeInTheDocument();
-    expect(screen.getByText("5. Execution & Resolution")).toBeInTheDocument();
+    const contents = screen.getByRole("navigation", { name: "Engineering sections" });
+    for (const link of within(contents).getAllByRole("link")) {
+      const target = link.getAttribute("href")?.slice(1);
+      expect(target).toBeTruthy();
+      expect(document.getElementById(target!)).toBeInTheDocument();
+    }
   });
 
-  it("renders tech badges for pipeline stages", () => {
-    render(<ArchitecturePage />);
-
-    // These appear in both pipeline stages and tech stack grid, so use getAllByText
-    expect(screen.getAllByText("Python 3.12").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Playwright").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Redis 7").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Google GenAI SDK")).toBeInTheDocument();
-    expect(screen.getAllByText("Java 21").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Spring Boot 3.4").length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("renders the architectural decision questions", () => {
-    render(<ArchitecturePage />);
-
-    expect(
-      screen.getByText(/Why three languages/i)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Why Apache Kafka over Redis/i)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Why Redis Sorted Sets/i)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Why Half-Kelly/i)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Why scheduled EC2/i)
-    ).toBeInTheDocument();
-  });
-
-  it("expands an ADR card on click to reveal its content", async () => {
+  it("opens and closes an ADR with keyboard input and accessible disclosure state", async () => {
     const user = userEvent.setup();
     render(<ArchitecturePage />);
-
-    const kafkaButton = screen.getByText(/Why Apache Kafka over Redis/i);
-
-    // Content should not be visible initially
-    expect(screen.queryByText(/Durable event replay/i)).not.toBeInTheDocument();
-
-    // Click to expand
-    await user.click(kafkaButton);
-
-    // Content should now be visible
-    expect(screen.getByText(/Durable event replay/i)).toBeInTheDocument();
+    const trigger = screen.getByRole("button", { name: /Why Apache Kafka over Redis/ });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    const panel = document.getElementById(trigger.getAttribute("aria-controls")!);
+    expect(panel).toHaveAttribute("hidden");
+    expect(panel).toHaveAttribute("aria-labelledby", trigger.id);
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(panel).not.toHaveAttribute("hidden");
+    expect(within(panel!).getByText(/Durable event replay/)).toBeVisible();
+    expect(within(panel!).getByRole("link", { name: /Persistence consumer/ })).toHaveAttribute("href", expect.stringContaining("persistence/consumer.py"));
+    await user.keyboard(" ");
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(panel).toHaveAttribute("hidden");
   });
 
-  it("renders the engineering quality section with test count", () => {
+  it("keeps sizing assumptions and absent risk controls explicit", async () => {
+    const user = userEvent.setup();
     render(<ArchitecturePage />);
-
-    expect(screen.getByText("524")).toBeInTheDocument();
-    expect(screen.getByText("Automated Tests")).toBeInTheDocument();
-    expect(screen.getByText("301 Python · 36 Java · 187 Vitest")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Why Half-Kelly/ }));
+    expect(screen.getByText(/not a calibrated win probability/i)).toBeVisible();
+    expect(screen.getByText(/no aggregate per-ticker exposure limit/i)).toBeVisible();
   });
 
-  it("renders the resilience pattern tags", () => {
+  it("links observed changes to regression evidence", () => {
     render(<ArchitecturePage />);
-
-    expect(screen.getByText("Alpaca execution circuit breaker")).toBeInTheDocument();
-    expect(screen.getByText("Gemini model fallback chain")).toBeInTheDocument();
-    expect(screen.getByText("GitHub Actions 3-job CI matrix")).toBeInTheDocument();
+    const observations = screen.getByRole("region", { name: "Changes supported by checks" });
+    expect(within(observations).getByText(/double-encoded VIX URL/i)).toBeInTheDocument();
+    expect(within(observations).getByRole("link", { name: /HTTP regression test/ })).toHaveAttribute("href", expect.stringContaining("MarketDataServiceTest.java"));
+    expect(within(observations).getByText(/did not establish an organic validated catalyst/i)).toBeInTheDocument();
+    expect(within(observations).getByText(/uploads an immutable dataset and private backup before promoting/i)).toBeInTheDocument();
   });
 
-  it("renders the What I Learned section with all four lessons", () => {
+  it("dates the test count and distinguishes controlled checks from investment performance", () => {
     render(<ArchitecturePage />);
-
-    expect(screen.getByText(/Event-driven complexity vs. monolith simplicity/i)).toBeInTheDocument();
-    expect(screen.getByText(/Confluence filtering as AI cost control/i)).toBeInTheDocument();
-    expect(screen.getByText(/Deterministic math belongs in a typed language/i)).toBeInTheDocument();
-    expect(screen.getByText(/Closed-loop validation changes everything/i)).toBeInTheDocument();
-  });
-
-  it("renders the tech stack grid with key technologies", () => {
-    render(<ArchitecturePage />);
-
-    // Some tech names appear in both pipeline stages and grid, use getAllByText
-    expect(screen.getAllByText("Next.js 16").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("React 19").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Apache Kafka").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("TimescaleDB").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Google Gemini 3.8").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("AWS CDK").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Docker").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/October 5, 2026 release recorded/i)).toHaveTextContent("524 automated tests");
+    expect(screen.getByRole("table", { name: "Different checks answer different questions" })).toBeInTheDocument();
+    expect(screen.getByText(/Daily sampling can miss intraday crossings/i)).toBeInTheDocument();
+    expect(screen.getByText(/no measured live 50–100 events\/minute artifact/i)).toBeInTheDocument();
+    expect(screen.getByText(/Zero results alone do not identify which check rejected an event/i)).toBeInTheDocument();
   });
 });

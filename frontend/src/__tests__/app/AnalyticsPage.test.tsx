@@ -59,7 +59,7 @@ describe("AnalyticsPage", () => {
     const page = await AnalyticsPage();
     render(page);
 
-    expect(screen.getByRole("heading", { level: 1, name: "Analytics" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Modeled outcomes" })).toBeInTheDocument();
     expect(screen.getAllByText("Total recommendations").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("50").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Modeled win rate").length).toBeGreaterThanOrEqual(1);
@@ -82,7 +82,7 @@ describe("AnalyticsPage", () => {
     const page = await AnalyticsPage();
     render(page);
 
-    expect(screen.getByRole("heading", { level: 1, name: "Analytics" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Modeled outcomes" })).toBeInTheDocument();
     expect(screen.getByText("No catalyst data yet.")).toBeInTheDocument();
     expect(screen.getAllByText("No stop/target outcomes yet").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("No recommendations yet").length).toBeGreaterThanOrEqual(1);
