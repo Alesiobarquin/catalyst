@@ -14,6 +14,8 @@ The October 11 manual worker verification recorded 56 raw events: three Yahoo Fi
 
 The current public snapshot, `20261012T140216Z`, records the October 12 scheduled scan: 53 raw events, zero triage events, and zero validated signals. All five hunters completed (Yahoo 0, SEC 20, Barchart 8, pdufa.bio 25, FMP 0). It has no recommendations and contains four benchmark quotes; the expanded 19-symbol tape will populate after the next scheduled scan.
 
+The October 12 terminal release passed 573 CI tests: 346 Python, 36 Java, and 191 frontend. The release published the new interface and verified the full 19-symbol bundle while preserving the current snapshot. See [release verification](docs/verification/2026-10-12-trading-terminal-release.json), [CI](https://github.com/Alesiobarquin/catalyst/actions/runs/38299553462), [CodeQL](https://github.com/Alesiobarquin/catalyst/actions/runs/38299552993), and [AWS publication](https://github.com/Alesiobarquin/catalyst/actions/runs/38299553359).
+
 The local application retains API-backed pages, streaming updates, optional Alpaca paper execution, and configured notifications. Those capabilities are separate from the public daily demonstration.
 
 ## Engineering questions
@@ -92,7 +94,7 @@ graph TD
 | **Trade Resolver** (`resolver/`) | Python 3.12, TimescaleDB, Yahoo Finance | Implemented | Resolves `ACTIVE` recommendations against sampled Yahoo prices and a 14-calendar-day holding limit. Persists modeled recommendation PnL and `HIT_TARGET`, `HIT_STOP`, or `EXPIRED`; this daemon does not query broker fills or close positions. |
 | **Notification Dispatcher** (`notifier/`) | Python 3.12, Webhooks, HTTPX | Implemented | Optional local multi-channel notification consumer consuming `validated-signals` and dispatching rich alerts to Discord embeds, Slack Block Kit, and Telegram HTML for high-conviction events ($\ge 70$). |
 | **FastAPI Read Layer** (`api/`) | Python 3.12, FastAPI, asyncpg, Redis | Implemented | Asynchronous REST and Server-Sent Events (SSE) streaming API (`/signals/stream`). Exposes KPI statistics (`/signals/stats`, `/orders/stats`), CSV exports, market quotes, pipeline health (`/health/pipeline`), and Prometheus metrics (`/metrics`). |
-| **Frontend Dashboard** (`frontend/`) | Next.js 16, React 19, Tailwind CSS 4, Vitest | 190 local tests | Read-only public daily snapshot plus an API-backed local dashboard, responsive records, a timestamped ticker tape, keyboard controls, and persistent light/dark themes. |
+| **Frontend Dashboard** (`frontend/`) | Next.js 16, React 19, Tailwind CSS 4, Vitest | 191 CI tests | Read-only public daily snapshot plus an API-backed local dashboard, responsive records, a timestamped ticker tape, keyboard controls, and persistent light/dark themes. |
 
 ---
 
