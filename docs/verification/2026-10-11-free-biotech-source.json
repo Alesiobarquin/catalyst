@@ -99,12 +99,211 @@
     "rejects_unsourced_goals_and_registry_estimates": true,
     "uses_current_date_instead_of_stable_id_date": true,
     "account_state_loaded_on_free_branch": false,
-    "acceptance": "pending released EC2 collector/batch"
+    "acceptance": "passed source-only released EC2 collector and full organic batch"
   },
   "runtime": {
     "parameter_version": 5,
     "biotech_provider": "pdufa",
     "all_other_values_preserved": true,
     "account_session_disabled": true
-  }
+  },
+  "collector_acceptance": {
+    "command_id": "9c19f128-a39c-4a20-a2c1-b5eed6dca344",
+    "status": "Success",
+    "started_at_utc": "2026-10-12T03:43:13.530Z",
+    "result": {
+      "provider": "pdufa.bio",
+      "eligible_records": 25,
+      "elapsed_seconds": 0.2,
+      "all_exact_days": true,
+      "all_have_source_links": true,
+      "all_upcoming": true,
+      "provider_as_of": [
+        "2026-10-11"
+      ],
+      "sample": [
+        {
+          "ticker": "RHHBY",
+          "drug": "Enspryng (satralizumab) - (thyroid eye disease)",
+          "event_date": "2026-10-15",
+          "source_url": "https://www.gene.com/media/press-releases/15118/2026-06-29/fda-grants-priority-review-to-genentechs"
+        },
+        {
+          "ticker": "IRD",
+          "drug": "Phentolamine ophthalmic solution 0.75%",
+          "event_date": "2026-10-17",
+          "source_url": "https://www.biospace.com/press-releases/opus-genetics-announces-fda-acceptance-of-supplemental-new-drug-application-for-phentolamine-ophthalmic-solution-0-75-for-the-treatment-of-presbyopia"
+        },
+        {
+          "ticker": "VTRS",
+          "drug": "MR-141 (phentolamine ophthalmic solution 0.75%)",
+          "event_date": "2026-10-17",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/1792044/000179204426000010/exhibit991-4q25earningsrel.htm"
+        },
+        {
+          "ticker": "GSK",
+          "drug": "Bepirovirsen - (B-Well)",
+          "event_date": "2026-10-26",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/874015/000114036126029960/ef20078953_ex99-1.htm"
+        },
+        {
+          "ticker": "INO",
+          "drug": "INO-3107 DNA immunotherapy",
+          "event_date": "2026-10-30",
+          "source_url": "https://www.sec.gov/Archives/edgar/data/1055726/000105572626000019/ino-33126x8kex991.htm"
+        }
+      ]
+    },
+    "kafka_writes": false,
+    "ai_requests": false,
+    "brokerage_calls": false
+  },
+  "release": {
+    "commit": "0073de8ac6f7047272f097aac2206111ca8a65b8",
+    "ci": "success",
+    "ci_url": "https://github.com/Alesiobarquin/catalyst/actions/runs/38200339946",
+    "codeql": "success",
+    "codeql_url": "https://github.com/Alesiobarquin/catalyst/actions/runs/38200339184",
+    "publication": "success",
+    "publication_url": "https://github.com/Alesiobarquin/catalyst/actions/runs/38200339930",
+    "published_at_utc": "2026-10-12T03:40:00Z",
+    "python_tests": 342,
+    "java_tests": 36,
+    "frontend_tests": 188,
+    "total_tests": 566,
+    "ordinary_frontend_build": "success",
+    "public_static_build": "success",
+    "initial_lint_gate": {
+      "commit": "f6ba845f22ebfaf59abeef09a56c8a7bf008280d",
+      "result": "blocked before publishing by SIM300; schema guard changed to issubset without changing behavior"
+    }
+  },
+  "full_batch": {
+    "run_id": "20261012T034358Z",
+    "as_of": "2026-10-12T03:43:58.956693+00:00",
+    "commit": "0073de8ac6f7047272f097aac2206111ca8a65b8",
+    "status": "completed",
+    "event_counts": {
+      "raw-events": 56,
+      "triage-priority": 0,
+      "validated-signals": 0
+    },
+    "hunters": [
+      {
+        "hunter": "squeeze",
+        "provider": "yahoo_equity_screener",
+        "success": true,
+        "error": null,
+        "duration_sec": 1.84,
+        "emitted_events": 3
+      },
+      {
+        "hunter": "insider",
+        "provider": "sec_edgar",
+        "success": true,
+        "error": null,
+        "duration_sec": 14.818,
+        "emitted_events": 20
+      },
+      {
+        "hunter": "whale",
+        "provider": "barchart",
+        "success": true,
+        "error": null,
+        "duration_sec": 13.403,
+        "emitted_events": 8
+      },
+      {
+        "hunter": "biotech",
+        "provider": "pdufa",
+        "success": true,
+        "error": null,
+        "duration_sec": 4.081,
+        "emitted_events": 25
+      },
+      {
+        "hunter": "drifter",
+        "provider": "fmp",
+        "success": true,
+        "error": null,
+        "duration_sec": 0.047,
+        "emitted_events": 0
+      }
+    ],
+    "regime": {
+      "vix": 14.84,
+      "captured_at": "2026-10-12T03:42:30.451197029Z",
+      "fresh": true,
+      "spy": 778.57,
+      "spy_200_sma": 722.9283996582031
+    },
+    "snapshot_url": "https://d36bndaw2y0rrh.cloudfront.net/data/runs/20261012T034358Z/snapshot.json",
+    "completed_hunters": 5,
+    "orders": 0,
+    "signals": 0,
+    "private_backup": {
+      "created_at_utc": "2026-10-12T03:44:02Z",
+      "size_bytes": 26098,
+      "encryption": "AES256"
+    },
+    "private_log": {
+      "key": "logs/20261012T034402Z.log",
+      "size_bytes": 382262
+    },
+    "private_bootstrap_log": {
+      "key": "logs/bootstrap-20261012T034144Z-2006.log",
+      "size_bytes": 429
+    },
+    "gatekeeper": {
+      "buffered": 22,
+      "buffered_by_source": {
+        "squeeze": 3,
+        "insider": 19
+      },
+      "confluence_counts": [
+        "1"
+      ],
+      "dropped": 34,
+      "drop_categories": {
+        "relative_volume": 33,
+        "price": 1
+      },
+      "baseline_log": true,
+      "hunter_log": true,
+      "export_log": true,
+      "drain_failed": false,
+      "processing_errors": 0,
+      "schema_errors": 0
+    },
+    "automatic_stop_at_utc": "2026-10-12T03:44:39Z",
+    "worker_state": "stopped",
+    "stop_cloudtrail": [
+      {
+        "time": "2026-10-12T03:44:39Z",
+        "role": "CatalystPublicDemoStack-WorkerRole8DD27D41-lGlhkQgX3ai7",
+        "error": null
+      }
+    ],
+    "cloudfront_manifest_matches": true
+  },
+  "public_attribution": {
+    "public_page_http_success": true,
+    "attribution_assets": [
+      {
+        "asset": "/_next/static/chunks/1mnlndp45asx9.js",
+        "attribution_url_present": true,
+        "attribution_text_present": true,
+        "provider_label_present": true
+      }
+    ],
+    "visual_browser_check": "Unavailable: no connected browser in CUA inventory"
+  },
+  "schedules": {
+    "weekday_start_et": "10:00",
+    "independent_hard_stop_et": "11:30",
+    "timezone": "America/New_York",
+    "both_enabled": true,
+    "next_scheduled_start_local": "2026-10-12T10:00:00-04:00"
+  },
+  "remaining_blockers": []
 }
