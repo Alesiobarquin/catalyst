@@ -224,7 +224,7 @@ async def test_biotech_locked_pdufa_calendar_is_not_a_successful_empty_sweep(mon
     page.goto.return_value = SimpleNamespace(status=200)
     page.content.return_value = "PDUFA calendar"
     page.query_selector_all.return_value = [table]
-    with pytest.raises(ProviderError, match="catalyst details require a provider subscription"):
+    with pytest.raises(ProviderError, match="catalyst details require provider account access"):
         await scrape_biopharm(page)
 
 

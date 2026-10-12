@@ -16,7 +16,7 @@ _ERRORS = {
     "table_schema": "expected data table columns are unavailable",
     "response_schema": "unexpected response format",
     "missing_configuration": "required API credentials are unavailable",
-    "subscription_required": "catalyst details require a provider subscription",
+    "subscription_required": "catalyst details require provider account access",
     "deadline": "source lookup exceeded the scan deadline",
     "source_unavailable": "source data is unavailable",
 }
