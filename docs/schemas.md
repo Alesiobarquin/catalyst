@@ -4,10 +4,10 @@ This document defines the schemas used across the Catalyst ecosystem. They are d
 
 ## 1. Topic: `raw-events`
 **Producer:** Python Hunters
-**Consumer:** Gatekeeper / Gemini Service
+**Consumer:** Gatekeeper (Gemini receives normalized `triage-priority` payloads)
 
 ### Base Event Standard
-All Hunters **MUST** output signals wrapped in this base structure. The `liquidity_metrics` are critical for the **Gatekeeper** to apply hard-filter triage (e.g., dropping low-volume or low-momentum tickers before they rack up Gemini API costs). The `signal_data` object holds Hunter-specific context for **Gemini** to analyze the narrative.
+This is Gatekeeper's canonical normalized event structure. Current hunters also emit flat provider-specific payloads; `normalize_event()` and source coercers translate those fields into this structure before filtering. The `liquidity_metrics` supply hard-filter inputs and `signal_data` retains source context for the later triage payload. Insider currently omits `timestamp_utc`, so normalization supplies UTC receipt time. The optional Finviz collector retains a legacy naive timestamp; the public Yahoo collector supplies UTC collection time and separate quote/short-interest dates. Confluence uses Gatekeeper receipt times, not original event dates.
 
 ```json
 {

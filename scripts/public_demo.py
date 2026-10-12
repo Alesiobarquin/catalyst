@@ -4,6 +4,7 @@ import argparse
 import json
 import secrets
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -12,6 +13,8 @@ from dotenv import dotenv_values
 ROOT = Path(__file__).resolve().parent.parent
 STACK = "CatalystPublicDemoStack"
 PARAMETER = "/catalyst/public-demo/runtime"
+BIOPHARM_SESSION_KEY = "secrets/biopharm-storage-state.json"
+sys.path.insert(0, str(ROOT))
 
 
 def command(args: list[str], missing_ok: bool = False) -> str | None:
@@ -30,6 +33,74 @@ def outputs() -> dict[str, str]:
         )
     )["Stacks"][0]
     return {entry["OutputKey"]: entry["OutputValue"] for entry in stack["Outputs"]}
+
+
+def store_runtime(runtime: dict) -> None:
+    with tempfile.TemporaryDirectory(prefix="catalyst-secrets-") as directory:
+        path = Path(directory) / "parameter.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "Name": PARAMETER,
+                    "Type": "SecureString",
+                    "Value": json.dumps(runtime),
+                    "Overwrite": True,
+                }
+            )
+        )
+        path.chmod(0o600)
+        command(["aws", "ssm", "put-parameter", "--cli-input-json", f"file://{path}"])
+
+
+def biopharm_session(path: Path | None, clear: bool = False) -> None:
+    from hunters.common.biopharm_auth import load_biopharm_storage_state
+
+    old = command(
+        [
+            "aws",
+            "ssm",
+            "get-parameter",
+            "--name",
+            PARAMETER,
+            "--with-decryption",
+            "--query",
+            "Parameter.Value",
+            "--output",
+            "text",
+        ]
+    )
+    runtime = json.loads(old)
+    if clear:
+        runtime.pop("BIOPHARM_STORAGE_STATE_KEY", None)
+        runtime.pop("BIOPHARM_STORAGE_STATE_FILE", None)
+        store_runtime(runtime)
+        data = outputs()
+        command(["aws", "s3", "rm", f"s3://{data['ArtifactBucket']}/{BIOPHARM_SESSION_KEY}"])
+        print("BioPharm session disabled; prior private object versions expire under retention.")
+        return
+    if path is None:
+        raise ValueError("--session-file is required")
+    state = load_biopharm_storage_state(path)
+    data = outputs()
+    with tempfile.TemporaryDirectory(prefix="catalyst-biopharm-") as directory:
+        session = Path(directory) / "session.json"
+        session.write_text(json.dumps(state))
+        session.chmod(0o600)
+        command(
+            [
+                "aws",
+                "s3",
+                "cp",
+                str(session),
+                f"s3://{data['ArtifactBucket']}/{BIOPHARM_SESSION_KEY}",
+                "--sse",
+                "AES256",
+                "--only-show-errors",
+            ]
+        )
+    runtime["BIOPHARM_STORAGE_STATE_KEY"] = BIOPHARM_SESSION_KEY
+    store_runtime(runtime)
+    print("Provider-only session stored privately; it will be used on the next EC2 run.")
 
 
 def configure(environment: Path, github: bool = True) -> None:
@@ -92,20 +163,9 @@ def configure(environment: Path, github: bool = True) -> None:
         "RESOLVER_POLL_INTERVAL_SECONDS": "60",
         "MAX_HOLDING_DAYS": "14",
     }
-    with tempfile.TemporaryDirectory(prefix="catalyst-secrets-") as directory:
-        path = Path(directory) / "parameter.json"
-        path.write_text(
-            json.dumps(
-                {
-                    "Name": PARAMETER,
-                    "Type": "SecureString",
-                    "Value": json.dumps(runtime),
-                    "Overwrite": True,
-                }
-            )
-        )
-        path.chmod(0o600)
-        command(["aws", "ssm", "put-parameter", "--cli-input-json", f"file://{path}"])
+    if previous.get("BIOPHARM_STORAGE_STATE_KEY"):
+        runtime["BIOPHARM_STORAGE_STATE_KEY"] = previous["BIOPHARM_STORAGE_STATE_KEY"]
+    store_runtime(runtime)
     print("Runtime configuration stored securely; database password preserved.")
     if github:
         data = outputs()
@@ -136,12 +196,19 @@ def configure(environment: Path, github: bool = True) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=["configure", "status", "run"])
+    parser.add_argument(
+        "operation",
+        choices=["configure", "status", "run", "biopharm-session", "clear-biopharm-session"],
+    )
     parser.add_argument("--env-file", type=Path, default=ROOT / ".env")
+    parser.add_argument("--session-file", type=Path)
     parser.add_argument("--no-github", action="store_true")
     args = parser.parse_args()
     if args.operation == "configure":
         configure(args.env_file, not args.no_github)
+        return
+    if args.operation in {"biopharm-session", "clear-biopharm-session"}:
+        biopharm_session(args.session_file, args.operation == "clear-biopharm-session")
         return
     data = outputs()
     instance = data["WorkerInstanceId"]

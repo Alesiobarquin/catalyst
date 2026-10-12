@@ -44,6 +44,8 @@ out/
 .build/
 # Docker data
 data/
+secrets/
+*storage-state*.json
 
 .gemini/
 gha-creds-*.json

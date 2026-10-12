@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
+from .common.biopharm_auth import load_biopharm_storage_state
 from .common.config import BIOPHARM_URL, BIOTECH_INTERVAL_SECONDS
 from .common.kafka_client import KafkaClient
 from .common.liquidity_lookup import fetch_liquidity_metrics
@@ -130,7 +131,7 @@ async def scrape_biopharm(page):
         if columns is None:
             raise ProviderError("biopharm", "table_schema")
 
-        locked_count = 0
+        unavailable_count = 0
         for row in rows:
             cells = await row.query_selector_all("td")
 
@@ -146,8 +147,13 @@ async def scrape_biopharm(page):
                     else "PDUFA"
                 )
                 catalyst_date = (await cells[columns["date"]].inner_text()).strip()
-                if _locked_catalyst(drug) or _locked_catalyst(catalyst_date):
-                    locked_count += 1
+                if (
+                    not drug
+                    or not catalyst_date
+                    or _locked_catalyst(drug)
+                    or _locked_catalyst(catalyst_date)
+                ):
+                    unavailable_count += 1
                     continue
 
                 # Filter for high-impact phases
@@ -166,7 +172,7 @@ async def scrape_biopharm(page):
                             "source_hunter": "biotech",
                         }
                     )
-        if locked_count and not catalysts:
+        if unavailable_count and not catalysts:
             raise ProviderError("biopharm", "subscription_required")
 
     except Exception as e:
@@ -180,7 +186,9 @@ async def scrape_biopharm(page):
 
 async def _one_sweep(kafka: KafkaClient) -> None:
     """Single Playwright scrape + Kafka publish."""
-    browser_context = BrowserContext()
+    state_file = os.getenv("BIOPHARM_STORAGE_STATE_FILE", "").strip()
+    storage_state = load_biopharm_storage_state(state_file) if state_file else None
+    browser_context = BrowserContext(storage_state=storage_state)
     async with browser_context as browser:
         page = await browser.new_page()
         found_catalysts = await scrape_biopharm(page)

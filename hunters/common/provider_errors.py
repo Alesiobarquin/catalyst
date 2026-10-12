@@ -19,6 +19,7 @@ _ERRORS = {
     "subscription_required": "catalyst details require provider account access",
     "deadline": "source lookup exceeded the scan deadline",
     "source_unavailable": "source data is unavailable",
+    "invalid_session": "provided account session is unavailable or invalid",
 }
 _CHALLENGE_MARKERS = (
     "in order to continue, we need to verify that you're not a robot",

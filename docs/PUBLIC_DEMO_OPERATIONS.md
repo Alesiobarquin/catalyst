@@ -67,6 +67,27 @@ Repository defaults select the new public stack with enabled daily schedules. Ex
 
 Worker bootstrap is declarative in `infra/worker_bootstrap.sh`; existing instances do not automatically rerun first-boot user data when that file changes. Runtime scripts inside the versioned worker archive update every boot. Manage the private worker through SSM, not SSH. Its security group has no inbound ports; temporary public IPv4 provides provider/API access without a NAT Gateway or retained Elastic IP.
 
+The follow-up canonical launcher is `deploy/run-worker.sh`, embedded in first-boot user data and installed by each batch for the next boot. It requires a fresh release pointer, validates immutable release/archive shape, prepares a clean staging directory and preserves durable reports/exports and Docker named volumes. Startup attempts publish running/failed status with a fixed stage and archive private `logs/bootstrap-*` output. The follow-up code is prepared; its cloud release and EC2 acceptance remain pending.
+
+## Optional Biotech account setup
+
+BioPharmCatalyst's [login](https://www.biopharmcatalyst.com/account/login) is user-owned. Its [signup page](https://www.biopharmcatalyst.com/sign-up) offers “Create a free account” under “Just exploring?”. Free access is limited; confirm actual Drug and PDUFA Date values before assuming the account supplies this feed. No account or paid trial is created by these scripts.
+
+```bash
+# Open a fresh browser for manual login; save only provider state outside Git.
+# After signing in, enter save in the terminal. Readable calendar fields are checked.
+.venv/bin/python scripts/capture_biopharm_session.py
+
+# Store the validated state privately and enable it for the next EC2 run.
+.venv/bin/python scripts/public_demo.py biopharm-session \
+  --session-file "$HOME/.config/catalyst/biopharm-storage-state.json"
+
+# Disable account state and delete the current private session object.
+.venv/bin/python scripts/public_demo.py clear-biopharm-session
+```
+
+The state is at most 64 KiB, accepts only provider cookie domains and HTTPS origins, and is never printed. The artifact object uses private S3 encryption and seven-day noncurrent-version retention. Runtime SSM contains only its fixed key selector. The worker downloads a 0600 file to `/opt/catalyst/secrets`, read-only in the hunters container; only Biotech loads it. Missing/invalid state and locked or empty fields remain explicit failures, with no stale session fallback. A failed optional download does not prevent the other hunters from collecting. Session renewal requires a fresh user login; logout at the provider can revoke the stored session. Authenticated source acceptance is pending until an entitled account is supplied.
+
 ## Logs, backups, and recovery
 
 The artifact bucket name is the `ArtifactBucket` stack output. It is private and encrypted. `logs/` contains container output for each run (14-day retention); `backups/latest.dump` is a PostgreSQL custom-format backup uploaded before manifest promotion. S3 versioning retains previous backup versions for seven days. Do not publish those logs or backups; provider errors can include credentials.

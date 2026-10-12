@@ -87,7 +87,7 @@ services:
     mem_limit: 1700m
     shm_size: 256m
     init: true
-    volumes: ["./reports:/reports"]
+    volumes: ["./reports:/reports", "/opt/catalyst/secrets:/run/secrets:ro"]
     profiles: [jobs]
     logging: *logs
   resolver:

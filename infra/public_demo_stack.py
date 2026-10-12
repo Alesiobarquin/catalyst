@@ -164,6 +164,7 @@ class PublicDemoStack(Stack):
             "@@SITE_BUCKET@@": site.bucket_name,
             "@@ARTIFACT_BUCKET@@": artifacts.bucket_name,
             "@@PARAMETER@@": parameter_name,
+            "@@RUN_WORKER@@": (Path(__file__).parent.parent / "deploy/run-worker.sh").read_text(),
         }.items():
             bootstrap = bootstrap.replace(key, value)
         worker = ec2.Instance(

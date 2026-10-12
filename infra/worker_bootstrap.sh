@@ -21,37 +21,7 @@ instance=$(curl -fsS -H "X-aws-ec2-metadata-token: $token" http://169.254.169.25
 aws ec2 stop-instances --instance-ids "$instance" >/dev/null
 STOP
 cat > /opt/catalyst/run-batch.sh <<'RUN'
-#!/bin/bash
-set -euo pipefail
-source /opt/catalyst/environment
-exec 9>/opt/catalyst/run.lock
-flock -n 9 || exit 0
-shutdown -h +80
-umask 077
-cd /opt/catalyst
-for attempt in $(seq 1 40); do
-  aws s3 cp "s3://${ARTIFACT_BUCKET}/release.json" release.json --only-show-errors && break
-  sleep 15
-done
-test -s release.json
-archive=$(python3 -c 'import json;print(json.load(open("release.json"))["archive_key"])')
-aws s3 cp "s3://${ARTIFACT_BUCKET}/${archive}" release.tgz --only-show-errors
-mkdir -p current
-tar -xzf release.tgz -C current
-aws ssm get-parameter --name "$RUNTIME_PARAMETER" --with-decryption --query Parameter.Value --output text > runtime.json
-python3 - <<'PY'
-import json
-from pathlib import Path
-runtime=json.loads(Path('runtime.json').read_text())
-release=json.loads(Path('release.json').read_text())
-runtime.update(PIPELINE_IMAGE=release['pipeline_image'],HUNTERS_IMAGE=release['hunters_image'],ENGINE_IMAGE=release['engine_image'],RELEASE_COMMIT=release['commit'])
-if any('\n' in str(v) or '\r' in str(v) for v in runtime.values()):
-    raise ValueError('Invalid multiline environment value')
-Path('current/deploy/.env').write_text('\n'.join(f'{k}={v}' for k,v in runtime.items())+'\n')
-PY
-registry=$(python3 -c 'import json;print(json.load(open("release.json"))["pipeline_image"].split("/")[0])')
-aws ecr get-login-password | docker login --username AWS --password-stdin "$registry"
-exec bash current/deploy/batch.sh
+@@RUN_WORKER@@
 RUN
 chmod 700 /opt/catalyst/*sh /opt/catalyst/environment
 cat > /etc/systemd/system/catalyst-batch.service <<'UNIT'

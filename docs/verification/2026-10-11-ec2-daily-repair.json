@@ -280,5 +280,159 @@
     "ci": "https://github.com/Alesiobarquin/catalyst/actions/runs/38192940833",
     "codeql": "https://github.com/Alesiobarquin/catalyst/actions/runs/38192940382"
   },
-  "next_scheduled_start_local": "2026-10-12 10:00 America/New_York"
+  "next_scheduled_start_local": "2026-10-12 10:00 America/New_York",
+  "gatekeeper_analysis": {
+    "run_id": "20261012T021037Z",
+    "private_log_key": "logs/20261012T021042Z.log",
+    "method": "Parse allowlisted event-delivery and Gatekeeper outcome fields from the matching private batch log; no raw HTTP requests, URLs, bodies, or credentials are included.",
+    "raw_events": 31,
+    "raw_events_by_source": {
+      "squeeze": 3,
+      "insider": 20,
+      "whale": 8,
+      "biotech": 0,
+      "drifter": 0
+    },
+    "raw_ticker_event_counts_by_source": {
+      "squeeze": {
+        "NVAX": 1,
+        "MMED": 1,
+        "PCRX": 1
+      },
+      "insider": {
+        "ONMD": 5,
+        "REF": 3,
+        "BPRE": 4,
+        "ULS": 1,
+        "IHT": 1,
+        "MAX": 2,
+        "MRVL": 1,
+        "BETA": 3
+      },
+      "whale": {
+        "ABR": 1,
+        "TSLA": 2,
+        "XP": 1,
+        "BP": 1,
+        "AS": 1,
+        "NVDA": 1,
+        "MARA": 1
+      },
+      "biotech": {},
+      "drifter": {}
+    },
+    "buffered_events": 22,
+    "buffered_events_by_source": {
+      "squeeze": 3,
+      "insider": 19
+    },
+    "buffered_ticker_event_counts_by_source": {
+      "squeeze": {
+        "NVAX": 1,
+        "MMED": 1,
+        "PCRX": 1
+      },
+      "insider": {
+        "ONMD": 5,
+        "REF": 3,
+        "BPRE": 4,
+        "ULS": 1,
+        "MAX": 2,
+        "MRVL": 1,
+        "BETA": 3
+      }
+    },
+    "dropped_events": 9,
+    "drop_categories": {
+      "price": 1,
+      "relative_volume": 8
+    },
+    "drops": [
+      {
+        "ticker": "IHT",
+        "metric": "price",
+        "observed_value": 1.1100000143051147,
+        "reason": "below minimum",
+        "threshold": 2.0
+      },
+      {
+        "ticker": "ABR",
+        "metric": "relative_volume",
+        "observed_value": 1.4707,
+        "reason": "below minimum",
+        "threshold": 1.5
+      },
+      {
+        "ticker": "TSLA",
+        "metric": "relative_volume",
+        "observed_value": 1.1942,
+        "reason": "below minimum",
+        "threshold": 1.5
+      },
+      {
+        "ticker": "XP",
+        "metric": "relative_volume",
+        "observed_value": 0.505,
+        "reason": "below minimum",
+        "threshold": 1.5
+      },
+      {
+        "ticker": "BP",
+        "metric": "relative_volume",
+        "observed_value": 0.9103,
+        "reason": "below minimum",
+        "threshold": 1.5
+      },
+      {
+        "ticker": "AS",
+        "metric": "relative_volume",
+        "observed_value": 0.8379,
+        "reason": "below minimum",
+        "threshold": 1.5
+      },
+      {
+        "ticker": "TSLA",
+        "metric": "relative_volume",
+        "observed_value": 1.1942,
+        "reason": "below minimum",
+        "threshold": 1.5
+      },
+      {
+        "ticker": "NVDA",
+        "metric": "relative_volume",
+        "observed_value": 0.822,
+        "reason": "below minimum",
+        "threshold": 1.5
+      },
+      {
+        "ticker": "MARA",
+        "metric": "relative_volume",
+        "observed_value": 0.9645,
+        "reason": "below minimum",
+        "threshold": 1.5
+      }
+    ],
+    "accounted_for": true,
+    "observed_unknown_schema_errors": 0,
+    "observed_processing_errors": 0,
+    "observed_commit_errors": 0,
+    "observed_deduplicated_events": 0,
+    "forwarded_triage_events": 0,
+    "raw_unique_tickers": 18,
+    "raw_distinct_source_overlaps": {},
+    "raw_same_source_repeat_events": 13,
+    "maximum_observed_confluence": 1,
+    "required_distinct_sources": 2,
+    "rolling_window_seconds": 300,
+    "observed_gatekeeper_outcome_window_utc": {
+      "first": "2026-10-12T02:10:08Z",
+      "last": "2026-10-12T02:10:22Z",
+      "elapsed_seconds": 12
+    },
+    "insider_transaction_codes": {
+      "S": 13,
+      "P": 7
+    },
+    "conclusion": "All 31 raw events were processed. None of the 18 raw tickers appeared in more than one hunter source, even before liquidity filtering. All 22 buffered events had confluence 1. The 9 drops were 1 insider price below $2 and 8 whale relative-volume values below 1.5. Zero triage is the expected strict-confluence outcome; window expiry and pipeline errors do not explain it."
+  }
 }

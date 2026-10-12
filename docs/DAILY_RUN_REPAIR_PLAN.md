@@ -47,3 +47,10 @@ Encrypted SSM runtime version 4 selects `SQUEEZE_PROVIDER=yahoo`; existing crede
 ## Remaining provider access
 
 BioPharmCatalyst drug/date details require account access; a payment requirement was not verified. No compatible free drop-in source was established: [openFDA Drugs@FDA](https://open.fda.gov/apis/drug/drugsfda/) describes approved products rather than upcoming PDUFA events, and [ClinicalTrials.gov fields](https://clinicaltrials.gov/data-about-studies/csv-download) supply sponsor names and study completion dates rather than stock tickers and scheduled readout announcements. Substituting those dates would change the signal. The repaired collector reports the access requirement explicitly and emits no locked records.
+
+## Follow-up work
+
+- The archived final-run logs explain zero triage: 22 events buffered at one source and nine failed hard filters (one price, eight RVOL). All 31 have recorded outcomes; 18 unique tickers had no cross-hunter overlap. The 20 SEC events comprise seven purchases and 13 sales. Preserve the two-source requirement.
+- Determine which authorized BioPharmCatalyst account access unlocks Drug/PDUFA Date. Prepare opt-in private browser-session support if the site's login mechanism supports it. Account creation, verification or paid access remains a user-owned step.
+- Repair startup diagnostic coverage and release preparation: publish bootstrap attempt status, retain private failure logs, require a successful fresh release-pointer download and extract each release into a clean staging directory. Update the existing EC2 wrapper explicitly and verify on AWS; changed first-boot user data alone is insufficient.
+- Keep the healthy weekday schedules and shutdown safeguards. No missed-start evidence justifies a schedule redesign.

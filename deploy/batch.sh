@@ -1,13 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 umask 077
-cd /opt/catalyst/current/deploy
-mkdir -p reports exports
-chmod 700 reports exports
-for job in baseline hunters export; do
-  : > "reports/${job}.log"
-done
-compose=(docker compose -f compose.batch.yml)
+compose=(docker compose -f /opt/catalyst/current/deploy/compose.batch.yml)
 publish_status() {
   python3 - "$1" <<'PY_STATUS'
 import json,sys
@@ -48,6 +42,15 @@ PY_PRUNE
   exit "$result"
 }
 trap cleanup EXIT
+cd /opt/catalyst/current/deploy
+# Refresh the installed launcher after handoff; the next boot uses this release's
+# canonical wrapper rather than relying on first-boot user data to run again.
+install -m 700 run-worker.sh /opt/catalyst/run-batch.sh
+mkdir -p reports exports /opt/catalyst/secrets
+chmod 700 reports exports /opt/catalyst/secrets
+for job in baseline hunters export; do
+  : > "reports/${job}.log"
+done
 publish_status running
 "${compose[@]}" pull
 "${compose[@]}" up -d --wait --wait-timeout 240 zookeeper kafka redis timescaledb engine api gatekeeper ai-layer persistence
