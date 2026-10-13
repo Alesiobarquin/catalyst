@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, type RefObject } from "react";
+import type { RefObject } from "react";
 import { ChevronDown } from "lucide-react";
 import { ScanFlow } from "./ScanFlow";
+import { RegimeReadout } from "./RegimeReadout";
 import styles from "./ScanFlow.module.css";
 import type { PublicSnapshot, RunStatus } from "@/lib/snapshot";
 
@@ -18,7 +19,7 @@ interface SnapshotStatusProps {
 const PROVIDERS: Record<string, string> = {
   squeeze: "Short interest & volume",
   biotech: "Clinical events",
-  insider: "Insider purchases",
+  insider: "Insider purchases & sales",
   whale: "Options activity",
   drifter: "Earnings surprises",
 };
@@ -34,11 +35,6 @@ const PROVIDER_NAMES: Record<string, string> = {
 };
 
 export function SnapshotStatus({ data, attempt, error, now, reportRef, prominent = false }: SnapshotStatusProps) {
-  useEffect(() => {
-    if (prominent && data.orders.length === 0 && window.matchMedia?.("(min-width: 960px)").matches && reportRef.current) {
-      reportRef.current.open = true;
-    }
-  }, [prominent, reportRef, data.orders.length]);
   const waiting = data.status === "awaiting_first_run";
   const stale = now - Date.parse(data.as_of) > 96 * 3_600_000;
   const completed = data.hunters.filter((hunter) => hunter.success).length;
@@ -71,13 +67,13 @@ export function SnapshotStatus({ data, attempt, error, now, reportRef, prominent
       {prominent && !waiting && <ScanFlow key={data.run_id} counts={data.event_counts} />}
       <details ref={reportRef} className="snapshot-details">
         <summary>
-          <span>Scan report <span className="scan-report-count">· {waiting ? "Awaiting first scan" : `${data.event_counts["raw-events"] ?? "—"} raw events · ${completed}/${data.hunters.length} hunters completed`}</span></span>
+          <span>Scan report <span className="scan-report-count">· {waiting ? "Awaiting first scan" : `${data.event_counts["raw-events"] ?? "—"} events · ${completed}/${data.hunters.length} feeds completed`}</span></span>
           <ChevronDown size={16} aria-hidden="true" />
         </summary>
         <div className="scan-report-body">
           {!waiting && <>
             <div className="hunter-ledger" aria-label="Hunter sweep outcomes">
-              <div className="hunter-ledger-heading" aria-hidden="true"><span>Source / hunter</span><span>Outcome</span><span>Events</span><span>Elapsed</span></div>
+              <div className="hunter-ledger-heading" aria-hidden="true"><span>Collector / source</span><span>Outcome</span><span>Events</span><span>Elapsed</span></div>
               <ul>
                 {data.hunters.map((hunter) => <li key={hunter.hunter} className={styles.hunterRow}>
                   <div className="hunter-identity"><strong><span className={styles.feedCode} aria-hidden="true">{hunter.hunter.slice(0, 3).toUpperCase()}</span>{hunter.hunter}</strong><span>{PROVIDERS[hunter.hunter.toLowerCase()] ?? "Market event source"}{hunter.provider && PROVIDER_NAMES[hunter.provider] ? ` · ${PROVIDER_NAMES[hunter.provider]}` : ""}</span></div>
@@ -92,7 +88,7 @@ export function SnapshotStatus({ data, attempt, error, now, reportRef, prominent
             </div>
             <p className={styles.elapsedNote}>Elapsed bars compare sweep durations within this run; they do not show progress.</p>
             {data.hunters.some((hunter) => hunter.provider === "pdufa") && <p className="scan-summary-note">Biotech catalyst data from <a className="text-link underline" href="https://www.pdufa.bio">pdufa.bio</a>.</p>}
-            <p className="scan-regime-note"><span className="record-label">Market regime</span>{data.regime?.fresh ? `Fresh data · VIX ${data.regime.vix?.toFixed(2) ?? "unavailable"}` : "Regime data unavailable; new recommendations are halted."}</p>
+            <RegimeReadout regime={data.regime} />
           </>}
           <p className="scan-scope-note">Runs once each weekday at 10:00 AM New York time, then the worker stops. Prices are captured at collection. Modeled outcomes may miss intraday stop or target crossings. Brokerage execution is disabled.</p>
           {!waiting && <p className="scan-report-provenance"><span>Run {data.run_id}</span><span>Commit {data.commit.slice(0, 7)}</span><span>Latest 200 recommendations and signals retained</span></p>}

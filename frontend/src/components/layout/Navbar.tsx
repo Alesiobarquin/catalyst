@@ -40,9 +40,7 @@ export function Navbar() {
         <div className="terminal-header-context" aria-hidden="true"><span>CAT</span><span>/</span><strong>{currentView?.code ?? "SYS"}</strong><span className="terminal-header-market">US EQUITIES</span></div>
 
         <nav className="site-nav" aria-label="Main navigation">
-          <div className="nav-workspace-id"><span className="terminal-mode-dot" aria-hidden="true" /><span>{PUBLIC_DEMO ? "SNAPSHOT TERMINAL" : "LOCAL TERMINAL"}</span></div>
-          <p className="nav-section-label">Workspace / Functions</p>
-          {NAV_LINKS.filter(({ href }) => !PUBLIC_DEMO || href !== "/settings").map(({ href, label, code, icon: Icon }, index) => {
+          {NAV_LINKS.filter(({ href }) => !PUBLIC_DEMO || href !== "/settings").map(({ href, label, icon: Icon }, index) => {
             const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (
               <Link
@@ -55,15 +53,17 @@ export function Navbar() {
               >
                 <Icon className="nav-link-icon" size={16} aria-hidden="true" />
                 <span>{label}</span>
-                <span className="nav-link-code" aria-hidden="true">{code}</span>
-                <span className="nav-link-number" aria-hidden="true">{index + 1}</span>
               </Link>
             );
           })}
           <div className="workspace-context">
             <span className="workspace-context-label">Session parameters</span>
             <p>{PUBLIC_DEMO ? "Weekdays, 10:00 ET" : "Local pipeline"}</p>
-            <dl className="workspace-session"><div><dt>Universe</dt><dd>US equities</dd></div><div><dt>Delivery</dt><dd>{PUBLIC_DEMO ? "Daily snapshot" : "Connected API"}</dd></div><div><dt>Execution</dt><dd>{PUBLIC_DEMO ? "Disabled" : "Local config"}</dd></div></dl>
+            <dl className="workspace-session">
+              <div><dt>Universe</dt><dd>US equities</dd></div>
+              <div><dt>Delivery</dt><dd>{PUBLIC_DEMO ? "Daily snapshot" : "Connected API"}</dd></div>
+              <div><dt>Execution</dt><dd>{PUBLIC_DEMO ? "Disabled" : "Local config"}</dd></div>
+            </dl>
             <a href="https://github.com/Alesiobarquin/catalyst" target="_blank" rel="noreferrer">Inspect the source <ArrowUpRight size={13} aria-hidden="true" /></a>
             <p className="workspace-shortcut"><kbd>⌘</kbd><kbd>K</kbd> command menu</p>
           </div>
