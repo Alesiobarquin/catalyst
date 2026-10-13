@@ -9,7 +9,6 @@
 .value,.unknown { margin: 15px 0 10px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: clamp(28px,3vw,40px); letter-spacing: -.05em; line-height: 1; }
 .value { color: var(--color-text-primary); animation: reveal 450ms ease both; animation-delay: var(--stage-delay); }
 .unknown { color: var(--color-text-muted); }
-.topic { font-family: var(--font-mono); font-size: 10px; color: var(--color-text-secondary); overflow-wrap: anywhere; }
 .stage p { font-size: 11px; margin: 6px 0 0; color: var(--color-text-muted); }
 .connector { position: absolute; display: flex; align-items: center; right: -12px; top: 49%; width: 24px; height: 20px; color: var(--color-link); background: var(--color-bg-card); z-index: 1; font-family: var(--font-mono); }
 .connector > span { width: 16px; height: 1px; background: var(--color-border); overflow: hidden; position: relative; }
@@ -17,7 +16,7 @@
 .note { margin: 0; padding: 10px 14px; border-top: 1px solid var(--color-border-subtle); font-size: 11px; line-height: 1.6; color: var(--color-text-muted); }
 @keyframes reveal { from { opacity: .35; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes sweep { to { transform: translateX(100%); } }
-@media(max-width:600px) { .stages { grid-template-columns: repeat(2,minmax(0,1fr)); } .stage { padding: 16px 12px; } .stage:nth-child(2) { border-right: 0; } .stage:nth-child(-n+2) { border-bottom: 1px solid var(--color-border-subtle); } .stage:nth-child(2) .connector { display: none; } .topic { font-size: 9px; } .value,.unknown { font-size: 32px; } }
+@media(max-width:600px) { .stages { grid-template-columns: repeat(2,minmax(0,1fr)); } .stage { padding: 16px 12px; } .stage:nth-child(2) { border-right: 0; } .stage:nth-child(-n+2) { border-bottom: 1px solid var(--color-border-subtle); } .stage:nth-child(2) .connector { display: none; } .value,.unknown { font-size: 32px; } }
 @media(prefers-reduced-motion:reduce) { .value,.connector > span::after { animation: none; } }
 .feedCode { display: inline-block; color: var(--color-link); font-size: 9px; font-family: var(--font-mono); font-weight: 400; margin-right: 9px; letter-spacing: .06em; }
 .hunterRow { position: relative; }

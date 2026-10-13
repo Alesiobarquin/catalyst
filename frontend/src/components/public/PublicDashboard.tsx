@@ -7,7 +7,6 @@ import { loadSnapshot, loadRunStatus, type RunStatus, filterRows, paginate, down
 import { StatsBar } from "@/components/dashboard/StatsBar";
 import { FilterBar } from "@/components/dashboard/FilterBar";
 import { TradeList } from "@/components/dashboard/TradeList";
-import { MarketOverviewBar } from "@/components/dashboard/MarketOverviewBar";
 import { MarketTape } from "@/components/dashboard/MarketTape";
 import { SignalTable } from "@/components/signals/SignalTable";
 import { SignalFilterBar } from "@/components/signals/SignalFilterBar";
@@ -16,11 +15,10 @@ import { StrategyBreakdown, ConvictionHistogram, SignalTimeline, PerformanceSumm
 import { KellySimulator } from "@/components/analytics/KellySimulator";
 import { SnapshotStatus } from "./SnapshotStatus";
 import { EmptyResults } from "./EmptyResults";
-import { RegimeReadout } from "./RegimeReadout";
 
 type View = "orders" | "signals" | "analytics";
 const PAGE_COPY = {
-  orders: { title: "Daily research brief", description: "Five hunters collect market events. Catalyst checks source agreement, grounds the analysis, and sizes recommendations for risk." },
+  orders: { title: "Daily research brief", description: "Five collectors scan market feeds. Catalyst checks whether sources agree, validates the evidence, and sizes research recommendations. This demo publishes one scan each weekday; brokerage execution is disabled." },
   signals: { title: "Signal archive", description: "Inspect the rationale, sources, and risks of catalysts that passed validation." },
   analytics: { title: "Modeled outcomes", description: "Recommendation history and outcomes measured from scheduled price checks." },
 };
@@ -59,8 +57,8 @@ function Content({ view }: { view: View }) {
     <div className="terminal-title-copy"><p className="page-eyebrow">{view === "orders" ? "Research / Daily snapshot" : view === "signals" ? "Research / Validated catalysts" : "Research / Measurement & sizing"}</p>
       <h1>{copy.title}</h1>
       <p className="page-description">{copy.description}</p>
+      {view === "orders" && <Link className="inline-action overview-method-link" href="/architecture#pipeline">How the pipeline works <span aria-hidden="true">→</span></Link>}
     </div>
-    <div className="terminal-function-stamp" aria-hidden="true"><span>CATALYST</span><strong>{view === "orders" ? "OVW" : view === "signals" ? "SIG" : "P&L"}<span>↗</span></strong><span>{view === "orders" ? "01 / RESEARCH" : view === "signals" ? "02 / ARCHIVE" : "03 / OUTCOMES"}</span></div>
   </header>;
 
   if (!data) return <>{header}<div className="empty-results" aria-busy={!error}>
@@ -94,7 +92,7 @@ function Content({ view }: { view: View }) {
   return <>
     <MarketTape quotes={data.benchmarks} asOf={data.benchmarks_as_of ?? data.as_of} />
     {header}
-    <div className={view === "orders" ? "research-workspace" : "research-workspace research-workspace--full"}>
+    <div className="research-workspace">
     <div className="research-primary">
     <SnapshotStatus data={data} attempt={attempt} error={error} now={now} reportRef={reportRef} prominent={view === "orders"} />
     {view === "orders" && <>
@@ -107,12 +105,11 @@ function Content({ view }: { view: View }) {
           {rows.length > 0 && <button type="button" className="button-secondary" onClick={() => downloadCsv(rows, "catalyst-recommendations.csv")}>Export CSV</button>}
         </div>
       </>}
-      {rows.length === 0 ? <EmptyResults title={hasOrderFilters ? "No recommendations match current filters" : "No recommendations in this snapshot"} onViewReport={viewReport} filtered={hasOrderFilters}>
+      {rows.length === 0 ? <EmptyResults title={hasOrderFilters ? "No recommendations match current filters" : "No recommendations in this snapshot"} onViewReport={viewReport} filtered={hasOrderFilters} showMethodLink={false}>
         {hasOrderFilters ? "Try another ticker, strategy, or date range, or clear the filters to see all published recommendations." : emptyExplanation}
       </EmptyResults> : <TradeList orders={ordersPage.items} hasActiveFilters={hasOrderFilters} />}
       <Pagination page={ordersPage.page} total={rows.length} perPage={15} basePath="/" query={query} />
       </section>
-      <MarketOverviewBar key={data.run_id} initialQuotes={data.benchmarks} asOf={data.benchmarks_as_of ?? data.as_of} />
     </>}
     {view === "signals" && <>
       {(data.signals.length > 0 || hasSignalFilters) && <>
@@ -140,19 +137,6 @@ function Content({ view }: { view: View }) {
       <KellySimulator />
     </>}
     </div>
-    {view === "orders" && <aside className="research-context" aria-label="Research methodology">
-      <div className="terminal-panel-title"><span>POL / 01</span><p className="record-label">Acceptance rules</p><span aria-hidden="true">↗</span></div>
-      <h2>What makes it through?</h2>
-      <dl className="terminal-parameter-readout" aria-label="Public screening parameters"><div><dt>Source minimum</dt><dd>02 <span>feeds</span></dd></div><div><dt>Confluence window</dt><dd>05:00 <span>min:sec</span></dd></div><div><dt>Conviction floor</dt><dd>50 <span>/ 100</span></dd></div><div><dt>Allocation cap</dt><dd>25<span>% / rec.</span></dd></div></dl>
-      <ol className="acceptance-rules">
-        <li><span aria-hidden="true">01</span><div><h3>Independent sources</h3><p>At least two hunters must agree on a ticker within five minutes. Price and liquidity checks also apply.</p></div></li>
-        <li><span aria-hidden="true">02</span><div><h3>Grounded analysis</h3><p>Gemini uses Google Search. A signal needs grounding and a conviction score of at least 50/100.</p></div></li>
-        <li><span aria-hidden="true">03</span><div><h3>Risk & market regime</h3><p>Half-Kelly sizing is capped by allocation and SPY/VIX conditions. Missing or stale regime data halts sizing.</p></div></li>
-      </ol>
-      <Link className="inline-action" href="/architecture">How it works <span aria-hidden="true">→</span></Link>
-      <RegimeReadout regime={data.regime} />
-      <div className="research-boundary"><p className="record-label">About this project</p><p>This is an engineering demonstration of a market-signal pipeline. The public worker publishes one bounded scan each weekday; brokerage execution is disabled.</p><a className="inline-action" href="https://github.com/Alesiobarquin/catalyst" target="_blank" rel="noreferrer">Code, tests & runbooks <span aria-hidden="true">↗</span></a></div>
-    </aside>}
     </div>
   </>;
 }

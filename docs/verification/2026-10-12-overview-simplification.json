@@ -1,0 +1,379 @@
+{
+  "verified_at": "2026-10-12T20:06:41.841Z",
+  "environment": "Local production static export in a headless scratch Chromium browser",
+  "published_scan": "20261012T140216Z",
+  "public_data_commit": "0073de8ac6f7047272f097aac2206111ca8a65b8",
+  "fixture_handling": "Browser request interception only; fixtures are not written to the static export or public dataset.",
+  "validation": {
+    "frontend_tests": 191,
+    "test_files": 33,
+    "lint": "passed",
+    "typecheck": "passed",
+    "ordinary_build": "passed",
+    "public_static_build": "passed"
+  },
+  "cases": [
+    {
+      "dataset": "published_scan",
+      "route": "/",
+      "width": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/signals/",
+      "width": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/analytics/",
+      "width": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/architecture/",
+      "width": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/",
+      "width": 1440,
+      "theme": "dark",
+      "document_width": 1440,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/signals/",
+      "width": 1440,
+      "theme": "dark",
+      "document_width": 1440,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/analytics/",
+      "width": 1440,
+      "theme": "dark",
+      "document_width": 1440,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/architecture/",
+      "width": 1440,
+      "theme": "dark",
+      "document_width": 1440,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/",
+      "width": 390,
+      "theme": "light",
+      "document_width": 390,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/signals/",
+      "width": 390,
+      "theme": "light",
+      "document_width": 390,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/analytics/",
+      "width": 390,
+      "theme": "light",
+      "document_width": 390,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/architecture/",
+      "width": 390,
+      "theme": "light",
+      "document_width": 390,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/",
+      "width": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/signals/",
+      "width": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/analytics/",
+      "width": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/architecture/",
+      "width": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/",
+      "width": 320,
+      "theme": "light",
+      "document_width": 320,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/signals/",
+      "width": 320,
+      "theme": "light",
+      "document_width": 320,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/analytics/",
+      "width": 320,
+      "theme": "light",
+      "document_width": 320,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/architecture/",
+      "width": 320,
+      "theme": "light",
+      "document_width": 320,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/",
+      "width": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/signals/",
+      "width": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/analytics/",
+      "width": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/architecture/",
+      "width": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "page_errors": []
+    },
+    {
+      "dataset": "published_scan",
+      "route": "/",
+      "width": 1906,
+      "theme": "light",
+      "document_width": 1906
+    },
+    {
+      "dataset": "controlled_ui_fixture",
+      "route": "/",
+      "width": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "page_errors": []
+    },
+    {
+      "dataset": "controlled_ui_fixture",
+      "route": "/signals/",
+      "width": 1440,
+      "theme": "light",
+      "document_width": 1440,
+      "page_errors": []
+    },
+    {
+      "dataset": "controlled_ui_fixture",
+      "route": "/",
+      "width": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "page_errors": []
+    },
+    {
+      "dataset": "controlled_ui_fixture",
+      "route": "/signals/",
+      "width": 390,
+      "theme": "dark",
+      "document_width": 390,
+      "page_errors": []
+    },
+    {
+      "dataset": "controlled_ui_fixture",
+      "route": "/",
+      "width": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "page_errors": []
+    },
+    {
+      "dataset": "controlled_ui_fixture",
+      "route": "/signals/",
+      "width": 320,
+      "theme": "dark",
+      "document_width": 320,
+      "page_errors": []
+    }
+  ],
+  "interactions": [
+    {
+      "width": 1440,
+      "theme": "light",
+      "behavior": "Report starts collapsed; report action opens and focuses; regime/source details retained; Enter closes"
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "behavior": "Report starts collapsed; report action opens and focuses; regime/source details retained; Enter closes"
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "behavior": "Report starts collapsed; report action opens and focuses; regime/source details retained; Enter closes"
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "behavior": "Report starts collapsed; report action opens and focuses; regime/source details retained; Enter closes"
+    },
+    {
+      "width": 320,
+      "theme": "light",
+      "behavior": "Report starts collapsed; report action opens and focuses; regime/source details retained; Enter closes"
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "behavior": "Report starts collapsed; report action opens and focuses; regime/source details retained; Enter closes"
+    },
+    {
+      "behavior": "Overview methodology link navigates to the actual pipeline section"
+    }
+  ],
+  "screenshots": [
+    "docs/verification/screenshots/overview-simplification/overview-1440-light.png",
+    "docs/verification/screenshots/overview-simplification/scan-report-1440-light.png",
+    "docs/verification/screenshots/overview-simplification/overview-1440-dark.png",
+    "docs/verification/screenshots/overview-simplification/overview-390-light.png",
+    "docs/verification/screenshots/overview-simplification/overview-390-dark.png",
+    "docs/verification/screenshots/overview-simplification/overview-1906-light.png",
+    "docs/verification/screenshots/overview-simplification/fixture-overview-1440.png",
+    "docs/verification/screenshots/overview-simplification/fixture-overview-390.png"
+  ],
+  "sidebar_restoration": {
+    "verified_at": "2026-10-12T20:15:43.065Z",
+    "validation": {
+      "targeted_tests": 12,
+      "lint": "passed",
+      "typecheck": "passed",
+      "ordinary_build": "passed",
+      "public_static_build": "passed"
+    },
+    "preview_url": "http://localhost:3000/",
+    "source_run": "20261012T140216Z",
+    "checks": [
+      {
+        "check": "Restored sidebar stays at bottom left on desktop, hidden in mobile navigation; four saved quotes are retained",
+        "width": 1440,
+        "theme": "light",
+        "overflow": 0,
+        "page_errors": []
+      },
+      {
+        "check": "Restored sidebar stays at bottom left on desktop, hidden in mobile navigation; four saved quotes are retained",
+        "width": 1440,
+        "theme": "dark",
+        "overflow": 0,
+        "page_errors": []
+      },
+      {
+        "check": "Restored sidebar stays at bottom left on desktop, hidden in mobile navigation; four saved quotes are retained",
+        "width": 390,
+        "theme": "light",
+        "overflow": 0,
+        "page_errors": []
+      },
+      {
+        "check": "Restored sidebar stays at bottom left on desktop, hidden in mobile navigation; four saved quotes are retained",
+        "width": 390,
+        "theme": "dark",
+        "overflow": 0,
+        "page_errors": []
+      },
+      {
+        "check": "Restored sidebar stays at bottom left on desktop, hidden in mobile navigation; four saved quotes are retained",
+        "width": 320,
+        "theme": "light",
+        "overflow": 0,
+        "page_errors": []
+      },
+      {
+        "check": "Quotes rotate when the content overflows, independently of daily run count",
+        "dataset": "expanded_universe",
+        "quote_count": 19,
+        "width": 1440,
+        "duration_ms": 900,
+        "scroll_delta_px": 22
+      },
+      {
+        "check": "Quotes rotate when the content overflows, independently of daily run count",
+        "dataset": "four_quotes_mobile",
+        "quote_count": 4,
+        "width": 390,
+        "duration_ms": 900,
+        "scroll_delta_px": 22
+      }
+    ],
+    "expanded_quote_handling": "Transient browser request interception of a previously collected quote preview; the published snapshot and localhost dataset remain unchanged.",
+    "screenshots": [
+      "docs/verification/screenshots/overview-simplification/sidebar-restored-1440-light.png",
+      "docs/verification/screenshots/overview-simplification/sidebar-restored-1440-dark.png"
+    ]
+  }
+}

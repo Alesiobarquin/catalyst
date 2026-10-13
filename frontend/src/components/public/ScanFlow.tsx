@@ -2,7 +2,7 @@ import styles from "./ScanFlow.module.css";
 
 const STAGES = [
   { code: "01", label: "Collected", topic: "raw-events", rule: "Five market feeds" },
-  { code: "02", label: "Triaged", topic: "triage-priority", rule: "Source agreement" },
+  { code: "02", label: "Screened", topic: "triage-priority", rule: "Two independent sources" },
   { code: "03", label: "Validated", topic: "validated-signals", rule: "Grounded analysis" },
   { code: "04", label: "Sized", topic: "trade-orders", rule: "Risk & regime" },
 ];
@@ -10,7 +10,7 @@ const STAGES = [
 /** A schematic of the pipeline, with exported counters; never live activity. */
 export function ScanFlow({ counts }: { counts: Record<string, number> }) {
   return <div className={styles.flow}>
-    <div className={styles.caption}><span>SCAN PATH</span><span>Published counters · path schematic</span></div>
+    <div className={styles.caption}><span>Scan summary</span><span>Published stage totals</span></div>
     <dl className={styles.stages} aria-label="Events from this scan">
       {STAGES.map((stage, index) => {
         const value = counts[stage.topic];
@@ -18,7 +18,6 @@ export function ScanFlow({ counts }: { counts: Record<string, number> }) {
         return <div className={styles.stage} key={stage.topic} style={{ "--stage-delay": `${index * 110}ms` } as React.CSSProperties}>
           <dt><span className={styles.code} aria-hidden="true">{stage.code}</span>{stage.label}</dt>
           <dd className={available ? styles.value : styles.unknown}>{available ? value.toLocaleString("en-US") : "—"}</dd>
-          <span className={styles.topic}>{stage.topic}</span>
           <p>{available ? stage.rule : "Count not exported"}</p>
           {index < STAGES.length - 1 && <span className={styles.connector} aria-hidden="true"><span />›</span>}
         </div>;
