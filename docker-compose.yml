@@ -11,6 +11,7 @@ x-hunter-common: &hunter-common
     - SQUEEZE_INTERVAL_SECONDS=${SQUEEZE_INTERVAL_SECONDS:-900}
     - BIOTECH_INTERVAL_SECONDS=${BIOTECH_INTERVAL_SECONDS:-1800}
     - FMP_API_KEY=${FMP_API_KEY:-}
+    - SEC_USER_AGENT=${SEC_USER_AGENT:-}
     - DRIFTER_INTERVAL_SECONDS=${DRIFTER_INTERVAL_SECONDS:-3600}
     - DRIFTER_MIN_SURPRISE_PERCENT=${DRIFTER_MIN_SURPRISE_PERCENT:-5.0}
     - DRIFTER_LOOKBACK_DAYS=${DRIFTER_LOOKBACK_DAYS:-3}
@@ -80,7 +81,7 @@ services:
     hostname: zookeeper
     container_name: catalyst_zookeeper
     ports:
-      - "2181:2181"
+      - "127.0.0.1:2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -93,7 +94,7 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - "9092:9092"
+      - "127.0.0.1:9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
@@ -120,7 +121,7 @@ services:
     container_name: catalyst_db
     hostname: timescaledb
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-catalyst_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
@@ -140,7 +141,7 @@ services:
     image: redis:7-alpine
     container_name: catalyst_redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -247,7 +248,7 @@ services:
       dockerfile: Dockerfile
     container_name: catalyst_engine
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
     environment:
       # Kafka
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
@@ -289,7 +290,7 @@ services:
       dockerfile: api/Dockerfile
     container_name: catalyst_api
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-catalyst_user}:${POSTGRES_PASSWORD:-password123}@timescaledb:5432/${POSTGRES_DB:-catalyst_db}
       - CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
@@ -415,7 +416,7 @@ services:
       dockerfile: Dockerfile.dev
     container_name: catalyst_frontend
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       # Browser (client): host machine reaches API on localhost:8000
       - NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -440,7 +441,7 @@ services:
     image: provectuslabs/kafka-ui:latest
     container_name: catalyst_kafka_ui
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       - kafka
     environment:
@@ -452,7 +453,7 @@ services:
     image: redis/redisinsight:latest
     container_name: catalyst_redisinsight
     ports:
-      - "5540:5540"
+      - "127.0.0.1:5540:5540"
     depends_on:
       redis:
         condition: service_healthy

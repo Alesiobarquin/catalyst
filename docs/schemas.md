@@ -158,4 +158,4 @@ The **Kafka** payload (§3) is the user-facing contract. The **database** row ad
 
 Stores **AI outputs** as they appear on `validated-signals`. This is **not** the same table as `trade_orders`: one answers “what did Gemini emit?” the other “what did the engine recommend after risk math?”
 
-See `persistence/schema.sql` and [TESTING.md](TESTING.md) for verification queries.
+The table and hypertable are created by `init_schema()` in `persistence/consumer.py`. See [TESTING.md](TESTING.md) for verification queries.

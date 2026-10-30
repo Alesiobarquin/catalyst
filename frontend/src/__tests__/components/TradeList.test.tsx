@@ -5,6 +5,12 @@ import type { TradeOrder, BatchPerformance, SignalDetail } from "@/types";
 import * as api from "@/lib/api";
 import { orderToSignalDetail } from "@/lib/signalDetailUtils";
 
+const snapshotMode = vi.hoisted(() => ({ publicDemo: false }));
+
+vi.mock("@/lib/snapshot", () => ({
+  get PUBLIC_DEMO() { return snapshotMode.publicDemo; },
+}));
+
 vi.mock("@/lib/api", () => ({
   getBatchPerformance: vi.fn(),
   fetchSignalDetail: vi.fn(),
@@ -120,6 +126,20 @@ describe("TradeList", () => {
       expect(api.getBatchPerformance).toHaveBeenCalledWith([1, 2]);
       expect(screen.getByText("+12.50%")).toBeInTheDocument();
     });
+  });
+
+  it("shows the stored resolver status in snapshot mode", async () => {
+    snapshotMode.publicDemo = true;
+    vi.mocked(api.getBatchPerformance).mockResolvedValueOnce([
+      { order_id: 1, ticker: "NVDA", current_price: 141, pnl_pct: 16.67, status: "HIT_TARGET", days_held: 2 },
+    ]);
+    try {
+      render(<TradeList orders={mockOrders} hasActiveFilters={false} />);
+      await waitFor(() => expect(screen.getByText("+16.67%")).toBeInTheDocument());
+      expect(screen.queryByText("Target hit")).not.toBeInTheDocument();
+    } finally {
+      snapshotMode.publicDemo = false;
+    }
   });
 
   it("displays fallback notice when live performance data fails to load", async () => {

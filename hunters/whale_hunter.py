@@ -18,12 +18,12 @@ from .common.liquidity_lookup import fetch_liquidity_metrics
 from .common.logger import get_logger
 from .common.playwright_context import BrowserContext
 from .common.provider_errors import ProviderError, check_browser_response
+from .common.tickers import canonical_ticker
 from .common.topics import KAFKA_TOPIC_WHALE, RAW_EVENTS_TOPIC
 
 logger = get_logger("whale_hunter")
 
 _CALL_PUT = re.compile(r"\b(call|put)\b", re.I)
-_TICKER_CLEAN = re.compile(r"^[A-Z]{1,6}$")
 
 
 def _parse_option_type(text: str) -> str:
@@ -60,6 +60,10 @@ def _option_columns(headers: list[str]) -> dict[str, int] | None:
         "expdate": "expiration_date",
         "expiration": "expiration_date",
         "expirationdate": "expiration_date",
+        "openint": "open_interest",
+        "openinterest": "open_interest",
+        "voloi": "vol_oi_ratio",
+        "lasttrade": "last_trade",
     }
     columns = {}
     for index, text in enumerate(headers):
@@ -167,10 +171,7 @@ async def scrape_whale(page) -> list[dict]:
         for name, index in columns.items():
             texts[name] = await _rendered_text(cells_el[index], bindings.get(name))
 
-        ticker = ""
-        raw = re.sub(r"[^A-Z]", "", texts["ticker"].upper())
-        if _TICKER_CLEAN.match(raw):
-            ticker = raw
+        ticker = canonical_ticker(texts["ticker"])
         if not ticker:
             continue
 
@@ -183,6 +184,8 @@ async def scrape_whale(page) -> list[dict]:
         if strike is None or vol_hint is None:
             continue
         expiration = texts.get("expiration_date")
+        open_interest = _first_float([texts.get("open_interest", "")])
+        vol_oi_ratio = _first_float([texts.get("vol_oi_ratio", "")])
 
         key = (ticker, round(strike, 4), opt_type, expiration)
         if key in seen:
@@ -197,6 +200,9 @@ async def scrape_whale(page) -> list[dict]:
                 "strike_price": strike,
                 "option_volume": int(vol_hint),
                 "expiration_date": expiration,
+                "open_interest": int(open_interest) if open_interest is not None else None,
+                "vol_oi_ratio": vol_oi_ratio,
+                "last_trade": texts.get("last_trade") or None,
                 "source": "barchart_unusual",
                 "timestamp": now_iso,
                 "timestamp_utc": now_iso,
@@ -235,6 +241,7 @@ async def _one_sweep(kafka: KafkaClient) -> int:
         entry["price"] = liq["price"]
         entry["volume"] = liq["volume"]
         entry["relative_volume"] = liq["relative_volume"]
+        entry["relative_volume_basis"] = liq.get("relative_volume_basis")
         entry["source_hunter"] = "whale"
         kafka.send_message(KAFKA_TOPIC_WHALE, entry)
         kafka.send_message(RAW_EVENTS_TOPIC, entry)

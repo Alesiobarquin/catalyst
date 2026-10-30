@@ -1,5 +1,8 @@
 import json
+import re
+import subprocess
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 from urllib.parse import parse_qs, urlsplit
 
@@ -121,3 +124,51 @@ def test_benchmark_collection_retains_no_data_from_unexpected_symbols():
     client = MagicMock()
     client.get.return_value.json.return_value = [{"ticker": "UNEXPECTED", "price": 100.0}]
     assert collect_benchmarks(client) == ([], None)
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.mark.parametrize("dockerfile", ["gatekeeper/Dockerfile", "deploy/Dockerfile.pipeline"])
+def test_gatekeeper_images_include_shared_ticker_helper(dockerfile):
+    text = (ROOT / dockerfile).read_text()
+    assert "COPY hunters/common/__init__.py hunters/common/tickers.py /app/hunters/common/" in text
+
+
+@pytest.mark.parametrize("script", sorted((ROOT / "deploy").glob("*.sh")), ids=lambda p: p.name)
+def test_deploy_scripts_parse(script):
+    subprocess.run(["bash", "-n", str(script)], check=True)
+
+
+def test_batch_installs_next_launcher_only_after_publication():
+    batch = (ROOT / "deploy" / "batch.sh").read_text()
+    assert batch.index("install -m 700 run-worker.sh") > batch.index('data/manifest.json"')
+
+
+def test_public_configure_keeps_the_free_sources():
+    source = (ROOT / "scripts" / "public_demo.py").read_text()
+    assert 'squeeze_provider = "yahoo"' in source
+    assert 'biotech_provider = "pdufa"' in source
+
+
+def test_local_compose_binds_published_ports_to_localhost():
+    for value in re.findall(r'"([^"]+)"', (ROOT / "docker-compose.yml").read_text()):
+        if re.fullmatch(r"\d+:\d+", value):
+            raise AssertionError(f"published on every interface: {value}")
+
+
+def test_batch_keeps_confluence_across_daily_runs():
+    compose = (ROOT / "deploy" / "compose.batch.yml").read_text()
+    assert "--appendonly" in compose
+    assert "redis-data:" in compose
+    assert 'GATEKEEPER_ROLLING_WINDOW_SECONDS: "604800"' in compose
+    assert "KAFKA_OFFSETS_RETENTION_MINUTES: 43200" in compose
+
+
+def test_batch_compose_modules_are_runnable():
+    compose = (ROOT / "deploy" / "compose.batch.yml").read_text()
+    modules = re.findall(r"command: \[python, -m, ([\w.]+)", compose)
+    assert "resolver.main" in modules
+    for module in modules:
+        source = (ROOT / Path(*module.split("."))).with_suffix(".py").read_text()
+        assert 'if __name__ == "__main__":' in source, module

@@ -1,5 +1,6 @@
 """Unit tests for Gatekeeper coercers, filters, and static helpers."""
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -35,6 +36,10 @@ class TestGatekeeperStaticHelpers:
         assert GatekeeperService.to_float("") is None
         assert GatekeeperService.to_float(None, default=0.0) == 0.0
 
+    def test_to_float_rejects_non_finite(self):
+        assert GatekeeperService.to_float(float("nan"), default=0.0) == 0.0
+        assert GatekeeperService.to_float("inf") is None
+
     def test_to_float_valid(self):
         assert GatekeeperService.to_float(42) == 42.0
         assert GatekeeperService.to_float("42.5") == 42.5
@@ -53,10 +58,10 @@ class TestGatekeeperStaticHelpers:
         assert GatekeeperService.normalize_ticker("  $TSLA  ") == "TSLA"
         assert GatekeeperService.normalize_ticker("NASDAQ:AAPL") == "AAPL"
         assert GatekeeperService.normalize_ticker("NVDA\nNvidia Corp") == "NVDA"
-        assert GatekeeperService.normalize_ticker("BIIB.TO") == "BIIB"
-        assert GatekeeperService.normalize_ticker("BRK.A") == "BRK.A"
-        assert GatekeeperService.normalize_ticker("BRK.B") == "BRK.B"
-        assert GatekeeperService.normalize_ticker("BF.B") == "BF.B"
+        assert GatekeeperService.normalize_ticker("BIIB.TO") is None
+        assert GatekeeperService.normalize_ticker("BRK.A") == "BRK-A"
+        assert GatekeeperService.normalize_ticker("BRK/B") == "BRK-B"
+        assert GatekeeperService.normalize_ticker("BF-B") == "BF-B"
 
     def test_first_from_values(self):
         assert GatekeeperService.first_from_values(None, None, 5) == 5
@@ -101,6 +106,37 @@ class TestGatekeeperDropReason:
         }
         reason = gatekeeper.get_drop_reason(norm)
         assert "relative_volume" in reason.lower()
+
+    @pytest.mark.parametrize("source", ["biotech", "drifter", "insider"])
+    def test_event_sources_skip_relative_volume(self, gatekeeper, source):
+        norm = {
+            "ticker": "X",
+            "source_hunter": source,
+            "liquidity_metrics": {"price": 10.0, "volume": 100_000.0, "relative_volume": 0.2},
+        }
+        assert gatekeeper.get_drop_reason(norm) is None
+
+    def test_whale_still_requires_relative_volume(self, gatekeeper):
+        norm = {
+            "ticker": "X",
+            "source_hunter": "whale",
+            "liquidity_metrics": {"price": 10.0, "volume": 100_000.0, "relative_volume": 0.2},
+        }
+        assert "relative_volume" in gatekeeper.get_drop_reason(norm)
+
+    def test_exempt_source_still_checks_price_and_volume(self, gatekeeper):
+        cheap = {
+            "ticker": "X",
+            "source_hunter": "biotech",
+            "liquidity_metrics": {"price": 1.0, "volume": 100_000.0, "relative_volume": 0.2},
+        }
+        thin = {
+            "ticker": "X",
+            "source_hunter": "biotech",
+            "liquidity_metrics": {"price": 10.0, "volume": 1_000.0, "relative_volume": 0.2},
+        }
+        assert "price" in gatekeeper.get_drop_reason(cheap)
+        assert "volume" in gatekeeper.get_drop_reason(thin)
 
     def test_drop_price_below_min(self, gatekeeper):
         norm = {
@@ -389,16 +425,16 @@ class TestGatekeeperRedisAndWorkflow:
         gatekeeper.run()
         gatekeeper.process_event.assert_called_once_with(msg.value)
 
-    def test_atomic_mark_sent_acquired(self, gatekeeper):
-        gatekeeper.redis.set.return_value = True
-        acquired = gatekeeper.mark_sent("NVDA")
-        assert acquired is True
-        gatekeeper.redis.set.assert_called_once_with("gk:sent:NVDA", "1", nx=True, ex=300)
+    def test_mark_sent_records_forwarded_source_count(self, gatekeeper):
+        gatekeeper.mark_sent("NVDA", 2)
+        gatekeeper.redis.set.assert_called_once_with("gk:sent:NVDA", "2", ex=300)
 
-    def test_atomic_mark_sent_locked(self, gatekeeper):
-        gatekeeper.redis.set.return_value = None  # Key already existed (NX condition failed)
-        acquired = gatekeeper.mark_sent("NVDA")
-        assert acquired is False
+    def test_new_source_after_forwarding_is_forwarded_again(self, gatekeeper):
+        gatekeeper.redis.get.return_value = b"2"
+        assert gatekeeper.was_recently_sent("NVDA", 2) is True
+        assert gatekeeper.was_recently_sent("NVDA", 3) is False
+        gatekeeper.redis.get.return_value = None
+        assert gatekeeper.was_recently_sent("NVDA", 2) is False
 
     def test_clear_sent(self, gatekeeper):
         gatekeeper.clear_sent("NVDA")
@@ -428,22 +464,49 @@ class TestGatekeeperRedisAndWorkflow:
         assert sources == ["insider", "squeeze"]
         gatekeeper.redis.zremrangebyscore.assert_called_once()
 
-    def test_process_event_dedupes_when_atomic_mark_sent_fails(self, gatekeeper):
-        gatekeeper.producer = MagicMock()
-        gatekeeper.get_sources = MagicMock(return_value=["whale", "squeeze"])
-        gatekeeper.was_recently_sent = MagicMock(return_value=False)
-        gatekeeper.mark_sent = MagicMock(return_value=False)  # Atomic lock contention!
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ({"source_hunter": "insider", "signal_data": {"transaction_code": "S"}}, "bearish"),
+            ({"source_hunter": "insider", "signal_data": {"transaction_code": "P"}}, "bullish"),
+            ({"source_hunter": "whale", "signal_data": {"option_type": "put"}}, "bearish"),
+            ({"source_hunter": "whale", "signal_data": {"option_type": "call"}}, "bullish"),
+            ({"source_hunter": "biotech", "signal_data": {}}, "neutral"),
+            ({"source_hunter": "squeeze", "signal_data": {}}, "bullish"),
+        ],
+    )
+    def test_signal_direction(self, raw, expected):
+        assert GatekeeperService.signal_direction(raw) == expected
 
+    def test_bearish_evidence_is_context_not_confirmation(self, gatekeeper):
+        pipe_mock = MagicMock()
+        gatekeeper.redis.pipeline.return_value = pipe_mock
+        gatekeeper.producer = MagicMock()
+        gatekeeper.get_sources = MagicMock(return_value=["squeeze", "whale"])
         raw = {
             "source_hunter": "whale",
             "ticker": "NVDA",
-            "option_type": "call",
+            "option_type": "put",
             "price": 125.0,
             "volume": 3_000_000,
             "relative_volume": 2.2,
         }
         gatekeeper.process_event(raw)
+        pipe_mock.lpush.assert_called_once()
+        assert json.loads(pipe_mock.lpush.call_args[0][1])["direction"] == "bearish"
+        pipe_mock.zadd.assert_not_called()
         gatekeeper.producer.send.assert_not_called()
+
+    def test_accumulated_signals_collapse_daily_repeats(self, gatekeeper):
+        repeat = {"source_hunter": "biotech", "signal_data": {"drug_name": "X"}}
+        gatekeeper.redis.lrange.return_value = [
+            json.dumps({**repeat, "received_at": "2026-10-29T14:00:00+00:00"}),
+            json.dumps({**repeat, "received_at": "2026-10-28T14:00:00+00:00"}),
+            json.dumps({"source_hunter": "whale", "signal_data": {"option_type": "call"}}),
+        ]
+        signals = gatekeeper.get_accumulated_signals("XYZ")
+        assert [x["source_hunter"] for x in signals] == ["biotech", "whale"]
+        assert signals[0]["received_at"].startswith("2026-10-29")
 
     def test_process_event_releases_sent_on_producer_failure(self, gatekeeper):
         gatekeeper.producer = MagicMock()
@@ -464,4 +527,26 @@ class TestGatekeeperRedisAndWorkflow:
         with pytest.raises(RuntimeError, match="Kafka broker down"):
             gatekeeper.process_event(raw)
 
+        gatekeeper.clear_sent.assert_called_once_with("NVDA")
+
+    def test_process_event_releases_sent_when_broker_never_acknowledges(self, gatekeeper):
+        from kafka.errors import KafkaTimeoutError
+
+        gatekeeper.producer = MagicMock()
+        gatekeeper.producer.send.return_value.get.side_effect = KafkaTimeoutError("no ack")
+        gatekeeper.get_sources = MagicMock(return_value=["whale", "squeeze"])
+        gatekeeper.was_recently_sent = MagicMock(return_value=False)
+        gatekeeper.mark_sent = MagicMock(return_value=True)
+        gatekeeper.clear_sent = MagicMock()
+        raw = {
+            "source_hunter": "whale",
+            "ticker": "NVDA",
+            "price": 125.0,
+            "volume": 3_000_000,
+            "relative_volume": 2.2,
+        }
+        with pytest.raises(KafkaTimeoutError):
+            gatekeeper.process_event(raw)
+
+        gatekeeper.producer.send.return_value.get.assert_called_once_with(timeout=30)
         gatekeeper.clear_sent.assert_called_once_with("NVDA")

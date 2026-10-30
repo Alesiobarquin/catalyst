@@ -214,3 +214,31 @@ class TestPersistenceConsumerLoop:
             run()
 
             assert mock_conn.rollback.called
+
+    def test_failure_rereads_same_offset_then_commits_after_cap(self):
+        from unittest.mock import patch
+
+        from persistence.consumer import MAX_PERSIST_ATTEMPTS, process_message
+
+        conn = MagicMock(closed=False)
+        consumer = MagicMock()
+        message = MagicMock(topic="validated-signals", partition=0, offset=7, value={"ticker": "X"})
+        attempts: dict = {}
+
+        with patch("persistence.consumer.persist_signal", side_effect=ValueError("bad row")):
+            for _ in range(MAX_PERSIST_ATTEMPTS - 1):
+                process_message(consumer, conn, message, attempts)
+            assert consumer.seek.call_count == MAX_PERSIST_ATTEMPTS - 1
+            assert consumer.seek.call_args.args[1] == 7
+            consumer.commit.assert_not_called()
+
+            process_message(consumer, conn, message, attempts)
+
+        consumer.commit.assert_called_once()
+        assert attempts == {}
+
+    def test_undecodable_message_is_skipped(self):
+        from persistence.consumer import decode_message, persist_signal
+
+        assert decode_message(b"\xff not json") is None
+        assert persist_signal(MagicMock(), None) is False

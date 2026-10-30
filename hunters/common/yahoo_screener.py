@@ -1,10 +1,13 @@
 """Optional, bounded Yahoo equity screener source for the squeeze hunter.
 
-Uses the documented yfinance EquityQuery/screen API. The first 40 US matches,
+Uses the documented yfinance EquityQuery/screen API. The first 250 US matches,
 ordered by current volume, are the maximum scope; this is not a whole-market
-scan. Relative volume is current reported volume / Yahoo's reported average
-daily volume. Short interest and its reporting date come from Ticker.get_info,
-and can be older than the quote. Missing metrics never become defaults.
+scan. Quote fields filter them without extra requests, and at most 40 survivors
+are enriched with Ticker.get_info. Relative volume is current reported volume /
+Yahoo's reported average daily volume; during the session the average is scaled
+by the expected share of a day's volume traded by the quote time. Short interest
+and its reporting date come from get_info, and can be older than the quote.
+Missing metrics never become defaults.
 
 The subprocess isolates yfinance's shared HTTP session from concurrent hunters
 and provides a hard deadline even if an SDK operation fails to return.
@@ -22,8 +25,15 @@ from typing import Any
 
 from curl_cffi import requests
 
+from .liquidity_lookup import (
+    MARKET_TZ,
+    MIN_PROJECTION_MINUTES,
+    SESSION_MINUTES,
+    expected_volume_fraction,
+)
 from .provider_errors import ProviderError
 
+SCREEN_ROWS = 250
 MAX_CANDIDATES = 40
 MAX_SWEEP_SECONDS = 55.0
 REQUEST_TIMEOUT_SECONDS = 8.0
@@ -51,6 +61,17 @@ def _epoch_timestamp(value: object) -> str | None:
         return datetime.fromtimestamp(parsed, UTC).isoformat()
     except (ValueError, OverflowError, OSError):
         return None
+
+
+def _relative_volume(volume: float, average_volume: float, quote_epoch: float | None):
+    if quote_epoch is not None:
+        quoted = datetime.fromtimestamp(quote_epoch, MARKET_TZ)
+        opened = quoted.replace(hour=9, minute=30, second=0, microsecond=0)
+        minutes = (quoted - opened).total_seconds() / 60
+        if MIN_PROJECTION_MINUTES <= minutes < SESSION_MINUTES:
+            expected = average_volume * expected_volume_fraction(minutes)
+            return volume / expected, "intraday_projection"
+    return volume / average_volume, "session"
 
 
 class _DeadlineSession(requests.Session):
@@ -102,7 +123,7 @@ def _collect_targets(max_candidates: int, deadline: float) -> list[dict[str, obj
     with _DeadlineSession(deadline) as session:
         result = yf.screen(
             query,
-            size=max_candidates,
+            size=SCREEN_ROWS,
             offset=0,
             sortField="dayvolume",
             sortAsc=False,
@@ -110,8 +131,9 @@ def _collect_targets(max_candidates: int, deadline: float) -> list[dict[str, obj
         )
         if not isinstance(result, dict) or not isinstance(result.get("quotes"), list):
             raise ProviderError("yahoo", "response_schema")
-        quotes = result["quotes"][:max_candidates]
+        quotes = result["quotes"][:SCREEN_ROWS]
         seen: set[str] = set()
+        enriched = 0
         for quote in quotes:
             if time.monotonic() >= deadline:
                 raise ProviderError("yahoo", "deadline")
@@ -126,9 +148,13 @@ def _collect_targets(max_candidates: int, deadline: float) -> list[dict[str, obj
             average_volume = _number(quote.get("averageDailyVolume3Month"))
             if price is None or volume is None or average_volume is None:
                 continue
-            relative_volume = volume / average_volume
+            quote_epoch = _number(quote.get("regularMarketTime"))
+            relative_volume, basis = _relative_volume(volume, average_volume, quote_epoch)
             if not (2 <= price <= 60) or volume < 200_000 or relative_volume < 2:
                 continue
+            if enriched >= max_candidates:
+                break
+            enriched += 1
 
             # Enrich only qualifying liquid candidates. The screener does not
             # return short-interest metrics; membership is not a metric value.
@@ -153,10 +179,12 @@ def _collect_targets(max_candidates: int, deadline: float) -> list[dict[str, obj
                 "average_volume": average_volume,
                 "relative_volume": round(relative_volume, 4),
                 "relative_volume_baseline": "averageDailyVolume3Month",
+                "relative_volume_basis": basis,
                 "short_float": short_float,
                 "days_to_cover": days_to_cover,
                 "timestamp": collected_at,
                 "timestamp_utc": collected_at,
+                "screener_rows_requested": SCREEN_ROWS,
                 "screener_candidate_limit": max_candidates,
                 "screener_candidates_considered": len(quotes),
                 "screener_sort": "dayvolume_desc",
@@ -179,7 +207,7 @@ def _collect_targets(max_candidates: int, deadline: float) -> list[dict[str, obj
 def fetch_yahoo_squeeze_targets(
     *, max_candidates: int = MAX_CANDIDATES, timeout_seconds: float = MAX_SWEEP_SECONDS
 ) -> list[dict[str, object]]:
-    """Collect at most 40 candidates within 55 seconds, or raise a safe error.
+    """Enrich at most 40 candidates within 55 seconds, or raise a safe error.
 
     A larger requested limit/deadline is clamped. This synchronous function can
     be called using asyncio.to_thread without sharing yfinance's session state.

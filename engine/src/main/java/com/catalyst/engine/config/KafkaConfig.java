@@ -18,6 +18,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -63,9 +64,12 @@ public class KafkaConfig {
      */
     @Bean
     public ConsumerFactory<String, ValidatedSignal> consumerFactory() {
-        JsonDeserializer<ValidatedSignal> deserializer = new JsonDeserializer<>(ValidatedSignal.class);
-        deserializer.setRemoveTypeHeaders(false);
-        deserializer.addTrustedPackages("*");
+        JsonDeserializer<ValidatedSignal> json = new JsonDeserializer<>(ValidatedSignal.class);
+        json.setRemoveTypeHeaders(false);
+        json.addTrustedPackages("*");
+        // A record that cannot be decoded reaches the error handler as a
+        // DeserializationException, which is logged and skipped instead of re-polled forever.
+        var deserializer = new ErrorHandlingDeserializer<>(json);
 
         Map<String, Object> props = Map.of(
                 ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers,

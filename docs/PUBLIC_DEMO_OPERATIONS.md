@@ -34,8 +34,8 @@ Run from the repository root with the configured AWS CLI identity and `gh` login
 .venv/bin/python scripts/public_demo.py configure
 
 # Build, verify, and publish an immutable release through GitHub Actions.
-gh workflow run public-demo.yml --ref main --repo Alesiobarquin/catalyst
-gh run list --workflow public-demo.yml --repo Alesiobarquin/catalyst
+gh workflow run ci.yml --ref main --repo Alesiobarquin/catalyst
+gh run list --workflow ci.yml --repo Alesiobarquin/catalyst
 
 # Inspect both schedules, including their timezone and enabled state.
 aws scheduler get-schedule --name catalyst-daily-start
@@ -49,7 +49,9 @@ aws cloudformation describe-stacks --stack-name CatalystPublicDemoStack \
 curl -fsS https://d36bndaw2y0rrh.cloudfront.net/data/manifest.json
 ```
 
-Main-branch pushes touching runtime, frontend, or deployment files run release CI. Documentation-only changes do not rebuild images. Each release verifies Python, Java, and frontend tests, builds native x86 images on GitHub, pushes immutable commit tags to ECR, uploads the worker archive/release pointer, and publishes static assets. Data is initialized only when no public manifest exists; code releases preserve the latest scan. The worker downloads the latest successful release on each boot. A failed build does not replace the previous release pointer. Runtime package constraints are in `deploy/constraints.txt` and the frontend uses `npm ci`.
+`ci.yml` is the verification and manual release entry point. Python, Java, and frontend checks run in parallel; each main-branch commit runs those checks once. Main-branch pushes touching runtime, frontend, or deployment files then call the reusable `public-demo.yml` publisher only after all three jobs succeed. CI uploads its tested public static export, and the publisher downloads that exact build instead of reinstalling frontend dependencies or rebuilding it. Documentation-only pushes still run CI but do not publish. Manual CI dispatch on `main` verifies and publishes; dispatch on another branch only verifies. Outdated PR runs are cancelled, while main-branch runs and active publication are not interrupted.
+
+The publisher builds native x86 images on GitHub, pushes immutable commit tags to ECR, uploads the worker archive/release pointer, and publishes the verified static assets. Data is initialized only when no public manifest exists; code releases preserve the latest scan. The worker downloads the latest successful release on each boot. A failed verification/build does not replace the previous release pointer. Runtime package constraints are in `deploy/constraints.txt` and the frontend uses `npm ci`. Static build artifacts are retained for one day; after expiry, rerun all CI jobs or manually dispatch CI rather than rerunning just the publisher.
 
 Inter and JetBrains Mono are bundled locally with their SIL OFL licenses and pinned source hashes, eliminating a build-time Google Fonts dependency after final CI exposed a Turbopack font-loader failure. The local and static builds share the same layout and font files.
 

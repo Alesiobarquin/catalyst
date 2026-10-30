@@ -30,7 +30,7 @@ class StrategyRouterTest {
         signal.setCatalystType("SUPERNOVA");
         signal.setTicker("GME");
 
-        TradeOrder order = router.route(signal, 100.0);
+        TradeOrder order = router.route(signal, 100.0).orElseThrow();
         assertEquals("Supernova", order.getStrategyUsed());
     }
 
@@ -40,7 +40,7 @@ class StrategyRouterTest {
         signal.setCatalystType("SCALPER");
         signal.setTicker("BMRN");
 
-        TradeOrder order = router.route(signal, 100.0);
+        TradeOrder order = router.route(signal, 100.0).orElseThrow();
         assertEquals("Scalper", order.getStrategyUsed());
     }
 
@@ -50,7 +50,7 @@ class StrategyRouterTest {
         signal.setCatalystType("FOLLOWER");
         signal.setTicker("AAPL");
 
-        TradeOrder order = router.route(signal, 100.0);
+        TradeOrder order = router.route(signal, 100.0).orElseThrow();
         assertEquals("Follower", order.getStrategyUsed());
     }
 
@@ -60,31 +60,18 @@ class StrategyRouterTest {
         signal.setCatalystType("DRIFTER");
         signal.setTicker("META");
 
-        TradeOrder order = router.route(signal, 100.0);
+        TradeOrder order = router.route(signal, 100.0).orElseThrow();
         assertEquals("Drifter", order.getStrategyUsed());
     }
 
     @Test
-    void handlesFallbackForUnknownType() {
-        ValidatedSignal signal = new ValidatedSignal();
-        signal.setCatalystType("UNKNOWN_TYPE");
-        signal.setTicker("XYZ");
+    void unknownTypesProduceNoOrder() {
+        for (String type : new String[] {"UNKNOWN", "UNKNOWN_TYPE", null}) {
+            ValidatedSignal signal = new ValidatedSignal();
+            signal.setCatalystType(type);
+            signal.setTicker("XYZ");
 
-        TradeOrder order = router.route(signal, 100.0);
-        assertEquals("Fallback", order.getStrategyUsed());
-        assertEquals(100.0, order.getLimitPrice(), 0.01);
-        assertEquals(95.0, order.getStopLoss(), 0.01);
-        assertEquals(110.0, order.getTargetPrice(), 0.01);
-        assertTrue(order.getRationale().contains("FALLBACK"));
-    }
-
-    @Test
-    void handlesFallbackForNullType() {
-        ValidatedSignal signal = new ValidatedSignal();
-        signal.setCatalystType(null);
-        signal.setTicker("XYZ");
-
-        TradeOrder order = router.route(signal, 100.0);
-        assertEquals("Fallback", order.getStrategyUsed());
+            assertTrue(router.route(signal, 100.0).isEmpty(), String.valueOf(type));
+        }
     }
 }

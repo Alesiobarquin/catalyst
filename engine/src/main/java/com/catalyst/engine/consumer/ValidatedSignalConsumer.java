@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -58,18 +59,24 @@ public class ValidatedSignalConsumer {
         // Gate 0: Per-ticker cooldown — prevents duplicate trade orders when
         // the AI layer replays a Kafka message on restart or the gatekeeper
         // forwards the same ticker twice within the rolling window.
+        // Only a persisted order starts the cooldown, so a failed save is retried on redelivery.
         Instant lastProcessed = recentlyProcessed.get(signal.getTicker());
         if (lastProcessed != null && Instant.now().isBefore(lastProcessed.plus(COOLDOWN))) {
             log.info("[{}] Skipping duplicate — already processed within {}-min cooldown window.",
                     signal.getTicker(), COOLDOWN.toMinutes());
             return;
         }
-        recentlyProcessed.put(signal.getTicker(), Instant.now());
 
         // Gate 1: Trap filter — Gemini flagged a conflicting signal pattern.
         // Example: insider buy coinciding with large put volume. Never trade traps.
         if (signal.isTrap()) {
             log.info("[{}] Dropping trap signal.", signal.getTicker());
+            return;
+        }
+
+        // Every strategy is long-only; a bearish read must not become a BUY.
+        if ("bearish".equalsIgnoreCase(signal.getNewsSentiment())) {
+            log.info("[{}] Dropping bearish signal; strategies are long-only.", signal.getTicker());
             return;
         }
 
@@ -103,7 +110,11 @@ public class ValidatedSignalConsumer {
         }
 
         // Route to strategy: builds entry, stop, target based on catalyst type.
-        TradeOrder order = strategyRouter.route(signal, currentPrice);
+        Optional<TradeOrder> routed = strategyRouter.route(signal, currentPrice);
+        if (routed.isEmpty()) {
+            return;
+        }
+        TradeOrder order = routed.get();
 
         // Kelly sizing: uses the actual stop/target from the strategy for risk/reward ratio.
         // Must happen after routing — we need the prices to compute b = reward/risk.
@@ -115,11 +126,13 @@ public class ValidatedSignalConsumer {
         }
         order.setRecommendedSizeUsd(Math.round(sizeUsd * 100.0) / 100.0);
 
+        // Persist first: the database is the record of truth. A failure here throws,
+        // so the listener error handler redelivers before anything is published.
+        tradeOrderRepository.save(TradeOrderEntity.from(order, signal, regime));
+        recentlyProcessed.put(signal.getTicker(), Instant.now());
+
         // Publish to trade-orders (consumed by dashboard and future Alpaca integration)
         tradeOrderProducer.send(order);
-
-        // Persist to TimescaleDB with regime context for dashboard history
-        tradeOrderRepository.save(TradeOrderEntity.from(order, signal, regime));
 
         log.info("[{}] Trade order produced — strategy={}, size=${}," +
                         " entry={}, stop={}, target={}, regime={}",

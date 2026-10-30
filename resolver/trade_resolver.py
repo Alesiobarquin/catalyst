@@ -1,10 +1,10 @@
 """Trade Resolution Service.
 
-Continuously monitors ACTIVE trade orders in TimescaleDB, compares
-them against live market prices, and transitions order status to:
-  - HIT_TARGET: Price reached or exceeded target price.
-  - HIT_STOP:   Price fell to or below stop loss.
-  - EXPIRED:    Holding duration exceeded MAX_HOLDING_DAYS.
+Monitors ACTIVE trade orders in TimescaleDB, walks the daily bars since
+entry (see resolver/outcome.py), and transitions order status to:
+  - HIT_TARGET: A bar after entry reached the target price.
+  - HIT_STOP:   A bar after entry reached the stop (checked first on each bar).
+  - EXPIRED:    Neither within MAX_HOLDING_DAYS; resolved at the last close.
 
 Emits trade resolution events to the `trade-resolutions` Kafka topic
 for downstream analytics and notification dispatches.
@@ -16,7 +16,7 @@ import contextlib
 import json
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 
 from psycopg import Connection, connect
@@ -34,8 +34,14 @@ from resolver.config import (
     TIMESCALE_USER,
     TRADE_RESOLUTIONS_TOPIC,
 )
+from resolver.outcome import MARKET_TZ, pnl_percent, resolve_from_bars
 
 logger = logging.getLogger("trade_resolver")
+
+
+def serialize_resolution(value: dict[str, Any]) -> bytes:
+    """Resolution records carry datetime and Decimal columns straight from the database."""
+    return json.dumps(value, default=str).encode("utf-8")
 
 
 def get_db_connection() -> Connection:
@@ -58,19 +64,12 @@ class TradeResolver:
         poll_interval: int = RESOLVER_POLL_INTERVAL_SECONDS,
         max_holding_days: int = MAX_HOLDING_DAYS,
         batch_size: int = MAX_BATCH_SIZE,
-        cache_ttl_seconds: float = 60.0,
     ) -> None:
         self.poll_interval = poll_interval
         self.max_holding_days = max_holding_days
         self.batch_size = batch_size
-        self.cache_ttl_seconds = cache_ttl_seconds
         self._running = False
         self._producer = None
-        self._price_cache: dict[str, tuple[float, float]] = {}  # ticker -> (price, epoch_timestamp)
-
-    def clear_price_cache(self) -> None:
-        """Clear in-memory price cache."""
-        self._price_cache.clear()
 
     def get_kafka_producer(self) -> Any | None:
         """Lazily initialize Kafka producer for emitting resolution events."""
@@ -81,7 +80,7 @@ class TradeResolver:
 
             self._producer = KafkaProducer(
                 bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+                value_serializer=serialize_resolution,
                 request_timeout_ms=5000,
             )
             return self._producer
@@ -106,145 +105,68 @@ class TradeResolver:
             )
             return list(cur.fetchall())
 
-    def fetch_current_prices(self, tickers: list[str]) -> dict[str, float]:
-        """Fetch current prices for unique tickers using yfinance with defensive caching and fallbacks."""
-        if not tickers:
-            return {}
-
-        prices: dict[str, float] = {}
-        unique_tickers = sorted({t.strip().upper() for t in tickers if t and t.strip()})
-        now = time.time()
-        tickers_to_fetch: list[str] = []
-
-        # Check cache first
-        for ticker in unique_tickers:
-            if ticker in self._price_cache:
-                cached_price, cached_time = self._price_cache[ticker]
-                if (now - cached_time) <= self.cache_ttl_seconds:
-                    prices[ticker] = cached_price
-                    continue
-            tickers_to_fetch.append(ticker)
-
-        if not tickers_to_fetch:
-            return prices
-
+    def fetch_daily_bars(self, ticker: str, start: date):
+        """Unadjusted daily bars, so stops and targets compare with the prices quoted at entry."""
         try:
             import yfinance as yf
-        except ImportError:
-            logger.error("yfinance is not installed; cannot fetch market prices.")
-            return prices
 
-        for ticker in tickers_to_fetch:
-            try:
-                t = yf.Ticker(ticker)
-                # fast_info provides fast, cached lookups
-                last_price = getattr(t.fast_info, "last_price", None)
-                if last_price is not None and float(last_price) > 0:
-                    price_val = round(float(last_price), 4)
-                    prices[ticker] = price_val
-                    self._price_cache[ticker] = (price_val, now)
-                    continue
-
-                # Fallback to history
-                hist = t.history(period="1d")
-                if not hist.empty and "Close" in hist:
-                    close = hist["Close"].iloc[-1]
-                    if close and float(close) > 0:
-                        price_val = round(float(close), 4)
-                        prices[ticker] = price_val
-                        self._price_cache[ticker] = (price_val, now)
-                        continue
-            except Exception as exc:
-                logger.debug("Failed to fetch price for %s: %s", ticker, exc)
-
-            # Defensive fallback to stale cache if lookup failed
-            if ticker not in prices and ticker in self._price_cache:
-                fallback_price, _ = self._price_cache[ticker]
-                prices[ticker] = fallback_price
-                logger.info(
-                    "Using cached fallback price %.4f for %s after lookup error",
-                    fallback_price,
-                    ticker,
-                )
-
-        return prices
+            bars = yf.Ticker(ticker).history(
+                start=start.isoformat(), interval="1d", auto_adjust=False
+            )
+        except Exception as exc:
+            logger.warning("Failed to fetch daily bars for %s: %s", ticker, exc)
+            return None
+        if bars is None or bars.empty:
+            logger.warning("No daily bars returned for %s", ticker)
+            return None
+        return bars
 
     def evaluate_order(
         self,
         order: dict[str, Any],
-        current_price: float | None,
+        bars,
         now: datetime | None = None,
     ) -> dict[str, Any] | None:
         """
         Evaluate if an active order has resolved.
         Returns resolution dictionary or None if still active.
         """
-        if current_price is None or current_price <= 0:
+        if bars is None:
             return None
-
-        if now is None:
-            now = datetime.now(timezone.utc)
-
+        now = now or datetime.now(timezone.utc)
         limit_price = float(order.get("limit_price") or 0.0)
-        target_price = float(order.get("target_price") or 0.0)
-        stop_loss = float(order.get("stop_loss") or 0.0)
-        action = str(order.get("action") or "BUY").upper()
-
         if limit_price <= 0:
             return None
+        action = str(order.get("action") or "BUY").upper()
+        entered_at = order["timestamp_utc"]
+        if isinstance(entered_at, str):
+            entered_at = datetime.fromisoformat(entered_at.replace("Z", "+00:00"))
 
-        status: str | None = None
-
-        if action == "BUY":
-            if target_price > 0 and current_price >= target_price:
-                status = "HIT_TARGET"
-            elif stop_loss > 0 and current_price <= stop_loss:
-                status = "HIT_STOP"
-        elif action == "SELL":
-            # For short/sell positions
-            if target_price > 0 and current_price <= target_price:
-                status = "HIT_TARGET"
-            elif stop_loss > 0 and current_price >= stop_loss:
-                status = "HIT_STOP"
-
-        order_ts = order.get("timestamp_utc")
-        if status is None and order_ts is not None:
-            if isinstance(order_ts, str):
-                order_dt = datetime.fromisoformat(order_ts.replace("Z", "+00:00"))
-            else:
-                order_dt = order_ts
-
-            if order_dt.tzinfo is None:
-                order_dt = order_dt.replace(tzinfo=timezone.utc)
-
-            holding_days = (now - order_dt).total_seconds() / 86400.0
-            if holding_days >= self.max_holding_days:
-                status = "EXPIRED"
-
-        if status is None:
+        outcome = resolve_from_bars(
+            action,
+            float(order.get("stop_loss") or 0.0),
+            float(order.get("target_price") or 0.0),
+            bars,
+            entered_at,
+            now,
+            self.max_holding_days,
+        )
+        if outcome is None:
             return None
 
-        # Calculate realized PnL percentage and dollar amount
+        pnl_pct = pnl_percent(action, limit_price, outcome.price)
         recommended_size = float(order.get("recommended_size_usd") or 0.0)
-        if action == "SELL":
-            pnl_pct = ((limit_price - current_price) / limit_price) * 100.0
-        else:
-            pnl_pct = ((current_price - limit_price) / limit_price) * 100.0
-
-        realized_pnl_usd = (
-            round(recommended_size * (pnl_pct / 100.0), 2) if recommended_size > 0 else 0.0
-        )
-
         return {
             "id": order["id"],
             "timestamp_utc": order["timestamp_utc"],
             "ticker": order["ticker"],
             "action": action,
-            "status": status,
+            "status": outcome.status,
             "limit_price": limit_price,
-            "resolved_price": round(current_price, 4),
+            "resolved_price": round(outcome.price, 4),
             "pnl_percent": round(pnl_pct, 4),
-            "realized_pnl_usd": realized_pnl_usd,
+            "realized_pnl_usd": round(recommended_size * pnl_pct / 100.0, 2),
+            "resolved_session": outcome.session.isoformat(),
             "resolved_at": now.isoformat(),
         }
 
@@ -255,19 +177,20 @@ class TradeResolver:
             logger.debug("No active orders found to resolve.")
             return []
 
-        tickers = [o["ticker"] for o in active_orders]
-        prices = self.fetch_current_prices(tickers)
-        if not prices:
-            logger.debug("No market prices returned for active tickers.")
-            return []
+        now = datetime.now(timezone.utc)
+        first_entry: dict[str, date] = {}
+        for order in active_orders:
+            ticker = order["ticker"].strip().upper()
+            entered = order["timestamp_utc"]
+            if isinstance(entered, str):
+                entered = datetime.fromisoformat(entered.replace("Z", "+00:00"))
+            day = entered.astimezone(MARKET_TZ).date() if entered.tzinfo else entered.date()
+            first_entry[ticker] = min(day, first_entry.get(ticker, day))
+        bars = {ticker: self.fetch_daily_bars(ticker, day) for ticker, day in first_entry.items()}
 
         resolved_records: list[dict[str, Any]] = []
-        now = datetime.now(timezone.utc)
-
         for order in active_orders:
-            ticker = order["ticker"]
-            current_price = prices.get(ticker)
-            resolution = self.evaluate_order(order, current_price, now)
+            resolution = self.evaluate_order(order, bars[order["ticker"].strip().upper()], now)
             if resolution is not None:
                 resolved_records.append(resolution)
 

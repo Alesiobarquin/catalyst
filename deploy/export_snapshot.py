@@ -216,7 +216,12 @@ def export(output: Path) -> dict:
             data["regime"] = {"fresh": False}
         if not data["regime"].get("fresh"):
             data["status"] = "partial"
-        tickers = list(dict.fromkeys(o["ticker"] for o in data["orders"]))[:12]
+        tickers = list(
+            dict.fromkeys(
+                [o["ticker"] for o in data["orders"]]
+                + [s["ticker"] for s in data["signals"] if s.get("ticker")]
+            )
+        )[:12]
         for ticker in tickers:
             data["quotes"][ticker] = optional(f"/market/quote/{ticker}", {"ticker": ticker})
             query = urlencode({"from": (now - timedelta(days=90)).isoformat()})

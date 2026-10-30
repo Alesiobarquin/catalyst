@@ -77,7 +77,8 @@ def test_preserves_measured_metrics_dates_and_bounded_query(monkeypatch):
         "short_percentage_of_float.value",
         "days_to_cover_short.value",
     }
-    assert screen.call_args.kwargs["size"] == 40
+    assert event["relative_volume_basis"] == "session"
+    assert screen.call_args.kwargs["size"] == 250
     assert screen.call_args.kwargs["sortField"] == "dayvolume"
     ticker.assert_called_once()
 
@@ -123,12 +124,29 @@ def test_empty_info_never_becomes_a_default_short_interest(monkeypatch):
     assert screener._collect_targets(40, 155.0) == []
 
 
-def test_caps_candidates_and_deduplicates_symbols(monkeypatch):
+def test_caps_enrichment_and_deduplicates_symbols(monkeypatch):
     _, ticker = _mock_source(monkeypatch, [_quote(), _quote(), _quote(symbol="EOSE")])
-    events = screener._collect_targets(2, 155.0)
-    assert len(events) == 1
-    assert events[0]["screener_candidates_considered"] == 2
+    events = screener._collect_targets(1, 155.0)
+    assert [event["ticker"] for event in events] == ["NVAX"]
+    assert events[0]["screener_candidates_considered"] == 3
     ticker.assert_called_once()
+
+
+def test_finds_qualifying_rows_beyond_the_enrichment_cap(monkeypatch):
+    quiet = [_quote(symbol=f"Q{i}", regularMarketVolume=300_000) for i in range(60)]
+    _, ticker = _mock_source(monkeypatch, [*quiet, _quote()])
+    events = screener._collect_targets(40, 155.0)
+    assert [event["ticker"] for event in events] == ["NVAX"]
+    ticker.assert_called_once()
+
+
+def test_projects_partial_session_volume_from_quote_time(monkeypatch):
+    ten_am = datetime(2026, 10, 9, 14, 0, tzinfo=UTC).timestamp()
+    morning = _quote(regularMarketVolume=1_400_000, averageDailyVolume3Month=5_000_000)
+    _mock_source(monkeypatch, [{**morning, "regularMarketTime": ten_am}])
+    events = screener._collect_targets(40, 155.0)
+    assert events[0]["relative_volume_basis"] == "intraday_projection"
+    assert events[0]["relative_volume"] > 2
 
 
 def test_legitimate_empty_screen_is_empty(monkeypatch):

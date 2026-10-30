@@ -133,7 +133,7 @@ Map<String,Strategy> from List<@Component Strategy>.route upper(catalyst_type) ?
 **Debt**: Yahoo no-auth (rate-limit); price cache race benign but stale possible.
 
 ### 5. Persistence & Storage
-**schema.sql**: hypertable validated_signals(time), idx(ticker,time DESC)
+**consumer.py `init_schema()`**: hypertable validated_signals(time), idx(ticker,time DESC)
 
 ### 6. Infra/Deploy
 docker-compose.yml (inferred services: hunters*, gatekeeper, ai_layer, engine:8081, kafka:29092, redis, timescale).

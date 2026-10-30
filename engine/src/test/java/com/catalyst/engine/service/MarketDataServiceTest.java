@@ -18,7 +18,7 @@ class MarketDataServiceTest {
         var server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("https://query1.finance.yahoo.com/v8/finance/chart/SPY?range=1d&interval=1d"))
                 .andRespond(withSuccess("{\"chart\":{\"result\":[{\"meta\":{\"regularMarketPrice\":500}}]}}", MediaType.APPLICATION_JSON));
-        String closes = String.join(",", Collections.nCopies(200, "480"));
+        String closes = String.join(",", Collections.nCopies(201, "480"));
         server.expect(requestTo("https://query1.finance.yahoo.com/v8/finance/chart/SPY?range=1y&interval=1d"))
                 .andRespond(withSuccess("{\"chart\":{\"result\":[{\"indicators\":{\"quote\":[{\"close\":[" + closes + "]}]}}]}}", MediaType.APPLICATION_JSON));
         server.expect(requestTo("https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?range=1d&interval=1d"))
@@ -30,5 +30,16 @@ class MarketDataServiceTest {
         assertEquals(480, snapshot.getSpy200Sma());
         assertTrue(snapshot.getCapturedAt().isAfter(Instant.now().minusSeconds(5)));
         server.verify();
+    }
+
+    @Test
+    void inProgressSessionIsLeftOutOfTheMovingAverage() throws Exception {
+        var closes = new ObjectMapper().readTree("[1, 2, 9]");
+        var open = java.time.ZonedDateTime.of(2026, 10, 30, 10, 0, 0, 0,
+                java.time.ZoneId.of("America/New_York"));
+        assertEquals(java.util.List.of(1.0, 2.0), MarketDataService.closesForSma(closes, open));
+        assertEquals(java.util.List.of(1.0, 2.0, 9.0),
+                MarketDataService.closesForSma(closes, open.withHour(16).withMinute(10)));
+        assertEquals(3, MarketDataService.closesForSma(closes, open.plusDays(1)).size());
     }
 }

@@ -1,6 +1,35 @@
 """Unit tests for AI Layer normalize_analysis, strip_code_fences, normalize_key_risks."""
 
-from ai_layer.ai_service import AIAnalysisService
+import json
+from unittest.mock import MagicMock, patch
+
+import pytest
+from google.genai import errors as genai_errors
+
+from ai_layer.ai_service import AIAnalysisService, serialize_signal
+from ai_layer.prompt_builder import build_analysis_prompt
+from ai_layer.request_budget import BudgetExhaustedError
+
+
+def _server_error():
+    return genai_errors.ServerError(503, {"error": {"message": "unavailable"}})
+
+
+def _response(text, grounded):
+    candidate = MagicMock()
+    candidate.grounding_metadata.grounding_chunks = ["chunk"] if grounded else None
+    return MagicMock(text=text, candidates=[candidate])
+
+
+def _bare_service(response=None):
+    service = AIAnalysisService.__new__(AIAnalysisService)
+    service.model_name = "gemini-3.8-flash"
+    service.fallback_model = None
+    service.generation_config = None
+    service.client = MagicMock()
+    if response is not None:
+        service.client.models.generate_content.return_value = response
+    return service
 
 
 class TestStripCodeFences:
@@ -191,11 +220,6 @@ class TestPromptBuilder:
 
 
 class TestAIAnalysisServiceWorkflow:
-    def test_resolve_model_name_alias(self):
-        assert AIAnalysisService.resolve_model_name("gemini-flash") == "gemini-2.0-flash"
-        assert AIAnalysisService.resolve_model_name("gemini-3-flash") == "gemini-2.5-flash"
-        assert AIAnalysisService.resolve_model_name("models/custom-model") == "models/custom-model"
-
     def test_merge_payload(self):
         service = AIAnalysisService.__new__(AIAnalysisService)
         triage = {
@@ -233,6 +257,20 @@ class TestAIAnalysisServiceWorkflow:
         service.producer.send.assert_not_called()
         service.consumer.commit.assert_not_called()
 
+    def test_process_event_persists_a_trap_below_the_trade_threshold(self):
+        from unittest.mock import MagicMock
+
+        service = AIAnalysisService.__new__(AIAnalysisService)
+        service.analyze_with_retry = MagicMock(
+            return_value={"conviction_score": 30, "is_trap": True, "catalyst_type": "SUPERNOVA"}
+        )
+        service.producer = MagicMock()
+        service.consumer = MagicMock()
+        service.process_event({"ticker": "AAPL", "signals": []})
+        payload = service.producer.send.call_args[0][1]
+        assert payload["is_trap"] is True
+        assert payload["conviction_score"] == 30
+
     def test_process_event_success_publishes_and_commits(self):
         from unittest.mock import MagicMock
 
@@ -258,7 +296,7 @@ class TestAIAnalysisServiceWorkflow:
         service.process_event(triage)
 
         service.producer.send.assert_called_once()
-        service.producer.flush.assert_called_once()
+        service.producer.send.return_value.get.assert_called_once_with(timeout=30)
         service.consumer.commit.assert_called_once()
 
     def test_ai_service_close(self):
@@ -322,7 +360,7 @@ class TestAIAnalysisServiceWorkflow:
         )
 
         service.client.models.generate_content.side_effect = [
-            RuntimeError("ResourceExhausted: Quota exceeded 429"),
+            _server_error(),
             mock_fallback_resp,
         ]
 
@@ -348,13 +386,80 @@ class TestAIAnalysisServiceWorkflow:
         service.fallback_model = "gemini-2.0-flash"
         service.generation_config = None
         service.client = MagicMock()
-        service.client.models.generate_content.side_effect = RuntimeError("Persistent outage 503")
+        service.client.models.generate_content.side_effect = _server_error()
 
         with (
             patch("time.sleep"),
             pytest.raises(RuntimeError, match="Gemini analysis failed after max retries"),
         ):
             service.analyze_with_retry("Analyze TSLA")
+
+    def test_budget_exhaustion_makes_no_request_and_does_not_sleep(self):
+        service = _bare_service()
+        with (
+            patch(
+                "ai_layer.ai_service.reserve_request",
+                side_effect=BudgetExhaustedError("Daily AI request budget exhausted"),
+            ),
+            patch("time.sleep") as sleep,
+            pytest.raises(BudgetExhaustedError),
+        ):
+            service.analyze_with_retry("Analyze NVDA")
+        service.client.models.generate_content.assert_not_called()
+        sleep.assert_not_called()
+
+    def test_ungrounded_high_score_is_not_retried(self, monkeypatch):
+        monkeypatch.setenv("AI_REQUIRE_GROUNDING", "true")
+        service = _bare_service(_response('{"conviction_score": 80}', grounded=False))
+        with patch("time.sleep") as sleep, pytest.raises(ValueError, match="grounding"):
+            service.analyze_with_retry("Analyze NVDA")
+        assert service.client.models.generate_content.call_count == 1
+        sleep.assert_not_called()
+
+    def test_low_score_is_accepted_without_grounding(self, monkeypatch):
+        monkeypatch.setenv("AI_REQUIRE_GROUNDING", "true")
+        service = _bare_service(_response('{"conviction_score": 20}', grounded=False))
+        assert service.analyze_with_retry("Analyze NVDA")["conviction_score"] == 20
+
+    def test_grounded_high_score_is_accepted(self, monkeypatch):
+        monkeypatch.setenv("AI_REQUIRE_GROUNDING", "true")
+        service = _bare_service(_response('{"conviction_score": 80}', grounded=True))
+        assert service.analyze_with_retry("Analyze NVDA")["conviction_score"] == 80
+
+    def test_client_error_is_not_retried(self):
+        service = _bare_service()
+        service.client.models.generate_content.side_effect = genai_errors.ClientError(
+            400, {"error": {"message": "API key not valid", "status": "INVALID_ARGUMENT"}}
+        )
+        with patch("time.sleep") as sleep, pytest.raises(genai_errors.ClientError):
+            service.analyze_with_retry("Analyze NVDA")
+        assert service.client.models.generate_content.call_count == 1
+        sleep.assert_not_called()
+
+    def test_unrecognized_catalyst_and_sentiment_become_unknown(self):
+        result = AIAnalysisService.normalize_analysis(
+            {"catalyst_type": "short squeeze", "news_sentiment": "very bullish"}
+        )
+        assert result["catalyst_type"] == "UNKNOWN"
+        assert result["news_sentiment"] == "unknown"
+        assert (
+            AIAnalysisService.normalize_analysis({"catalyst_type": " follower "})["catalyst_type"]
+            == "FOLLOWER"
+        )
+
+    def test_serializer_replaces_non_finite_numbers(self):
+        payload = {"liquidity_metrics": {"rvol": float("nan")}, "signals": [float("inf")]}
+        assert json.loads(serialize_signal(payload)) == {
+            "liquidity_metrics": {"rvol": None},
+            "signals": [None],
+        }
+
+    def test_long_signal_list_keeps_output_schema(self):
+        signals = [{"source_hunter": "insider", "signal_data": {"note": "x" * 2000}}] * 20
+        prompt = build_analysis_prompt({"ticker": "NVDA", "signals": signals})
+        assert "characters of signal data omitted" in prompt
+        assert prompt.rstrip().endswith("}")
+        assert "OUTPUT SCHEMA" in prompt
 
     def test_synthesize_fallback_analysis_confluence(self):
         payload = {

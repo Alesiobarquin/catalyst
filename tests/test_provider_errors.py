@@ -3,6 +3,7 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 
 from hunters.common.provider_errors import ProviderError, check_browser_response
@@ -170,8 +171,12 @@ async def test_whale_reads_production_shadow_cells_and_preserves_alignment():
     assert result[0]["option_volume"] == 19715
     assert result[0]["option_type"] == "put"
     assert result[0]["expiration_date"] == "10/16/26"
+    assert result[0]["open_interest"] == 6000
+    assert result[0]["vol_oi_ratio"] == 3.29
+    assert result[0]["last_trade"] == "16:00 ET"
     cells = row.query_selector_all.return_value
     assert cells[3].evaluate.await_args.args[1] == "expirationDate"
+    assert cells[11].evaluate.await_args.args[1] is None
 
 
 @pytest.mark.asyncio
@@ -233,7 +238,7 @@ async def test_fmp_error_object_is_not_a_successful_empty_calendar(monkeypatch):
     from hunters.drifter_hunter import _fetch_calendar
 
     response = SimpleNamespace(
-        raise_for_status=lambda: None,
+        is_error=False,
         json=lambda: {"Error Message": "provider rejected request?apikey=secret"},
     )
     monkeypatch.setattr(
@@ -242,6 +247,52 @@ async def test_fmp_error_object_is_not_a_successful_empty_calendar(monkeypatch):
     with pytest.raises(ProviderError, match="FMP: unexpected response format") as error:
         await _fetch_calendar(AsyncMock())
     assert "secret" not in str(error.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("outcome", "code"),
+    [
+        ({"return_value": SimpleNamespace(is_error=True, status_code=401)}, "http_error"),
+        ({"side_effect": httpx.ConnectError("failed for ?apikey=secret")}, "source_unavailable"),
+    ],
+)
+async def test_fmp_failures_never_chain_the_keyed_url(monkeypatch, outcome, code):
+    from hunters.drifter_hunter import _fetch_calendar
+
+    monkeypatch.setattr("hunters.drifter_hunter.async_http_get_with_retry", AsyncMock(**outcome))
+    with pytest.raises(ProviderError) as error:
+        await _fetch_calendar(AsyncMock())
+    assert error.value.code == code
+    assert error.value.__cause__ is None
+    assert error.value.__context__ is None or error.value.__suppress_context__
+
+
+def test_one_malformed_pdufa_record_does_not_drop_the_rest():
+    from datetime import datetime, timezone
+
+    from hunters.common.pdufa_calendar import parse_pdufa_response
+
+    good = {
+        "ticker": "BIIB",
+        "name": "Drug",
+        "date": "2026-11-15",
+        "date_precision": "day",
+        "type": "PDUFA",
+        "status": "upcoming",
+        "source": "FDA",
+        "source_url": "https://www.fda.gov/example",
+    }
+    events = parse_pdufa_response(
+        {
+            "data": [{"ticker": "broken"}, good],
+            "meta": {"as_of": "2026-10-29T00:00:00Z", "served_from": "live"},
+        },
+        collected_at=datetime(2026, 10, 29, tzinfo=timezone.utc),
+    )
+    assert events[0]["ticker"] == "BIIB"
+    assert events[0]["days_until_event"] == 17
+    assert events[0]["calendar_truncated"] is False
 
 
 @pytest.mark.asyncio

@@ -9,6 +9,7 @@ COPY resolver/requirements.txt /tmp/resolver.txt
 RUN pip install --no-cache-dir -c /tmp/constraints.txt -r /tmp/api.txt -r /tmp/gatekeeper.txt -r /tmp/ai.txt -r /tmp/persistence.txt -r /tmp/resolver.txt
 COPY api /app/api
 COPY gatekeeper /app/gatekeeper
+COPY hunters/common/__init__.py hunters/common/tickers.py /app/hunters/common/
 COPY ai_layer /app/ai_layer
 COPY persistence /app/persistence
 COPY resolver /app/resolver

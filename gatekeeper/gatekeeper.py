@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import time
 from datetime import datetime, timezone
 
@@ -24,9 +25,11 @@ from gatekeeper.config import (
     REDIS_SOURCES_ZSET_KEY,
     REQUIRE_CONFLUENCE,
     ROLLING_WINDOW_SECONDS,
+    RVOL_EXEMPT_SOURCES,
     TECHNICAL_SCORE_THRESHOLD,
     TRIAGE_PRIORITY_TOPIC,
 )
+from hunters.common.tickers import canonical_ticker
 from kafka import KafkaConsumer, KafkaProducer
 
 logging.basicConfig(
@@ -147,7 +150,14 @@ class GatekeeperService:
             return
 
         ticker = normalized["ticker"]
-        self.track_signal(ticker, normalized)
+        direction = self.signal_direction(normalized)
+        self.track_signal(ticker, normalized, direction)
+        if direction == "bearish":
+            # The engine is long-only: bearish evidence is context for the AI, never confirmation.
+            logger.info(
+                "Buffered bearish %s from %s as context", ticker, normalized["source_hunter"]
+            )
+            return
 
         confluence_sources = self.get_sources(ticker)
         confluence_count = len(confluence_sources)
@@ -166,13 +176,10 @@ class GatekeeperService:
             )
             return
 
-        if self.was_recently_sent(ticker):
-            logger.info("Deduped %s: already sent within rolling window", ticker)
+        if self.was_recently_sent(ticker, confluence_count):
+            logger.info("Deduped %s: already sent with %s sources", ticker, confluence_count)
             return
-
-        if not self.mark_sent(ticker):
-            logger.info("Deduped %s: already claimed/sent within rolling window", ticker)
-            return
+        self.mark_sent(ticker, confluence_count)
 
         triage_payload = {
             "ticker": ticker,
@@ -185,8 +192,7 @@ class GatekeeperService:
             "market_cap": normalized.get("market_cap"),
         }
         try:
-            self.producer.send(TRIAGE_PRIORITY_TOPIC, triage_payload)
-            self.producer.flush()
+            self.producer.send(TRIAGE_PRIORITY_TOPIC, triage_payload).get(timeout=30)
         except Exception:
             self.clear_sent(ticker)
             raise
@@ -436,9 +442,11 @@ class GatekeeperService:
         # volume/rel_volume filters and only check price range.
         if source_hunter != "insider":
             volume = liquidity.get("volume", 0.0)
-            relative_volume = liquidity.get("relative_volume", 0.0)
             if volume < MIN_VOLUME:
                 return f"volume {volume} below minimum {MIN_VOLUME}"
+        # Scheduled or announced events are not volume-confirmed signals.
+        if source_hunter not in RVOL_EXEMPT_SOURCES:
+            relative_volume = liquidity.get("relative_volume", 0.0)
             if relative_volume < MIN_RELATIVE_VOLUME:
                 return f"relative_volume {relative_volume} below minimum {MIN_RELATIVE_VOLUME}"
 
@@ -451,19 +459,35 @@ class GatekeeperService:
             return f"price {price} above maximum {MAX_PRICE}"
         return None
 
-    def track_signal(self, ticker, normalized):
+    @staticmethod
+    def signal_direction(normalized):
+        data = normalized.get("signal_data") or {}
+        source = normalized.get("source_hunter")
+        if source == "insider":
+            code = str(data.get("transaction_code") or "").upper()
+            return {"P": "bullish", "S": "bearish"}.get(code, "neutral")
+        if source == "whale":
+            kind = str(data.get("option_type") or "").lower()
+            return {"call": "bullish", "put": "bearish"}.get(kind, "neutral")
+        if source == "biotech":
+            return "neutral"
+        return "bullish"
+
+    def track_signal(self, ticker, normalized, direction="bullish"):
         signal_key = REDIS_SIGNALS_KEY.format(ticker=ticker)
         source_key = REDIS_SOURCES_KEY.format(ticker=ticker)
         zset_key = REDIS_SOURCES_ZSET_KEY.format(ticker=ticker)
 
+        now_ts = time.time()
         payload = {
             "source_hunter": normalized["source_hunter"],
+            "direction": direction,
+            "received_at": datetime.fromtimestamp(now_ts, timezone.utc).isoformat(),
             "signal_data": normalized["signal_data"],
         }
 
         # Cap per-ticker signal history to avoid unbounded growth.
         max_signals_per_window = 200
-        now_ts = time.time()
         cutoff_ts = now_ts - ROLLING_WINDOW_SECONDS
 
         pipe = self.redis.pipeline()
@@ -471,14 +495,15 @@ class GatekeeperService:
         pipe.ltrim(signal_key, 0, max_signals_per_window - 1)
         pipe.expire(signal_key, ROLLING_WINDOW_SECONDS)
 
-        # Standard set for backward compatibility
-        pipe.sadd(source_key, normalized["source_hunter"])
-        pipe.expire(source_key, ROLLING_WINDOW_SECONDS)
+        if direction != "bearish":
+            # Standard set for backward compatibility
+            pipe.sadd(source_key, normalized["source_hunter"])
+            pipe.expire(source_key, ROLLING_WINDOW_SECONDS)
 
-        # Sorted set with epoch timestamp score for precise sliding window confluence
-        pipe.zadd(zset_key, {normalized["source_hunter"]: now_ts})
-        pipe.zremrangebyscore(zset_key, "-inf", cutoff_ts)
-        pipe.expire(zset_key, ROLLING_WINDOW_SECONDS)
+            # Sorted set with epoch timestamp score for precise sliding window confluence
+            pipe.zadd(zset_key, {normalized["source_hunter"]: now_ts})
+            pipe.zremrangebyscore(zset_key, "-inf", cutoff_ts)
+            pipe.expire(zset_key, ROLLING_WINDOW_SECONDS)
         pipe.execute()
 
     def get_sources(self, ticker):
@@ -504,20 +529,30 @@ class GatekeeperService:
     def get_accumulated_signals(self, ticker):
         signal_key = REDIS_SIGNALS_KEY.format(ticker=ticker)
         raw_signals = self.redis.lrange(signal_key, 0, -1)
-        return [json.loads(signal) for signal in raw_signals]
+        signals, seen = [], set()
+        # Newest first; hunters repeat the same evidence on every daily scan.
+        for raw in raw_signals:
+            signal = json.loads(raw)
+            identity = (
+                signal.get("source_hunter"),
+                json.dumps(signal.get("signal_data"), sort_keys=True, default=str),
+            )
+            if identity not in seen:
+                seen.add(identity)
+                signals.append(signal)
+        return signals
 
-    def was_recently_sent(self, ticker):
+    def was_recently_sent(self, ticker, confluence_count):
+        """True when the ticker was already forwarded with at least this many sources."""
+        sent = self.redis.get(REDIS_SENT_KEY.format(ticker=ticker))
+        try:
+            return sent is not None and int(sent) >= confluence_count
+        except (TypeError, ValueError):
+            return True
+
+    def mark_sent(self, ticker, confluence_count):
         sent_key = REDIS_SENT_KEY.format(ticker=ticker)
-        return bool(self.redis.exists(sent_key))
-
-    def mark_sent(self, ticker):
-        """Atomically mark ticker as sent using SET NX EX to prevent race conditions.
-
-        Returns True if the lock was acquired and mark set, False if already sent.
-        """
-        sent_key = REDIS_SENT_KEY.format(ticker=ticker)
-        result = self.redis.set(sent_key, "1", nx=True, ex=ROLLING_WINDOW_SECONDS)
-        return bool(result)
+        self.redis.set(sent_key, str(confluence_count), ex=ROLLING_WINDOW_SECONDS)
 
     def clear_sent(self, ticker):
         """Clear sent marker if triage delivery fails."""
@@ -547,23 +582,7 @@ class GatekeeperService:
 
     @staticmethod
     def normalize_ticker(value):
-        if value is None:
-            return None
-        s = str(value).strip().upper()
-        if not s:
-            return None
-        # Clean multiline cells and comma lists
-        s = s.split("\n")[0].split(",")[0].strip()
-        # Strip leading dollar sign
-        if s.startswith("$"):
-            s = s[1:].strip()
-        # Strip exchange prefix (e.g., NASDAQ:AAPL -> AAPL)
-        if ":" in s:
-            s = s.split(":")[-1].strip()
-        # Strip exchange dot suffix (e.g., BIIB.TO -> BIIB), preserving US share classes (.A, .B, .C, .WS)
-        if "." in s and not any(s.endswith(f".{suff}") for suff in ("A", "B", "C", "WS")):
-            s = s.split(".")[0].strip()
-        return s if s else None
+        return canonical_ticker(value)
 
     @staticmethod
     def normalize_timestamp(value):
@@ -600,9 +619,10 @@ class GatekeeperService:
                 if cleaned == "":
                     return default
                 value = cleaned
-            return float(value)
+            number = float(value)
         except (TypeError, ValueError):
             return default
+        return number if math.isfinite(number) else default
 
 
 if __name__ == "__main__":
