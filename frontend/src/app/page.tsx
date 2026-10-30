@@ -80,7 +80,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         basePath="/"
         query={{
           strategy: strategy !== "all" ? strategy : undefined,
-          date_range: dateRange !== "all" && dateRange !== "30d" ? dateRange : undefined,
+          date_range: dateRange !== "30d" ? dateRange : undefined,
           status: status,
           ticker: ticker,
         }}

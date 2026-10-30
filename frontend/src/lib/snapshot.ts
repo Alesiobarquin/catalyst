@@ -73,7 +73,7 @@ export function downloadCsv(rows: object[], name: string) {
   const keys = Object.keys(rows[0]).filter((key) => key !== "execution");
   const escape = (value: unknown) => {
     const raw = Array.isArray(value) ? value.join("; ") : String(value ?? "");
-    const safe = /^[=+@\-]/.test(raw) ? `'${raw}` : raw;
+    const safe = typeof value === "string" && /^[=+@\-]/.test(raw) ? `'${raw}` : raw;
     return `"${safe.replaceAll('"', '""')}"`;
   };
   const content = [keys.join(","), ...rows.map((row) => keys.map((key) => escape((row as Record<string, unknown>)[key])).join(","))].join("\r\n");

@@ -206,7 +206,8 @@ async def export_orders_csv(
         SELECT id, ticker, timestamp_utc, action, strategy_used,
                recommended_size_usd, limit_price, stop_loss, target_price,
                rationale, conviction_score, catalyst_type,
-               regime_vix, spy_above_200sma, status
+               regime_vix, spy_above_200sma, status,
+               resolved_at, resolved_price, pnl_percent, realized_pnl_usd
         FROM trade_orders
         {where}
         ORDER BY timestamp_utc DESC
@@ -335,7 +336,7 @@ async def order_stats(conn: asyncpg.Connection = Depends(get_conn)):
             SELECT COALESCE(SUM(realized_pnl_usd), 0.0) AS total_pnl_usd,
                    COALESCE(AVG(pnl_percent), 0.0) AS avg_pnl_pct
             FROM trade_orders
-            WHERE status IN ('HIT_TARGET', 'HIT_STOP', 'RESOLVED_WIN', 'RESOLVED_LOSS')
+            WHERE status IN ('HIT_TARGET', 'HIT_STOP', 'RESOLVED_WIN', 'RESOLVED_LOSS', 'EXPIRED')
             """
         )
         total_pnl_usd = float(pnl_stats["total_pnl_usd"]) if pnl_stats else 0.0
@@ -448,9 +449,9 @@ async def get_order_detail(
         SELECT *
         FROM validated_signals
         WHERE ticker = $1
-          AND time >= $2 - INTERVAL '2 hours'
-          AND time <= $2 + INTERVAL '2 hours'
-        ORDER BY ABS(EXTRACT(EPOCH FROM (time - $2))) ASC
+          AND time >= $2::timestamptz - INTERVAL '2 hours'
+          AND time <= $2::timestamptz + INTERVAL '2 hours'
+        ORDER BY ABS(EXTRACT(EPOCH FROM (time - $2::timestamptz))) ASC
         LIMIT 1
         """,
         ticker,
@@ -463,7 +464,7 @@ async def get_order_detail(
             SELECT *
             FROM validated_signals
             WHERE ticker = $1
-            ORDER BY ABS(EXTRACT(EPOCH FROM (time - $2))) ASC
+            ORDER BY ABS(EXTRACT(EPOCH FROM (time - $2::timestamptz))) ASC
             LIMIT 1
             """,
             ticker,
@@ -618,7 +619,7 @@ async def get_order_detail(
 
     raw_factors = dict(order_row)
     if sig_row:
-        raw_factors["validated_signal_id"] = sig_row["id"]
+        raw_factors["validated_signal_id"] = sig_row.get("id")
         raw_factors["confluence_count"] = sig_row["confluence_count"]
 
     res_price = (

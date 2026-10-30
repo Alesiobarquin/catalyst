@@ -148,9 +148,8 @@ def test_get_order_detail_success():
             "spy_above_200sma": True,
             "status": "ACTIVE",
         },
-        # 2. validated_signals row
+        # 2. validated_signals row; the table has no id column
         {
-            "id": 10,
             "confluence_count": 2,
             "confluence_sources": ["squeeze", "whale"],
             "key_risks": ["Earnings announcement in 3 weeks", "Tech sector weakness"],
@@ -161,6 +160,8 @@ def test_get_order_detail_success():
         res = client.get("/orders/42/detail")
 
     assert res.status_code == 200
+    signal_query = mock_conn.fetchrow.call_args_list[1].args[0]
+    assert "$2::timestamptz - INTERVAL" in signal_query
     data = res.json()
     assert data["ticker"] == "AAPL"
     assert data["convictionScore"] == 85
@@ -216,6 +217,7 @@ def test_order_stats_success():
     assert data["win_rate_percent"] == 75.0
     assert data["realized_pnl_percent"] == 14.5
     assert data["total_realized_pnl_usd"] == 12500.0
+    assert "EXPIRED" in mock_conn.fetchrow.await_args.args[0]
     assert data["total_recommended_volume_usd"] == 250000.0
     assert data["strategy_breakdown"]["Supernova"] == 6
     assert data["catalyst_breakdown"]["SUPERNOVA"] == 7
@@ -378,6 +380,9 @@ def test_export_orders_csv_with_resolution_columns():
     assert "TSLA" in lines[1]
     assert "280.0" in lines[1]
     assert "2000.4" in lines[1]
+    query = mock_conn.fetch.call_args.args[0]
+    for column in ("resolved_at", "resolved_price", "pnl_percent", "realized_pnl_usd"):
+        assert column in query
 
 
 def test_orders_ticker_url_alias_success():

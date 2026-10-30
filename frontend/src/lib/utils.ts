@@ -37,21 +37,6 @@ export function calcRiskReward(order: TradeOrder): number {
   return parseFloat((reward / risk).toFixed(2));
 }
 
-// ── Trade status derivation ────────────────────────────────────────
-export function deriveStatus(order: TradeOrder, currentPrice?: number): TradeStatus {
-  if (!currentPrice) return "ACTIVE";
-  if (currentPrice >= order.target_price) return "HIT_TARGET";
-  if (currentPrice <= order.stop_loss)    return "HIT_STOP";
-  return "ACTIVE";
-}
-
-export function derivePnlPct(order: TradeOrder, currentPrice?: number): number | undefined {
-  if (!currentPrice) return undefined;
-  return parseFloat(
-    (((currentPrice - order.limit_price) / order.limit_price) * 100).toFixed(2)
-  );
-}
-
 // ── Date formatting ────────────────────────────────────────────────
 export function formatDateTime(iso: string): string {
   return format(new Date(iso), "MMM d, yyyy HH:mm");

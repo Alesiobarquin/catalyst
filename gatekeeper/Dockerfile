@@ -9,6 +9,7 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 COPY gatekeeper /app/gatekeeper
+COPY hunters/common/__init__.py hunters/common/tickers.py /app/hunters/common/
 
 RUN chown -R appuser:appuser /app
 

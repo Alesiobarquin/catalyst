@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { filterRows, paginate } from "@/lib/snapshot";
+import { downloadCsv, filterRows, paginate } from "@/lib/snapshot";
 
-afterEach(() => { vi.unstubAllGlobals(); vi.resetModules(); });
+afterEach(() => { vi.unstubAllGlobals(); vi.resetModules(); vi.restoreAllMocks(); });
 
 describe("Public snapshots", () => {
   it("rejects a manifest that redirects the browser outside the published dataset", async () => {
@@ -27,5 +27,13 @@ describe("Public snapshots", () => {
     expect(paginate(rows, 999, 1)).toMatchObject({ items: ["second"], page: 2 });
     expect(paginate(rows, 1.5, 1)).toMatchObject({ items: ["first"], page: 1 });
     expect(paginate([], 999)).toMatchObject({ items: [], page: 1 });
+  });
+  it("guards formula-like text in CSV exports without altering negative numbers", () => {
+    let content = "";
+    vi.stubGlobal("Blob", class { constructor(parts: string[]) { content = parts.join(""); } });
+    vi.stubGlobal("URL", { createObjectURL: () => "blob:test", revokeObjectURL: () => {} });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    downloadCsv([{ ticker: "=CMD()", pnl_percent: -5.2 }], "x.csv");
+    expect(content.split("\r\n")[1]).toBe(`"'=CMD()","-5.2"`);
   });
 });

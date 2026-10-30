@@ -12,9 +12,12 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import java.net.http.HttpClient;
 import java.net.URI;
 import org.springframework.beans.factory.annotation.Autowired;
+import java.time.DayOfWeek;
 import java.time.Duration;
-
 import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -200,12 +203,7 @@ public class MarketDataService {
                 .path("quote").get(0)
                 .path("close");
 
-        List<Double> prices = new ArrayList<>();
-        for (JsonNode node : closes) {
-            if (!node.isNull() && node.asDouble(0) > 0) {
-                prices.add(node.asDouble());
-            }
-        }
+        List<Double> prices = closesForSma(closes, ZonedDateTime.now(ZoneId.of("America/New_York")));
 
         if (prices.size() < 200) {
             log.warn("Insufficient data for SPY 200 SMA: only {} points. Regime remains unavailable.",
@@ -215,6 +213,32 @@ public class MarketDataService {
 
         List<Double> last200 = prices.subList(prices.size() - 200, prices.size());
         return last200.stream().mapToDouble(Double::doubleValue).average().orElse(0);
+    }
+
+    /** Today's daily bar is still forming until 16:05 ET, so it is left out of the 200-session average. */
+    static boolean excludeInProgressBar(ZonedDateTime nowNewYork) {
+        DayOfWeek day = nowNewYork.getDayOfWeek();
+        if (day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY) {
+            return false;
+        }
+        LocalTime time = nowNewYork.toLocalTime();
+        return !time.isBefore(LocalTime.of(9, 30)) && time.isBefore(LocalTime.of(16, 5));
+    }
+
+    static List<Double> closesForSma(JsonNode closes, ZonedDateTime nowNewYork) {
+        boolean dropLast = excludeInProgressBar(nowNewYork);
+        List<Double> prices = new ArrayList<>();
+        int last = closes.size() - 1;
+        for (int i = 0; i < closes.size(); i++) {
+            if (dropLast && i == last) {
+                continue;
+            }
+            JsonNode node = closes.get(i);
+            if (!node.isNull() && node.asDouble(0) > 0) {
+                prices.add(node.asDouble());
+            }
+        }
+        return prices;
     }
 
     // -------------------------------------------------------------------------

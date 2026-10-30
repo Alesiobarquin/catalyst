@@ -7,6 +7,7 @@ _PROVIDERS = {
     "fmp": "FMP",
     "yahoo": "Yahoo Finance",
     "pdufa": "PDUFA.bio",
+    "sec": "SEC EDGAR",
 }
 _ERRORS = {
     "http_error": "HTTP error",

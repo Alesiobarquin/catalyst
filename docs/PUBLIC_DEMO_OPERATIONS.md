@@ -14,7 +14,7 @@ Public results expose the actual collection time, per-source provider and succes
 
 The public Squeeze source is `SQUEEZE_PROVIDER=yahoo`, using a bounded first-40 US short-interest screen with existing thresholds and quote/short-interest dates retained. Local Finviz remains available. Barchart reads its rendered grid/shadow-root values. `BIOTECH_PROVIDER=pdufa` selects the documented free anonymous pdufa.bio core API: one 90-day/40-row request, at most 512 KiB and 25 seconds. Only upcoming exact-day PDUFA dates with source links and no unsourced-goal flags qualify; estimates and resolved events are excluded. The source-only collector returned 25 eligible events, and the full EC2 batch published all 25. Public attribution links back to pdufa.bio; no key, account, Pro endpoint or subscription is used. Encrypted SSM runtime version 5 preserves all other settings. These are bounded samples, without a complete-market coverage claim.
 
-The public profile requires two distinct sources in a five-minute window. Gemini 3.8 Flash must supply Google Search grounding and conviction of at least 50; heuristic fallback is disabled. A persistent counter limits requests, including failures and retries, to **two per UTC day**. Prompts are bounded to 24,000 characters and output, including thinking, to 2,048 tokens. No Pro fallback is configured. A transient failure can retry once; both attempts consume the same two-request daily limit. Java's actual Kafka listener executor uses Project Loom virtual threads. An unavailable/stale regime, missing 200-session SMA, or VIX at least 40 halts new recommendations. Half-Kelly allocation is capped at 25% per recommendation on a modeled $100,000 book; this is not an aggregate portfolio exposure limit.
+The public profile requires two distinct confirming sources. The batch keeps that evidence for seven days in persisted Redis. Insider sales and put flow are stored as context and do not count toward the threshold. Gemini 3.8 Flash must supply Google Search grounding and conviction of at least 50; heuristic fallback is disabled. A persistent counter limits requests, including failures and retries, to **two per New York day**. Prompts are bounded to 24,000 characters and output, including thinking, to 2,048 tokens. No Pro fallback is configured. A transient failure can retry once; both attempts consume the same two-request daily limit. Java's actual Kafka listener executor uses Project Loom virtual threads. An unavailable/stale regime, missing 200-session SMA, or VIX at least 40 halts new recommendations. Half-Kelly allocation is capped at 25% per recommendation on a modeled $100,000 book; this is not an aggregate portfolio exposure limit.
 
 The resolver evaluates `ACTIVE` recommendations against sampled Yahoo prices, with a 14-calendar-day holding limit. Published PnL is modeled recommendation performance, not realized brokerage profit. Daily samples can miss intraday stop/target crossings. Price charts use exported market history; missing data is labeled unavailable rather than synthesized.
 
@@ -34,8 +34,8 @@ Run from the repository root with the configured AWS CLI identity and `gh` login
 .venv/bin/python scripts/public_demo.py configure
 
 # Build, verify, and publish an immutable release through GitHub Actions.
-gh workflow run public-demo.yml --ref main --repo Alesiobarquin/catalyst
-gh run list --workflow public-demo.yml --repo Alesiobarquin/catalyst
+gh workflow run ci.yml --ref main --repo Alesiobarquin/catalyst
+gh run list --workflow ci.yml --repo Alesiobarquin/catalyst
 
 # Inspect both schedules, including their timezone and enabled state.
 aws scheduler get-schedule --name catalyst-daily-start
@@ -49,7 +49,9 @@ aws cloudformation describe-stacks --stack-name CatalystPublicDemoStack \
 curl -fsS https://d36bndaw2y0rrh.cloudfront.net/data/manifest.json
 ```
 
-Main-branch pushes touching runtime, frontend, or deployment files run release CI. Documentation-only changes do not rebuild images. Each release verifies Python, Java, and frontend tests, builds native x86 images on GitHub, pushes immutable commit tags to ECR, uploads the worker archive/release pointer, and publishes static assets. Data is initialized only when no public manifest exists; code releases preserve the latest scan. The worker downloads the latest successful release on each boot. A failed build does not replace the previous release pointer. Runtime package constraints are in `deploy/constraints.txt` and the frontend uses `npm ci`.
+`ci.yml` is the verification and manual release entry point. Python, Java, and frontend checks run in parallel; each main-branch commit runs those checks once. Main-branch pushes touching runtime, frontend, or deployment files then call the reusable `public-demo.yml` publisher only after all three jobs succeed. CI uploads its tested public static export, and the publisher downloads that exact build instead of reinstalling frontend dependencies or rebuilding it. Documentation-only pushes still run CI but do not publish. Manual CI dispatch on `main` verifies and publishes; dispatch on another branch only verifies. Outdated PR runs are cancelled, while main-branch runs and active publication are not interrupted.
+
+The publisher builds native x86 images on GitHub, pushes immutable commit tags to ECR, uploads the worker archive/release pointer, and publishes the verified static assets. Data is initialized only when no public manifest exists; code releases preserve the latest scan. The worker downloads the latest successful release on each boot. A failed verification/build does not replace the previous release pointer. Runtime package constraints are in `deploy/constraints.txt` and the frontend uses `npm ci`. Static build artifacts are retained for one day; after expiry, rerun all CI jobs or manually dispatch CI rather than rerunning just the publisher.
 
 Inter and JetBrains Mono are bundled locally with their SIL OFL licenses and pinned source hashes, eliminating a build-time Google Fonts dependency after final CI exposed a Turbopack font-loader failure. The local and static builds share the same layout and font files.
 

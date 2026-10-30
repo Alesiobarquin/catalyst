@@ -132,7 +132,8 @@ export function TradeList({ orders, hasActiveFilters }: TradeListProps) {
                   ...order,
                   current_price: livePerf.current_price ?? order.current_price,
                   pnl_pct: livePerf.pnl_pct ?? order.pnl_pct,
-                  status: livePerf.status ?? order.status,
+                  // The resolver has already written the outcome before a snapshot is exported.
+                  status: PUBLIC_DEMO ? order.status : livePerf.status ?? order.status,
                 }
               : order),
           };

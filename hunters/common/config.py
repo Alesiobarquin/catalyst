@@ -8,7 +8,14 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 
 # External APIs & URLs
 FMP_API_KEY = os.getenv("FMP_API_KEY", "")
-SEC_RSS_URL = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&output=atom"
+SEC_RSS_URL = (
+    "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&owner=include&output=atom"
+)
+# SEC fair access requires a monitored contact, e.g. "Catalyst research you@example.com".
+SEC_USER_AGENT = os.getenv("SEC_USER_AGENT", "").strip()
+INSIDER_LOOKBACK_HOURS = int(os.getenv("INSIDER_LOOKBACK_HOURS", "24"))
+INSIDER_MAX_PAGES = int(os.getenv("INSIDER_MAX_PAGES", "4"))
+INSIDER_MAX_TRADE_AGE_DAYS = int(os.getenv("INSIDER_MAX_TRADE_AGE_DAYS", "5"))
 BARCHART_URL = "https://www.barchart.com/options/unusual-activity/stocks"
 BIOPHARM_URL = "https://www.biopharmcatalyst.com/calendars/pdufa-calendar"
 FINVIZ_URL = "https://finviz.com/screener.ashx?v=111&f=sh_short_o20"

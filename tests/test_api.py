@@ -1,6 +1,7 @@
 """API smoke tests for health and auth-protected routes."""
 
 from collections.abc import AsyncGenerator
+from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -401,6 +402,43 @@ def test_stream_signals_sse():
         chunk = next(response.iter_text())
         assert "event: connected" in chunk
         assert "stream_active" in chunk
+
+
+def test_stream_releases_connection_after_each_poll():
+    from unittest.mock import AsyncMock
+
+    released = []
+    mock_conn = AsyncMock()
+    mock_conn.fetch.return_value = [
+        {"ticker": "NVDA", "timestamp_utc": datetime.now(timezone.utc), "conviction_score": 80}
+    ]
+
+    async def _mock_conn_generator():
+        try:
+            yield mock_conn
+        finally:
+            released.append(True)
+
+    db.init_pool = _noop  # type: ignore[assignment]
+    db.close_pool = _noop  # type: ignore[assignment]
+    app = create_app()
+    app.dependency_overrides[db.get_conn] = _mock_conn_generator
+
+    with (
+        TestClient(app) as client,
+        client.stream("GET", "/signals/stream?max_events=1") as response,
+    ):
+        body = "".join(response.iter_text())
+
+    assert "event: signal" in body and "NVDA" in body
+    assert released == [True]
+    assert "confluence_count" in mock_conn.fetch.await_args.args[0]
+
+
+def test_stream_rejects_sub_second_polling():
+    with make_test_client() as client:
+        res = client.get("/signals/stream?poll_interval=0.5")
+    assert res.status_code == 422
 
 
 def test_security_headers_present():
@@ -941,6 +979,13 @@ def test_market_overview_success():
     assert data[0]["price"] == 505.25
     assert data[1]["ticker"] == "QQQ"
     assert data[1]["price"] == 440.10
+
+
+def test_market_overview_rejects_an_unbounded_symbol_list():
+    with make_test_client() as client:
+        symbols = ",".join(f"S{i}" for i in range(26))
+        res = client.get(f"/market/overview?symbols={symbols}")
+    assert res.status_code == 422
 
 
 def test_market_quote_url_alias_success():

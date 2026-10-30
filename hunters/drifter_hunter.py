@@ -24,6 +24,7 @@ from .common.kafka_client import KafkaClient
 from .common.liquidity_lookup import fetch_liquidity_metrics
 from .common.logger import get_logger
 from .common.provider_errors import ProviderError
+from .common.tickers import canonical_ticker
 from .common.topics import KAFKA_TOPIC_DRIFTER, RAW_EVENTS_TOPIC
 
 logger = get_logger("drifter_hunter")
@@ -45,10 +46,14 @@ def _remember(key: str) -> bool:
     return True
 
 
+# Below this estimate a one-cent beat reads as a 20%+ surprise.
+MIN_EPS_ESTIMATE = 0.05
+
+
 def _eps_surprise_pct(eps: float | None, est: float | None) -> float | None:
     if eps is None or est is None:
         return None
-    if abs(est) < 1e-9:
+    if abs(est) < MIN_EPS_ESTIMATE:
         return None
     return round(((eps - est) / abs(est)) * 100.0, 4)
 
@@ -59,6 +64,13 @@ def _rev_surprise_pct(rev: float | None, est: float | None) -> float | None:
     if abs(est) < 1e-9:
         return None
     return round(((rev - est) / abs(est)) * 100.0, 4)
+
+
+def _days_since(day: str) -> int | None:
+    try:
+        return (datetime.now(timezone.utc).date() - datetime.fromisoformat(day).date()).days
+    except ValueError:
+        return None
 
 
 def _num(v) -> float | None:
@@ -78,17 +90,19 @@ async def _fetch_calendar(client: httpx.AsyncClient) -> list[dict]:
         "to": today.isoformat(),
         "apikey": FMP_API_KEY,
     }
-    r = await async_http_get_with_retry(
-        client,
-        FMP_CALENDAR_URL,
-        params=params,
-        timeout=30.0,
-        custom_logger=logger,
-    )
+    # Errors are re-raised without their cause: httpx messages include the URL and its apikey.
     try:
-        r.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        raise ProviderError("fmp", "http_error", r.status_code) from exc
+        r = await async_http_get_with_retry(
+            client,
+            FMP_CALENDAR_URL,
+            params=params,
+            timeout=30.0,
+            custom_logger=logger,
+        )
+    except httpx.HTTPError:
+        raise ProviderError("fmp", "source_unavailable") from None
+    if r.is_error:
+        raise ProviderError("fmp", "http_error", r.status_code)
     try:
         data = r.json()
     except ValueError as exc:
@@ -103,7 +117,7 @@ async def _run_sweep(client: httpx.AsyncClient, kafka: KafkaClient) -> int:
     pushed = 0
 
     for row in rows:
-        symbol = (row.get("symbol") or "").strip().upper()
+        symbol = canonical_ticker(row.get("symbol"))
         if not symbol:
             continue
 
@@ -137,11 +151,13 @@ async def _run_sweep(client: httpx.AsyncClient, kafka: KafkaClient) -> int:
             "revenue_estimate": rev_est,
             "revenue_actual": rev,
             "earnings_date": date_str,
+            "days_since_earnings": _days_since(date_str),
             "timestamp": now_iso,
             "timestamp_utc": now_iso,
             "price": liq["price"],
             "volume": liq["volume"],
             "relative_volume": liq["relative_volume"],
+            "relative_volume_basis": liq.get("relative_volume_basis"),
         }
 
         rev_surp = _rev_surprise_pct(rev, rev_est)

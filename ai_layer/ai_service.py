@@ -1,9 +1,12 @@
 import json
 import logging
+import math
 import os
 import time
 
+import httpx
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 from kafka.errors import KafkaError
 
@@ -32,17 +35,37 @@ logging.basicConfig(
 )
 logger = logging.getLogger("ai-layer")
 
-MODEL_ALIASES = {
-    "gemini-flash": "gemini-2.0-flash",
-    "gemini-2-flash": "gemini-2.0-flash",
-    "gemini-3-flash": "gemini-2.5-flash",
-    "gemini-3.0-flash-preview": "gemini-2.5-flash",
-    "gemini-3.1-flash-lite": "gemini-2.0-flash-lite",
-    "gemini-2-pro": "gemini-2.5-pro",
-    "gemini-3-pro": "gemini-2.5-pro",
-    "gemini-3.1-pro": "gemini-2.5-pro",
-    "gemini-3.1-pro-preview": "gemini-2.5-pro",
-}
+CATALYST_TYPES = {"SUPERNOVA", "SCALPER", "FOLLOWER", "DRIFTER", "UNKNOWN"}
+NEWS_SENTIMENTS = {"bullish", "bearish", "neutral", "unknown"}
+# Every attempt spends daily budget, so only failures a second attempt can fix are retried.
+TRANSIENT_ERRORS = (
+    genai_errors.ServerError,
+    httpx.TimeoutException,
+    httpx.TransportError,
+    TimeoutError,
+    ConnectionError,
+)
+ANALYSIS_ERRORS = (RuntimeError, ValueError, TypeError, KeyError, genai_errors.APIError)
+
+
+def finite_json(value):
+    """Replace NaN and infinities, which Python's json accepts but downstream parsers reject."""
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, dict):
+        return {key: finite_json(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [finite_json(item) for item in value]
+    return value
+
+
+def serialize_signal(value) -> bytes:
+    return json.dumps(finite_json(value), allow_nan=False).encode("utf-8")
+
+
+def describe_failure(exc: BaseException) -> str:
+    cause = exc.__cause__ or exc
+    return f"{type(cause).__name__}: {cause}"
 
 
 class AIAnalysisService:
@@ -50,10 +73,8 @@ class AIAnalysisService:
         if not GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY is required")
 
-        model_name = self.resolve_model_name(GEMINI_MODEL)
-        fallback_model = (
-            self.resolve_model_name(GEMINI_FALLBACK_MODEL) if GEMINI_FALLBACK_MODEL else None
-        )
+        model_name = GEMINI_MODEL
+        fallback_model = GEMINI_FALLBACK_MODEL or None
         self.client = genai.Client(api_key=GEMINI_API_KEY, http_options={"timeout": 120000})
         tools = [types.Tool(google_search=types.GoogleSearch())]
         self.generation_config = types.GenerateContentConfig(
@@ -87,7 +108,7 @@ class AIAnalysisService:
                 )
                 self.producer = KafkaProducer(
                     bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                    value_serializer=lambda value: json.dumps(value).encode("utf-8"),
+                    value_serializer=serialize_signal,
                 )
                 break
             except (KafkaError, ValueError, OSError) as exc:
@@ -140,11 +161,12 @@ class AIAnalysisService:
             analysis["analysis_model"] = getattr(
                 self, "last_model", getattr(self, "model_name", "unknown")
             )
-        except (RuntimeError, ValueError, TypeError, KeyError) as exc:
+        except ANALYSIS_ERRORS as exc:
             if os.getenv("AI_ALLOW_HEURISTIC_FALLBACK", "true") != "true":
                 logger.error(
-                    "Grounded analysis unavailable for %s; dropping signal",
+                    "Grounded analysis unavailable for %s; dropping signal (%s)",
                     triage_payload.get("ticker"),
+                    describe_failure(exc),
                 )
                 return
             logger.warning(
@@ -157,7 +179,8 @@ class AIAnalysisService:
             analysis["analysis_model"] = None
 
         conviction_score = analysis.get("conviction_score", 0)
-        if conviction_score < MIN_CONVICTION_SCORE:
+        # Traps are stored for the dashboard. The engine already refuses to size them.
+        if conviction_score < MIN_CONVICTION_SCORE and not analysis.get("is_trap"):
             logger.info(
                 "Dropped %s: conviction_score %s below threshold %s",
                 triage_payload.get("ticker", "unknown"),
@@ -167,8 +190,7 @@ class AIAnalysisService:
             return
 
         validated_signal = self.merge_payload(triage_payload, analysis)
-        self.producer.send(VALIDATED_SIGNALS_TOPIC, validated_signal)
-        self.producer.flush()
+        self.producer.send(VALIDATED_SIGNALS_TOPIC, validated_signal).get(timeout=30)
         if (
             hasattr(self, "consumer")
             and hasattr(self.consumer, "commit")
@@ -185,8 +207,11 @@ class AIAnalysisService:
         )
 
     def analyze_with_retry(self, prompt):
+        """
+        Only transient transport/server failures are retried. Budget exhaustion, client
+        errors, malformed output and missing grounding fail immediately.
+        """
         backoff_seconds = GEMINI_INITIAL_BACKOFF_SECONDS
-        last_error = None
         current_model = self.model_name
         fallback_model = getattr(self, "fallback_model", None)
 
@@ -200,35 +225,16 @@ class AIAnalysisService:
                 )
                 current_model = fallback_model
 
+            reserve_request()
             try:
-                reserve_request()
                 response = self.client.models.generate_content(
                     model=current_model,
-                    contents=prompt[:24000],
+                    contents=prompt,
                     config=self.generation_config,
                 )
-                raw_text = getattr(response, "text", "")
-                parsed = self.extract_json_object(raw_text)
-                if os.getenv("AI_REQUIRE_GROUNDING") == "true":
-                    candidates = getattr(response, "candidates", None) or []
-                    grounded = any(
-                        getattr(getattr(c, "grounding_metadata", None), "grounding_chunks", None)
-                        for c in candidates
-                    )
-                    if not grounded:
-                        raise ValueError("Response lacks search grounding sources")
-                self.last_model = current_model
-                return self.normalize_analysis(parsed)
-            except Exception as exc:
-                last_error = exc
-                err_msg = str(exc)
-                if "API_KEY_INVALID" in err_msg or "API key not valid" in err_msg:
-                    logger.warning(
-                        "Gemini API key is invalid or unconfigured. Skipping redundant retries."
-                    )
-                    break
+            except TRANSIENT_ERRORS as exc:
                 if attempt == GEMINI_MAX_RETRIES:
-                    break
+                    raise RuntimeError("Gemini analysis failed after max retries") from exc
                 logger.warning(
                     "Gemini attempt %s/%s with model %s failed: %s. Retrying in %ss",
                     attempt,
@@ -239,11 +245,29 @@ class AIAnalysisService:
                 )
                 time.sleep(backoff_seconds)
                 backoff_seconds *= 2
+                continue
 
-        # Preserve original exception type and traceback for observability.
-        if last_error is not None:
-            raise RuntimeError("Gemini analysis failed after max retries") from last_error
-        raise RuntimeError("Gemini analysis failed after max retries with unknown error")
+            analysis = self.normalize_analysis(
+                self.extract_json_object(getattr(response, "text", ""))
+            )
+            if (
+                analysis["conviction_score"] >= MIN_CONVICTION_SCORE
+                and os.getenv("AI_REQUIRE_GROUNDING") == "true"
+                and not self.is_grounded(response)
+            ):
+                raise ValueError("Response lacks search grounding sources")
+            self.last_model = current_model
+            return analysis
+
+        raise RuntimeError("Gemini analysis failed after max retries")
+
+    @staticmethod
+    def is_grounded(response) -> bool:
+        candidates = getattr(response, "candidates", None) or []
+        return any(
+            getattr(getattr(c, "grounding_metadata", None), "grounding_chunks", None)
+            for c in candidates
+        )
 
     @classmethod
     def synthesize_fallback_analysis(cls, triage_payload: dict) -> dict:
@@ -377,14 +401,16 @@ class AIAnalysisService:
                 return default
 
         conviction_score = _safe_int_from_field(parsed, "conviction_score", default=0)
+        catalyst_type = str(parsed.get("catalyst_type", "UNKNOWN")).strip().upper()
+        news_sentiment = str(parsed.get("news_sentiment", "unknown")).strip().lower()
 
         return {
             "conviction_score": conviction_score,
-            "catalyst_type": str(parsed.get("catalyst_type", "UNKNOWN")).upper(),
+            "catalyst_type": catalyst_type if catalyst_type in CATALYST_TYPES else "UNKNOWN",
             "is_trap": bool(parsed.get("is_trap", False)),
             "trap_reason": parsed.get("trap_reason"),
             "rationale": str(parsed.get("rationale", "")).strip(),
-            "news_sentiment": str(parsed.get("news_sentiment", "unknown")).lower(),
+            "news_sentiment": news_sentiment if news_sentiment in NEWS_SENTIMENTS else "unknown",
             "risk_level": str(parsed.get("risk_level", "high")).lower(),
             "suggested_timeframe": str(parsed.get("suggested_timeframe", "intraday")).lower(),
             "key_risks": AIAnalysisService.normalize_key_risks(parsed.get("key_risks")),
@@ -402,12 +428,6 @@ class AIAnalysisService:
         if isinstance(value, str) and value.strip():
             return [value.strip()]
         return []
-
-    @staticmethod
-    def resolve_model_name(model_name):
-        if model_name.startswith("models/"):
-            return model_name
-        return MODEL_ALIASES.get(model_name, model_name)
 
 
 if __name__ == "__main__":

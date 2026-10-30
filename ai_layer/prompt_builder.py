@@ -1,10 +1,18 @@
 import json
 from textwrap import dedent
 
+# Bounds the variable part of the prompt so the instructions and output schema are always sent.
+MAX_SIGNAL_CHARS = 16000
+
 
 def build_analysis_prompt(triage_payload):
     ticker = triage_payload.get("ticker") or "UNKNOWN"
     signal_blocks = format_signal_blocks(triage_payload.get("signals") or [])
+    if len(signal_blocks) > MAX_SIGNAL_CHARS:
+        omitted = len(signal_blocks) - MAX_SIGNAL_CHARS
+        signal_blocks = (
+            f"{signal_blocks[:MAX_SIGNAL_CHARS]}\n[{omitted} characters of signal data omitted]"
+        )
     metadata = {
         "ticker": ticker,
         "timestamp_utc": triage_payload.get("timestamp_utc"),
@@ -36,8 +44,9 @@ def build_analysis_prompt(triage_payload):
         - "{ticker} news today"
         - "{ticker} SEC filing" if an insider signal is present
         - "{ticker} short squeeze" if a squeeze signal is present
-        Use search results to populate news_sentiment and inform is_trap. If search returns
-        nothing relevant, say so in the rationale.
+        Use search results to populate news_sentiment and inform is_trap. A conviction_score
+        of 50 or more requires search results that confirm the catalyst. If search returns
+        nothing relevant, score below 50 and say so in the rationale.
 
         SIGNAL DATA:
         {signal_blocks}
@@ -58,11 +67,15 @@ def build_analysis_prompt(triage_payload):
         - Dark pool bullish but insider is selling large blocks
 
         CONVICTION CALIBRATION:
+        Catalyst only opens LONG positions (buying the stock). conviction_score is your
+        confidence that a long position reaches its target. Bearish setups (insider selling,
+        put-heavy options flow, negative news) must score below 50, however strong the
+        evidence, and should set news_sentiment accordingly.
         - 90-100: Multiple confirming signals, no contradictions
         - 70-89: Strong, most signals align
         - 50-69: Moderate, single dominant signal
         - Below 50: Do not trade
-        - If is_trap=true, conviction_score must be below 40
+        - If is_trap=true, set is_trap and score below 50. Traps are recorded, not traded.
         - Binary events (FDA PDUFA decision, earnings same day): single-source signals can
           score 80+ if the event is confirmed imminent via search or signal data
 
@@ -109,14 +122,11 @@ def format_signal_blocks(signals):
             continue
         source = signal.get("source_hunter", "unknown")
         signal_data = json.dumps(signal.get("signal_data", {}), indent=2, sort_keys=True)
-        blocks.append(
-            dedent(
-                f"""
-                Signal {index}:
-                Source: {source}
-                Payload:
-                {signal_data}
-                """
-            ).strip()
-        )
+        lines = [f"Signal {index}:", f"Source: {source}"]
+        if signal.get("direction"):
+            lines.append(f"Direction: {signal['direction']}")
+        if signal.get("received_at"):
+            lines.append(f"Received: {signal['received_at']}")
+        lines += ["Payload:", signal_data]
+        blocks.append("\n".join(lines))
     return "\n\n".join(blocks)

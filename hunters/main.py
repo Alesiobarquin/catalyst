@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from hunters import biotech_hunter, drifter_hunter, insider_hunter, squeeze_hunter, whale_hunter
+from hunters.common import liquidity_lookup
 from hunters.common.kafka_client import CURRENT_HUNTER, KafkaClient
 from hunters.common.logger import get_logger
 from hunters.common.provider_errors import ProviderError
@@ -51,6 +52,7 @@ async def run_hunter(
         provider = HUNTER_PROVIDERS[name]
     token = CURRENT_HUNTER.set(name)
     before = KafkaClient.sent_counts[(name, "raw-events")]
+    skipped_before = liquidity_lookup.skipped_counts[name]
     try:
         logger.info("Starting hunter: %s", name)
         coro = HUNTERS[name].run(once=True) if once else HUNTERS[name].run()
@@ -67,6 +69,7 @@ async def run_hunter(
             "error": None,
             "duration_sec": elapsed,
             "emitted_events": KafkaClient.sent_counts[(name, "raw-events")] - before,
+            "liquidity_skipped": liquidity_lookup.skipped_counts[name] - skipped_before,
         }
     except TimeoutError:
         elapsed = round(time.perf_counter() - start, 3)
@@ -77,6 +80,7 @@ async def run_hunter(
             "success": False,
             "error": f"Timed out after {timeout_sec}s",
             "emitted_events": KafkaClient.sent_counts[(name, "raw-events")] - before,
+            "liquidity_skipped": liquidity_lookup.skipped_counts[name] - skipped_before,
             "duration_sec": elapsed,
         }
     except Exception as e:
@@ -88,6 +92,7 @@ async def run_hunter(
             "success": False,
             "error": str(e) if isinstance(e, ProviderError) or not once else type(e).__name__,
             "emitted_events": KafkaClient.sent_counts[(name, "raw-events")] - before,
+            "liquidity_skipped": liquidity_lookup.skipped_counts[name] - skipped_before,
             "duration_sec": elapsed,
         }
     finally:

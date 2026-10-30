@@ -13,10 +13,7 @@ import type {
   PipelineHealth,
 } from "@/types";
 import { MARKET_TAPE_SYMBOLS } from "./market-universe";
-import { MOCK_ORDERS, MOCK_SIGNALS, MOCK_STATS } from "./mock-data";
 import { PUBLIC_DEMO, loadSnapshot, filterRows, paginate } from "./snapshot";
-
-const USE_MOCK = false;
 
 /** Browser + local `npm run dev`: localhost. Docker SSR: use service name `api`. */
 function apiBaseUrl(): string {
@@ -47,19 +44,6 @@ export async function getOrders(params?: {
       (!params?.status || params.status === "all" || o.status === params.status));
     return paginate(rows, params?.page, params?.per_page);
   }
-  if (USE_MOCK) {
-    let items = [...MOCK_ORDERS];
-    if (params?.strategy && params.strategy !== "all") {
-      items = items.filter((o) => o.strategy_used === params.strategy);
-    }
-    if (params?.status && params.status !== "all") {
-      items = items.filter((o) => o.status === params.status);
-    }
-    if (params?.ticker) {
-      items = items.filter((o) => o.ticker.toUpperCase() === params.ticker?.toUpperCase());
-    }
-    return { items, total: items.length, page: 1, per_page: 20 };
-  }
   const qs = new URLSearchParams();
   if (params?.strategy && params.strategy !== "all") qs.set("strategy", params.strategy);
   if (params?.status && params.status !== "all") qs.set("status", params.status);
@@ -74,7 +58,6 @@ export async function getOrders(params?: {
 
 export async function getOrdersByTicker(ticker: string): Promise<TradeOrder[]> {
   if (PUBLIC_DEMO) return (await loadSnapshot()).orders.filter((o) => o.ticker === ticker.toUpperCase());
-  if (USE_MOCK) return MOCK_ORDERS.filter((o) => o.ticker === ticker);
   const res = await fetch(`${apiBaseUrl()}/orders/${ticker}`, { next: { revalidate: 30 } });
   if (!res.ok) throw new Error(`Failed to fetch orders for ${ticker}`);
   return res.json();
@@ -82,7 +65,6 @@ export async function getOrdersByTicker(ticker: string): Promise<TradeOrder[]> {
 
 export async function getOrderStats(): Promise<OrderStats> {
   if (PUBLIC_DEMO) return (await loadSnapshot()).order_stats;
-  if (USE_MOCK) return MOCK_STATS;
   const res = await fetch(`${apiBaseUrl()}/orders/stats`, { next: { revalidate: 60 } });
   if (!res.ok) throw new Error("Failed to fetch order stats");
   return res.json();
@@ -106,7 +88,6 @@ export async function getSignals(params?: {
       (params?.is_trap === undefined || s.is_trap === params.is_trap));
     return paginate(rows, params?.page, params?.per_page);
   }
-  if (USE_MOCK) return { items: MOCK_SIGNALS, total: MOCK_SIGNALS.length, page: 1, per_page: 20 };
   const qs = new URLSearchParams();
   if (params?.catalyst_type && params.catalyst_type !== "all") qs.set("catalyst_type", params.catalyst_type);
   if (params?.min_conviction !== undefined) qs.set("min_conviction", String(params.min_conviction));
@@ -132,7 +113,6 @@ export async function getSignalStats(): Promise<SignalStats> {
     high_conviction_count: 0,
     catalyst_breakdown: {},
   };
-  if (USE_MOCK) return defaultStats;
   try {
     const res = await fetch(`${apiBaseUrl()}/signals/stats`, { next: { revalidate: 30 } });
     if (!res.ok) return defaultStats;
@@ -149,9 +129,6 @@ export async function getPriceHistory(
   fromTimestamp: string
 ): Promise<PriceBar[]> {
   if (PUBLIC_DEMO) return (await loadSnapshot()).history[ticker] ?? [];
-  if (USE_MOCK) {
-    return [];
-  }
   const res = await fetch(
     `${apiBaseUrl()}/market/${ticker}/history?from=${encodeURIComponent(fromTimestamp)}`,
     { next: { revalidate: 300 } }
@@ -166,7 +143,7 @@ export async function getBatchPerformance(
   ids: number[]
 ): Promise<BatchPerformance[]> {
   if (PUBLIC_DEMO) return (await loadSnapshot()).performance.filter((p) => ids.includes(p.order_id));
-  if (USE_MOCK || ids.length === 0) return [];
+  if (ids.length === 0) return [];
   const res = await fetch(
     `${apiBaseUrl()}/performance/batch?ids=${ids.join(",")}`,
     { cache: "no-store" }
@@ -243,9 +220,6 @@ export async function getQuote(ticker: string): Promise<MarketQuote | null> {
 export async function getMarketBenchmarks(): Promise<MarketQuote[]> {
   if (PUBLIC_DEMO) return (await loadSnapshot()).benchmarks;
   const tickers = MARKET_TAPE_SYMBOLS;
-  if (USE_MOCK) {
-    return tickers.map((t) => ({ ticker: t, price: 100 }));
-  }
   try {
     const res = await fetch(`${apiBaseUrl()}/market/overview?symbols=${encodeURIComponent(tickers.join(","))}`, {
       next: { revalidate: 15 },

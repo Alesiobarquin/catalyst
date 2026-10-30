@@ -13,6 +13,8 @@ from api.models import MarketQuoteResponse, PriceBar
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/market", tags=["market"])
+# The public tape requests 19 symbols; the cap stops one request from fanning out without a bound.
+MAX_OVERVIEW_SYMBOLS = 25
 
 _QUOTE_CACHE: dict[str, tuple[dict, float]] = {}
 _QUOTE_CACHE_TTL_SECONDS: float = 15.0
@@ -122,6 +124,10 @@ async def market_overview(
     tickers = [s.strip().upper() for s in symbols.split(",") if s.strip()]
     if not tickers:
         return []
+    if len(tickers) > MAX_OVERVIEW_SYMBOLS:
+        raise HTTPException(
+            status_code=422, detail=f"At most {MAX_OVERVIEW_SYMBOLS} symbols per request"
+        )
 
     tasks = [asyncio.to_thread(_fetch_quote, t) for t in tickers]
     quotes = await asyncio.gather(*tasks, return_exceptions=True)

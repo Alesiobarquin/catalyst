@@ -3,11 +3,10 @@ Performance endpoint — derives live P&L for a trade order by walking
 daily OHLC bars from yfinance.
 
 Logic:
-  1. Fetch daily bars from timestamp_utc to today via yfinance.
-  2. Walk bars in chronological order:
-       low  <= stop_loss   → HIT_STOP
-       high >= target_price → HIT_TARGET
-  3. If neither triggered → ACTIVE (or EXPIRED after 90 days).
+  1. Fetch unadjusted daily bars from the entry session to today via yfinance.
+  2. Apply the resolver's outcome rule (resolver/outcome.py): sessions after
+     entry, stop before target on each bar, expiry after MAX_HOLDING_DAYS.
+  3. P&L uses the outcome's fill price when resolved, otherwise the last close.
   4. current_price is the last close from yfinance.
 
 Route order matters: /batch must be declared before /{order_id} so
@@ -16,6 +15,7 @@ FastAPI does not try to coerce the literal string "batch" as an integer.
 
 import asyncio
 import logging
+import math
 from datetime import datetime, timezone
 
 import asyncpg
@@ -23,6 +23,9 @@ import yfinance as yf
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.db import get_conn
+from resolver.config import MAX_HOLDING_DAYS
+from resolver.outcome import MARKET_TZ, resolve_from_bars
+from resolver.outcome import pnl_percent as outcome_pnl_percent
 
 router = APIRouter(prefix="/performance", tags=["performance"])
 logger = logging.getLogger("api.performance")
@@ -69,30 +72,23 @@ def _compute_ticker_performance(
     computed_status = db_status
 
     try:
-        start_str = signal_dt.strftime("%Y-%m-%d")
-        hist = yf.Ticker(ticker).history(start=start_str, interval="1d", auto_adjust=True)
+        start_str = signal_dt.astimezone(MARKET_TZ).strftime("%Y-%m-%d")
+        hist = yf.Ticker(ticker).history(start=start_str, interval="1d", auto_adjust=False)
+        columns = [name for name in ("Open", "High", "Low", "Close") if name in hist.columns]
+        hist = hist.replace([math.inf, -math.inf], math.nan).dropna(subset=columns or None)
         if not hist.empty:
-            current_price = round(float(hist["Close"].iloc[-1]), 4)
+            close = float(hist["Close"].iloc[-1])
+            current_price = round(close, 4) if math.isfinite(close) else None
             if db_status == "ACTIVE":
-                for _, bar in hist.iterrows():
-                    high = float(bar["High"])
-                    low = float(bar["Low"])
-                    if is_sell:
-                        if stop_loss > 0 and high >= stop_loss:
-                            computed_status = "HIT_STOP"
-                            break
-                        if target_price > 0 and low <= target_price:
-                            computed_status = "HIT_TARGET"
-                            break
-                    else:
-                        if stop_loss > 0 and low <= stop_loss:
-                            computed_status = "HIT_STOP"
-                            break
-                        if target_price > 0 and high >= target_price:
-                            computed_status = "HIT_TARGET"
-                            break
-                if computed_status == "ACTIVE" and days_held > 90:
-                    computed_status = "EXPIRED"
+                outcome = resolve_from_bars(
+                    action, stop_loss, target_price, hist, signal_dt, now, MAX_HOLDING_DAYS
+                )
+                if outcome is not None:
+                    computed_status = outcome.status
+                    if pnl_percent is None and entry_price > 0:
+                        pnl_percent = round(
+                            outcome_pnl_percent(action, entry_price, outcome.price), 2
+                        )
         else:
             try:
                 t = yf.Ticker(ticker)
@@ -186,7 +182,24 @@ async def get_batch_performance(
             )
         )
 
-    return await asyncio.gather(*tasks)
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    output = []
+    for row, result in zip(rows, results, strict=False):
+        if isinstance(result, Exception):
+            logger.warning("Performance lookup failed for order %s: %s", row["id"], result)
+            output.append(
+                {
+                    "order_id": row["id"],
+                    "ticker": row["ticker"],
+                    "current_price": None,
+                    "pnl_pct": None,
+                    "status": row["status"],
+                    "days_held": None,
+                }
+            )
+            continue
+        output.append(result)
+    return output
 
 
 # ── Single-order endpoint ──────────────────────────────────────────────────────

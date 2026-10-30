@@ -264,12 +264,25 @@ def _get_conn_provider(request: Request):
     return override if override is not None else get_conn
 
 
+STREAM_SQL = """
+    SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
+           ticker, time AS timestamp_utc, conviction_score,
+           catalyst_type, rationale, is_trap,
+           confluence_sources, confluence_count, key_risks,
+           suggested_entry_zone, suggested_stop
+    FROM validated_signals
+    WHERE time > $1 AND conviction_score >= $2
+    ORDER BY time ASC
+    LIMIT 20
+"""
+
+
 @router.get("/stream")
 async def stream_signals(
     request: Request,
     min_conviction: int = Query(70, ge=0, le=100),
     max_events: int | None = Query(None, description="Optional cap on streamed events"),
-    poll_interval: float = Query(2.0, ge=0.01, le=60.0),
+    poll_interval: float = Query(2.0, ge=1.0, le=60.0),
     conn_provider=Depends(_get_conn_provider),
 ):
     """
@@ -289,44 +302,13 @@ async def stream_signals(
                 break
 
             try:
-                gen = conn_provider()
-                rows = []
-                if hasattr(gen, "__aiter__"):
-                    async for conn in gen:
-                        rows = await conn.fetch(
-                            """
-                            SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
-                                   ticker, time AS timestamp_utc, conviction_score,
-                                   catalyst_type, rationale, is_trap,
-                                   confluence_sources, key_risks,
-                                   suggested_entry_zone, suggested_stop
-                            FROM validated_signals
-                            WHERE time > $1 AND conviction_score >= $2
-                            ORDER BY time ASC
-                            LIMIT 20
-                            """,
-                            last_time,
-                            min_conviction,
-                        )
-                        break
-                elif hasattr(gen, "__iter__"):
-                    for conn in gen:
-                        rows = await conn.fetch(
-                            """
-                            SELECT ROW_NUMBER() OVER (ORDER BY time DESC) AS id,
-                                   ticker, time AS timestamp_utc, conviction_score,
-                                   catalyst_type, rationale, is_trap,
-                                   confluence_sources, confluence_count, key_risks,
-                                   suggested_entry_zone, suggested_stop
-                            FROM validated_signals
-                            WHERE time > $1 AND conviction_score >= $2
-                            ORDER BY time ASC
-                            LIMIT 20
-                            """,
-                            last_time,
-                            min_conviction,
-                        )
-                        break
+                # Hold a pooled connection only for this query, not across the sleep.
+                connections = conn_provider()
+                try:
+                    conn = await anext(connections)
+                    rows = await conn.fetch(STREAM_SQL, last_time, min_conviction)
+                finally:
+                    await connections.aclose()
 
                 for r in rows:
                     formatted = _format_signal_row(r)

@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from psycopg import Connection, DatabaseError, OperationalError, connect
 
-from kafka import KafkaConsumer
+from kafka import KafkaConsumer, TopicPartition
 from persistence.config import (
     KAFKA_AUTO_OFFSET_RESET,
     KAFKA_BOOTSTRAP_SERVERS,
@@ -29,6 +29,8 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 logger = logging.getLogger("persistence")
+
+MAX_PERSIST_ATTEMPTS = 3
 
 
 def parse_ts(ts_str: str | None) -> datetime | None:
@@ -117,7 +119,17 @@ INSERT INTO validated_signals (
 """
 
 
+def decode_message(raw: bytes):
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+
+
 def persist_signal(conn: Connection, payload: dict) -> bool:
+    if not isinstance(payload, dict):
+        logger.warning("Skipping undecodable or non-object signal payload")
+        return False
     ticker = (payload.get("ticker") or "").strip().upper()
     if not ticker:
         logger.warning("Skipping signal without ticker: %s", payload)
@@ -172,42 +184,61 @@ def run():
         auto_offset_reset=KAFKA_AUTO_OFFSET_RESET,
         enable_auto_commit=False,
         group_id=KAFKA_CONSUMER_GROUP,
-        value_deserializer=lambda v: json.loads(v.decode("utf-8")),
+        value_deserializer=decode_message,
     )
 
+    attempts: dict[tuple[int, int], int] = {}
     for message in consumer:
-        try:
-            if conn.closed:
-                logger.warning("Database connection is closed. Reconnecting...")
-                conn = get_db_conn()
-            if persist_signal(conn, message.value):
-                consumer.commit()
-                logger.info("Persisted %s", message.value.get("ticker", "?"))
-            else:
-                consumer.commit()
-                logger.info("Skipped invalid signal payload (offset committed)")
+        conn = process_message(consumer, conn, message, attempts)
 
-        except (OperationalError, DatabaseError) as db_exc:
-            logger.error("Database error while persisting signal: %s. Reconnecting...", db_exc)
-            try:
-                if not conn.closed:
-                    conn.rollback()
-            except Exception:
-                pass
-            time.sleep(1)
-            try:
-                conn = get_db_conn()
-                logger.info("Reconnected to TimescaleDB.")
-            except Exception as reconn_err:
-                logger.error("Database reconnection failed: %s", reconn_err)
-        except Exception as exc:
-            logger.error("Failed to persist signal: %s", exc)
-            try:
-                if not conn.closed:
-                    conn.rollback()
-            except Exception:
-                pass
-            # Do not commit - will retry on next poll
+
+def process_message(consumer, conn: Connection, message, attempts: dict) -> Connection:
+    """Persist one message; on failure re-read the same offset, then give up after a cap."""
+    key = (message.partition, message.offset)
+    try:
+        if conn.closed:
+            logger.warning("Database connection is closed. Reconnecting...")
+            conn = get_db_conn()
+        if persist_signal(conn, message.value):
+            logger.info("Persisted %s", message.value.get("ticker", "?"))
+        else:
+            logger.info("Skipped invalid signal payload (offset committed)")
+        consumer.commit()
+        attempts.pop(key, None)
+        return conn
+    except (OperationalError, DatabaseError) as db_exc:
+        logger.error("Database error while persisting signal: %s. Reconnecting...", db_exc)
+        _rollback(conn)
+        time.sleep(1)
+        try:
+            conn = get_db_conn()
+            logger.info("Reconnected to TimescaleDB.")
+        except Exception as reconn_err:
+            logger.error("Database reconnection failed: %s", reconn_err)
+    except Exception as exc:
+        logger.error("Failed to persist signal: %s", exc)
+        _rollback(conn)
+
+    attempts[key] = attempts.get(key, 0) + 1
+    if attempts[key] >= MAX_PERSIST_ATTEMPTS:
+        logger.error(
+            "Giving up on partition %s offset %s after %d attempts; committing past it",
+            message.partition,
+            message.offset,
+            attempts.pop(key),
+        )
+        consumer.commit()
+    else:
+        consumer.seek(TopicPartition(message.topic, message.partition), message.offset)
+    return conn
+
+
+def _rollback(conn: Connection) -> None:
+    try:
+        if not conn.closed:
+            conn.rollback()
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

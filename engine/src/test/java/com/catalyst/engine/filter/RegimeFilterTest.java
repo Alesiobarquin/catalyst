@@ -26,6 +26,11 @@ class RegimeFilterTest {
         public MarketSnapshot getMarketSnapshot() {
             return snapshot;
         }
+
+        @Override
+        public void refreshRegimeData() {
+            // The real refresh calls Yahoo. Tests set the snapshot themselves.
+        }
     }
 
     @BeforeEach
@@ -40,6 +45,22 @@ class RegimeFilterTest {
         marketDataService.setSnapshot(MarketDataService.MarketSnapshot.builder()
                 .spyPrice(500).spy200Sma(450).vix(15).capturedAt(java.time.Instant.EPOCH).build());
         assertEquals(RegimeStatus.HALT, regimeFilter.getSnapshot().getStatus());
+    }
+
+    @Test
+    void refreshesAStaleSnapshotBeforeHalting() {
+        marketDataService = new StubMarketDataService() {
+            @Override
+            public void refreshRegimeData() {
+                setSnapshot(MarketDataService.MarketSnapshot.builder()
+                        .vix(15).spyPrice(500).spy200Sma(450).capturedAt(java.time.Instant.now()).build());
+            }
+        };
+        regimeFilter = new RegimeFilter(marketDataService, 40.0, 30.0);
+        marketDataService.setSnapshot(MarketDataService.MarketSnapshot.builder()
+                .spyPrice(0).spy200Sma(0).vix(0).capturedAt(java.time.Instant.EPOCH).build());
+
+        assertEquals(RegimeStatus.PASS, regimeFilter.getSnapshot().getStatus());
     }
 
     @Test

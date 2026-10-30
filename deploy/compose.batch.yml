@@ -28,6 +28,8 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_LOG_RETENTION_HOURS: 48
+      # Longer than any pause, so consumers never fall back to "earliest" and replay old events.
+      KAFKA_OFFSETS_RETENTION_MINUTES: 43200
       KAFKA_LOG_RETENTION_BYTES: 134217728
       KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
     volumes: ["kafka-data:/var/lib/kafka/data"]
@@ -36,7 +38,9 @@ services:
     logging: *logs
   redis:
     image: redis:7.4.2-alpine
-    command: [redis-server, --maxmemory, 80mb, --maxmemory-policy, allkeys-lru]
+    # Confluence evidence must survive the daily stop/start of the worker.
+    command: [redis-server, --appendonly, "yes", --maxmemory, 80mb, --maxmemory-policy, volatile-lru]
+    volumes: ["redis-data:/data"]
     mem_limit: 128m
     healthcheck: {test: [CMD, redis-cli, ping], interval: 5s, timeout: 3s, retries: 12}
     logging: *logs
@@ -56,6 +60,8 @@ services:
   gatekeeper:
     <<: *python
     command: [python, -m, gatekeeper.gatekeeper]
+    # Daily scans see each source once, so sources only meet across days (five trading days).
+    environment: {GATEKEEPER_ROLLING_WINDOW_SECONDS: "604800"}
     mem_limit: 256m
     depends_on: {kafka: {condition: service_healthy}, redis: {condition: service_healthy}}
   ai-layer:
@@ -92,7 +98,7 @@ services:
     logging: *logs
   resolver:
     <<: *python
-    command: [python, -m, resolver.trade_resolver]
+    command: [python, -m, resolver.main]
     depends_on: {timescaledb: {condition: service_healthy}, kafka: {condition: service_healthy}, engine: {condition: service_healthy}}
   snapshot:
     <<: *python
@@ -102,6 +108,7 @@ services:
     volumes: ["./reports:/reports", "./exports:/exports"]
 
 volumes:
+  redis-data:
   zk-data:
   zk-log:
   kafka-data:

@@ -37,26 +37,10 @@ spring:
     # Version zero ensures Flyway still runs V1 on a non-empty fresh schema.
     baseline-version: 0
 
-  # Kafka: consumer reads validated-signals, producer writes trade-orders.
-  # Most deserialization config lives here to avoid magic in KafkaConfig.
+  # Consumer and producer settings are defined in KafkaConfig, whose factories
+  # replace Spring Boot's auto-configured ones.
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    consumer:
-      group-id: catalyst-engine
-      auto-offset-reset: earliest
-      # The AI layer (Python) produces plain JSON without Spring type headers.
-      # Setting use.type.headers=false and value.default.type tells the
-      # JsonDeserializer to always target ValidatedSignal, ignoring absent headers.
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      properties:
-        spring.json.trusted.packages: "com.catalyst.engine.model"
-        spring.json.value.default.type: com.catalyst.engine.model.ValidatedSignal
-        spring.json.use.type.headers: "false"
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      properties:
-        spring.json.add.type.headers: "false"
 
 # Engine-specific config: all exposed as env vars for Docker Compose
 engine:

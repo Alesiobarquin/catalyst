@@ -36,6 +36,9 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+# Amazon Linux 2023 (al2023-ami-2023.12.20260930.0) running on i-0597d111f82782b5d.
+WORKER_AMI = "ami-03c3da4cfa8e8943a"
+
 
 class PublicDemoStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs):
@@ -175,8 +178,10 @@ class PublicDemoStack(Stack):
             security_group=sg,
             role=worker_role,
             instance_type=ec2.InstanceType("m6a.large"),
-            machine_image=ec2.MachineImage.latest_amazon_linux2023(
-                cpu_type=ec2.AmazonLinuxCpuType.X86_64
+            # A different image replaces the worker, discarding its database volumes;
+            # change it deliberately with -c workerAmi=... after a backup.
+            machine_image=ec2.MachineImage.generic_linux(
+                {self.region: self.node.try_get_context("workerAmi") or WORKER_AMI}
             ),
             require_imdsv2=True,
             associate_public_ip_address=True,
@@ -223,7 +228,7 @@ class PublicDemoStack(Stack):
                     role_arn=schedule_role.role_arn,
                     input=json.dumps({"InstanceIds": [worker.instance_id]}),
                     retry_policy=scheduler.CfnSchedule.RetryPolicyProperty(
-                        maximum_event_age_in_seconds=60, maximum_retry_attempts=0
+                        maximum_event_age_in_seconds=900, maximum_retry_attempts=3
                     ),
                 ),
             )
@@ -249,7 +254,8 @@ class PublicDemoStack(Stack):
             max_session_duration=Duration.hours(1),
         )
         site.grant_read_write(publisher)
-        artifacts.grant_read_write(publisher)
+        artifacts.grant_put(publisher, "releases/*")
+        artifacts.grant_put(publisher, "release.json")
         for repo in repos.values():
             repo.grant_pull_push(publisher)
         publisher.add_to_policy(

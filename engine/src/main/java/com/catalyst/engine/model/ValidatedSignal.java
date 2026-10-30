@@ -50,6 +50,13 @@ public class ValidatedSignal {
     private boolean trap;
 
     /**
+     * bullish | bearish | neutral | unknown, from grounded search. Every strategy
+     * opens a long position, so a bearish signal is never routed.
+     */
+    @JsonProperty("news_sentiment")
+    private String newsSentiment;
+
+    /**
      * Which hunters contributed (e.g., ["squeeze", "insider"]).
      * Used for enriching rationale text; not used in sizing logic.
      */

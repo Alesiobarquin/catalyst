@@ -1,21 +1,7 @@
 name: Release public demo
 
 on:
-  workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/public-demo.yml"
-      - "frontend/**"
-      - "deploy/**"
-      - "api/**"
-      - "ai_layer/**"
-      - "gatekeeper/**"
-      - "hunters/**"
-      - "persistence/**"
-      - "resolver/**"
-      - "engine/**"
-      - ".dockerignore"
+  workflow_call:
 
 concurrency:
   group: public-demo-release
@@ -27,7 +13,7 @@ permissions:
 
 jobs:
   release:
-    if: vars.AWS_DEPLOY_ROLE_ARN != ''
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.AWS_DEPLOY_ROLE_ARN != ''
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -42,23 +28,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: {python-version: "3.12", cache: pip}
-      - uses: actions/setup-node@v4
-        with: {node-version: "22", cache: npm, cache-dependency-path: frontend/package-lock.json}
-      - uses: actions/setup-java@v4
-        with: {distribution: temurin, java-version: "21", cache: maven}
-      - name: Verify all runtimes
-        run: |
-          pip install -c deploy/constraints.txt pytest pytest-asyncio ruff -r api/requirements.txt -r hunters/requirements.txt -r gatekeeper/requirements.txt -r ai_layer/requirements.txt -r persistence/requirements.txt -r resolver/requirements.txt -r notifier/requirements.txt
-          ruff check .
-          ruff format --check .
-          PYTHONPATH=. pytest -q
-          mvn -B -q -f engine/pom.xml test
-          npm --prefix frontend ci
-          npm --prefix frontend run lint
-          npm --prefix frontend run typecheck
-          npm --prefix frontend run test
-          npm --prefix frontend run build:public
+        with: {python-version: "3.12"}
+      - name: Restore verified public site
+        uses: actions/download-artifact@v4
+        with:
+          name: public-site
+          path: frontend/public-site/out
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
@@ -93,7 +68,14 @@ jobs:
           PY
           aws s3 cp release.json "s3://$ARTIFACT_BUCKET/release.json" --content-type application/json --only-show-errors
           aws s3 sync frontend/public-site/out "s3://$SITE_BUCKET/" --cache-control 'public,max-age=300' --only-show-errors
-          if ! aws s3api head-object --bucket "$SITE_BUCKET" --key data/manifest.json >/dev/null 2>&1; then
+          # Only a missing manifest is initialized; any other error must not replace published data.
+          if manifest_error=$(aws s3api head-object --bucket "$SITE_BUCKET" --key data/manifest.json 2>&1 >/dev/null); then
+            :
+          elif [[ "$manifest_error" != *"(404)"* && "$manifest_error" != *"Not Found"* ]]; then
+            echo "Could not check data/manifest.json: $manifest_error" >&2
+            exit 1
+          else
+            python -m pip install -c deploy/constraints.txt httpx 'psycopg[binary]' kafka-python-ng
             python - <<'PY'
           import json
           from pathlib import Path

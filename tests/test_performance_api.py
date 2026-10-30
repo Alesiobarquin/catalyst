@@ -10,6 +10,9 @@ import api.db as db
 from api.main import create_app
 from api.routers.performance import _compute_ticker_performance
 
+# Entry is Sunday 2026-03-01; these are the next two sessions.
+SESSIONS = pd.DatetimeIndex(["2026-03-02", "2026-03-03"], tz="America/New_York")
+
 
 def make_test_client(mock_conn: AsyncMock | None = None) -> TestClient:
     conn = mock_conn or AsyncMock()
@@ -219,13 +222,60 @@ class TestSingleOrderPerformanceEndpoint:
 
 class TestComputeTickerPerformanceHelper:
     @patch("api.routers.performance.yf.Ticker")
+    def test_uses_resolver_expiry_not_ninety_days(self, mock_ticker_cls):
+        mock_ticker_cls.return_value.history.return_value = pd.DataFrame(
+            {"Close": [101.0, 104.0], "Low": [99.0, 102.0], "High": [103.0, 105.0]},
+            index=SESSIONS,
+        )
+        result = _compute_ticker_performance(
+            order_id=9,
+            ticker="XYZ",
+            signal_dt=datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc),
+            entry_price=100.0,
+            stop_loss=90.0,
+            target_price=120.0,
+            db_status="ACTIVE",
+            now=datetime(2026, 3, 20, 10, 0, tzinfo=timezone.utc),
+        )
+        assert result["status"] == "EXPIRED"
+        assert result["pnl_pct"] == 4.0
+        mock_ticker_cls.return_value.history.assert_called_once_with(
+            start="2026-03-01", interval="1d", auto_adjust=False
+        )
+
+    @patch("api.routers.performance.yf.Ticker")
+    def test_a_nan_close_does_not_fail_the_lookup(self, mock_ticker_cls):
+        mock_ticker_cls.return_value.history.return_value = pd.DataFrame(
+            {
+                "Open": [100.0, float("nan")],
+                "High": [103.0, 105.0],
+                "Low": [99.0, 102.0],
+                "Close": [101.0, float("nan")],
+            },
+            index=SESSIONS,
+        )
+        result = _compute_ticker_performance(
+            order_id=9,
+            ticker="XYZ",
+            signal_dt=datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc),
+            entry_price=100.0,
+            stop_loss=90.0,
+            target_price=120.0,
+            db_status="ACTIVE",
+            now=datetime(2026, 3, 4, 10, 0, tzinfo=timezone.utc),
+        )
+        assert result["current_price"] == 101.0
+        assert result["status"] == "ACTIVE"
+
+    @patch("api.routers.performance.yf.Ticker")
     def test_hit_target(self, mock_ticker_cls):
         df = pd.DataFrame(
             {
                 "Close": [105.0, 115.0],
                 "Low": [98.0, 102.0],
                 "High": [106.0, 122.0],  # exceeds target 120.0
-            }
+            },
+            index=SESSIONS,
         )
         mock_ticker = MagicMock()
         mock_ticker.history.return_value = df
@@ -247,7 +297,7 @@ class TestComputeTickerPerformanceHelper:
 
         assert result["status"] == "HIT_TARGET"
         assert result["current_price"] == 115.0
-        assert result["pnl_pct"] == 15.0
+        assert result["pnl_pct"] == 20.0  # filled at target 120
         assert result["days_held"] == 4
 
     @patch("api.routers.performance.yf.Ticker")
@@ -257,7 +307,8 @@ class TestComputeTickerPerformanceHelper:
                 "Close": [95.0, 88.0],
                 "Low": [94.0, 85.0],  # breaches stop_loss 89.0
                 "High": [101.0, 96.0],
-            }
+            },
+            index=SESSIONS,
         )
         mock_ticker = MagicMock()
         mock_ticker.history.return_value = df
@@ -279,7 +330,7 @@ class TestComputeTickerPerformanceHelper:
 
         assert result["status"] == "HIT_STOP"
         assert result["current_price"] == 88.0
-        assert result["pnl_pct"] == -12.0
+        assert result["pnl_pct"] == -11.0  # filled at stop 89
 
     @patch("api.routers.performance.yf.Ticker")
     def test_fallback_fast_info_when_history_empty(self, mock_ticker_cls):
@@ -341,7 +392,8 @@ class TestComputeTickerPerformanceHelper:
                 "Close": [92.0, 83.0],
                 "Low": [91.0, 81.0],  # Breaches target 85.0
                 "High": [102.0, 94.0],
-            }
+            },
+            index=SESSIONS,
         )
         mock_ticker = MagicMock()
         mock_ticker.history.return_value = df
@@ -364,7 +416,7 @@ class TestComputeTickerPerformanceHelper:
 
         assert result["status"] == "HIT_TARGET"
         assert result["current_price"] == 83.0
-        assert result["pnl_pct"] == 17.0  # (100 - 83) / 100 * 100
+        assert result["pnl_pct"] == 15.0  # short filled at target 85
 
     @patch("api.routers.performance.yf.Ticker")
     def test_sell_order_hit_stop(self, mock_ticker_cls):
@@ -373,7 +425,8 @@ class TestComputeTickerPerformanceHelper:
                 "Close": [105.0, 118.0],
                 "Low": [98.0, 104.0],
                 "High": [106.0, 120.0],  # Breaches stop 115.0
-            }
+            },
+            index=SESSIONS,
         )
         mock_ticker = MagicMock()
         mock_ticker.history.return_value = df
@@ -396,7 +449,7 @@ class TestComputeTickerPerformanceHelper:
 
         assert result["status"] == "HIT_STOP"
         assert result["current_price"] == 118.0
-        assert result["pnl_pct"] == -18.0  # (100 - 118) / 100 * 100
+        assert result["pnl_pct"] == -15.0  # short filled at stop 115
 
     @patch("api.routers.performance.yf.Ticker")
     def test_sell_order_active_pnl(self, mock_ticker_cls):
@@ -405,7 +458,8 @@ class TestComputeTickerPerformanceHelper:
                 "Close": [95.0, 92.0],
                 "Low": [93.0, 89.0],  # Above target 85.0
                 "High": [101.0, 97.0],  # Below stop 115.0
-            }
+            },
+            index=SESSIONS,
         )
         mock_ticker = MagicMock()
         mock_ticker.history.return_value = df

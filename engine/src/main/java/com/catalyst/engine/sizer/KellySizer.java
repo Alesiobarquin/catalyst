@@ -68,11 +68,9 @@ public class KellySizer {
 
         // Guard against degenerate strategy configurations
         if (risk <= 0 || reward <= 0) {
-            log.warn("[{}] Invalid risk/reward: risk={}, reward={}. Using floor size.",
+            log.warn("[{}] Invalid risk/reward: risk={}, reward={}. No position.",
                     signal.getTicker(), risk, reward);
-            // Return 1% of portfolio as a floor rather than 0 — the strategy was still
-            // selected, it just has a data issue. 1% is survivable.
-            return portfolioValue * 0.01;
+            return 0;
         }
 
         double b = reward / risk;

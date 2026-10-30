@@ -266,6 +266,7 @@ bootstrap_stage=batch-handoff
 printf 'Bootstrap completed; handing off to the batch.\n'
 archive_bootstrap_log || true
 cleanup_bootstrap_paths
+export BOOTSTRAP_LOG="$bootstrap_log"
 # A successful exec resets the shell trap. Keeping it until that point also
 # records a failed handoff if the interpreter cannot be executed.
 exec bash "${worker_root}/current/deploy/batch.sh"

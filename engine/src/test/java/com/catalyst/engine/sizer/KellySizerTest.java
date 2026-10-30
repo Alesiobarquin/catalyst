@@ -14,6 +14,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class KellySizerTest {
 
     @Test
+    void returnsZeroWhenStopOrTargetIsOnTheWrongSide() {
+        KellySizer sizer = new KellySizer(100_000, 0.25);
+        ValidatedSignal signal = new ValidatedSignal();
+        signal.setTicker("NVDA");
+        signal.setConvictionScore(90);
+        TradeOrder order = TradeOrder.builder()
+                .ticker("NVDA").limitPrice(100.0).stopLoss(105.0).targetPrice(112.0).build();
+        RegimeSnapshot regime = RegimeSnapshot.builder()
+                .status(RegimeStatus.PASS).capturedAt(Instant.now()).build();
+
+        assertEquals(0.0, sizer.calculate(signal, order, regime));
+    }
+
+    @Test
     void returnsPositiveSizeForHighConvictionSignal() {
         KellySizer sizer = new KellySizer(100_000, 0.25);
 

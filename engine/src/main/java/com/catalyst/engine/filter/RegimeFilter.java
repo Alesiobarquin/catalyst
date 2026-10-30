@@ -57,6 +57,11 @@ public class RegimeFilter {
      */
     public RegimeSnapshot getSnapshot() {
         MarketSnapshot market = marketDataService.getMarketSnapshot();
+        if (stale(market)) {
+            // A failed startup fetch would otherwise halt every signal until the next scheduled refresh.
+            marketDataService.refreshRegimeData();
+            market = marketDataService.getMarketSnapshot();
+        }
 
         double vix = market.getVix();
         double spyPrice = market.getSpyPrice();
@@ -64,8 +69,7 @@ public class RegimeFilter {
         boolean spyAbove200Sma = spy200Sma > 0 && spyPrice > spy200Sma;
 
         RegimeStatus status = classify(vix, spyAbove200Sma);
-        if (market.getCapturedAt() == null ||
-                Duration.between(market.getCapturedAt(), Instant.now()).toMinutes() > 15 ||
+        if (stale(market) ||
                 spy200Sma <= 0 || spyPrice <= 0 || vix <= 0) {
             status = RegimeStatus.HALT;
             log.warn("REGIME HALT: market data unavailable or older than 15 minutes");
@@ -87,6 +91,17 @@ public class RegimeFilter {
         }
 
         return snapshot;
+    }
+
+    private static boolean stale(MarketSnapshot market) {
+        if (market == null || market.getCapturedAt() == null) {
+            return true;
+        }
+        if (market.getSpyPrice() <= 0 || market.getSpy200Sma() <= 0 || market.getVix() <= 0) {
+            return true;
+        }
+        // toMinutes() truncates, so 15 minutes and 59 seconds used to look fresh.
+        return Duration.between(market.getCapturedAt(), Instant.now()).compareTo(Duration.ofMinutes(15)) > 0;
     }
 
     private RegimeStatus classify(double vix, boolean spyAbove200Sma) {

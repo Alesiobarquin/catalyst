@@ -15,13 +15,13 @@ from urllib.parse import urlsplit
 import httpx
 
 from .provider_errors import ProviderError
+from .tickers import canonical_ticker
 
 PDUFA_API_URL = "https://www.pdufa.bio/api/v1/pdufa"
 MAX_RECORDS = 40
 LOOKAHEAD_DAYS = 90
 MAX_RESPONSE_BYTES = 512 * 1024
 REQUEST_DEADLINE_SECONDS = 25
-_TICKER = re.compile(r"[A-Z][A-Z0-9-]{0,5}\Z")
 _DAY = re.compile(r"\d{4}-\d{2}-\d{2}\Z")
 _REQUIRED_FIELDS = frozenset(
     {"ticker", "name", "date", "date_precision", "type", "status", "source", "source_url"}
@@ -69,9 +69,13 @@ def parse_pdufa_response(payload: object, *, collected_at: datetime) -> list[dic
     timestamp = collected_at.isoformat()
     candidates = []
     seen = set()
-    for record in records[:MAX_RECORDS]:
+    considered = records[:MAX_RECORDS]
+    malformed = 0
+    truncated = len(records) > MAX_RECORDS
+    for record in considered:
         if not isinstance(record, dict) or not _REQUIRED_FIELDS.issubset(record):
-            raise ProviderError("pdufa", "response_schema")
+            malformed += 1
+            continue
         if (
             _text(record["type"]).upper() != "PDUFA"
             or _text(record["status"]).lower() != "upcoming"
@@ -88,12 +92,12 @@ def parse_pdufa_response(payload: object, *, collected_at: datetime) -> list[dic
             continue
         if not first_day <= scheduled <= last_day:
             continue
-        ticker = _text(record["ticker"]).upper()
+        ticker = canonical_ticker(_text(record["ticker"]))
         drug = _text(record["name"])
         source_document = _text(record["source"])
         primary_url = _source_url(record["source_url"])
         if (
-            not _TICKER.fullmatch(ticker)
+            not ticker
             or drug.lower() in _PLACEHOLDERS
             or source_document.lower() in _PLACEHOLDERS
             or not primary_url
@@ -112,7 +116,9 @@ def parse_pdufa_response(payload: object, *, collected_at: datetime) -> list[dic
             "drug_name": drug,
             "catalyst_type": "PDUFA",
             "event_date": event_date,
+            "days_until_event": (scheduled - first_day).days,
             "event_date_precision": "day",
+            "calendar_truncated": truncated,
             "source": "pdufa.bio",
             "source_url": primary_url,
             "source_document": source_document,
@@ -149,6 +155,8 @@ def parse_pdufa_response(payload: object, *, collected_at: datetime) -> list[dic
                 if isinstance(item, dict)
             ]
         candidates.append(event)
+    if considered and malformed == len(considered):
+        raise ProviderError("pdufa", "response_schema")
     return candidates
 
 

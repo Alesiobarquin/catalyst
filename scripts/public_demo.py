@@ -124,12 +124,13 @@ def configure(environment: Path, github: bool = True) -> None:
     )
     previous = json.loads(old) if old else {}
     password = previous.get("TIMESCALE_PASSWORD") or secrets.token_hex(24)
-    squeeze_provider = values.get("SQUEEZE_PROVIDER") or previous.get("SQUEEZE_PROVIDER", "yahoo")
-    if squeeze_provider not in {"finviz", "yahoo"}:
-        raise ValueError("SQUEEZE_PROVIDER must be finviz or yahoo")
-    biotech_provider = values.get("BIOTECH_PROVIDER") or previous.get("BIOTECH_PROVIDER", "pdufa")
-    if biotech_provider not in {"pdufa", "biopharm"}:
-        raise ValueError("BIOTECH_PROVIDER must be pdufa or biopharm")
+    # A laptop .env may select Finviz or the legacy calendar. The public worker stays
+    # on the free sources; changing that is a code change, not a local setting.
+    squeeze_provider = "yahoo"
+    biotech_provider = "pdufa"
+    sec_user_agent = values.get("SEC_USER_AGENT") or previous.get("SEC_USER_AGENT", "")
+    if "@" not in sec_user_agent:
+        raise ValueError("SEC_USER_AGENT must name the project and a monitored contact email")
     runtime = {
         "KAFKA_BOOTSTRAP_SERVERS": "kafka:29092",
         "REDIS_HOST": "redis",
@@ -160,6 +161,7 @@ def configure(environment: Path, github: bool = True) -> None:
         "HUNTER_STRICT_DELIVERY": "true",
         "SQUEEZE_PROVIDER": squeeze_provider,
         "BIOTECH_PROVIDER": biotech_provider,
+        "SEC_USER_AGENT": sec_user_agent,
         "PORTFOLIO_VALUE": "100000",
         "MAX_KELLY_FRACTION": "0.25",
         "VIX_HALT_THRESHOLD": "40",

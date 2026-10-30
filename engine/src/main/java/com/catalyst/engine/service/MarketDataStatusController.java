@@ -16,7 +16,7 @@ public class MarketDataStatusController {
     public Map<String, Object> marketState() {
         var snapshot = marketDataService.getMarketSnapshot();
         boolean fresh = snapshot.getCapturedAt() != null &&
-                Duration.between(snapshot.getCapturedAt(), Instant.now()).toMinutes() <= 15 &&
+                Duration.between(snapshot.getCapturedAt(), Instant.now()).compareTo(Duration.ofMinutes(15)) <= 0 &&
                 snapshot.getSpyPrice() > 0 && snapshot.getSpy200Sma() > 0 && snapshot.getVix() > 0;
         return Map.of("fresh", fresh, "captured_at", snapshot.getCapturedAt() == null ? "" : snapshot.getCapturedAt().toString(),
                 "spy", fresh ? snapshot.getSpyPrice() : 0,

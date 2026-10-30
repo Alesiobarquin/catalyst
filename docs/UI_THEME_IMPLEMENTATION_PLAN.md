@@ -361,7 +361,7 @@ Do not declare success with an untested dark page, a mocked-only toggle, missing
 
 Prefer one coherent feature commit after local verification. Keep user edits separate. Do not push half-converted UI checkpoints because frontend pushes to main automatically publish.
 
-Use the existing GitHub Actions workflow, .github/workflows/public-demo.yml, to publish. Do not manually upload assets or data to S3, modify CloudFront/CDK, rotate keys, change schedules, start EC2, or redesign deployment for this UI task.
+Use the existing GitHub Actions CI entry point, .github/workflows/ci.yml, to verify and publish through the reusable .github/workflows/public-demo.yml publisher. Do not manually upload assets or data to S3, modify CloudFront/CDK, rotate keys, change schedules, start EC2, or redesign deployment for this UI task.
 
 After the final main push:
 
