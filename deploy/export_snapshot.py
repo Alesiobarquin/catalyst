@@ -71,6 +71,7 @@ GROUPS = {
 def pipeline_counts(timeout: int = 600) -> dict[str, int]:
     deadline = time.monotonic() + timeout
     stable = 0
+    previous_counts = None
     while time.monotonic() < deadline:
         counts = {}
         drained = True
@@ -84,6 +85,9 @@ def pipeline_counts(timeout: int = 600) -> dict[str, int]:
                 partitions = [
                     TopicPartition(topic, p) for p in consumer.partitions_for_topic(topic) or []
                 ]
+                if not partitions:
+                    drained = False
+                    continue
                 ends = consumer.end_offsets(partitions)
                 counts[topic] = sum(ends.values())
                 for partition, end in ends.items():
@@ -92,7 +96,10 @@ def pipeline_counts(timeout: int = 600) -> dict[str, int]:
                         drained = False
             finally:
                 consumer.close()
+        if counts != previous_counts:
+            stable = 0
         stable = stable + 1 if drained else 0
+        previous_counts = counts
         if stable >= 3:
             return counts
         time.sleep(5)
