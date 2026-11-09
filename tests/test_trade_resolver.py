@@ -151,6 +151,11 @@ class TestTradeResolverEvaluation:
         history = bars(("2026-10-30", 100, 130, 99, 125))
         assert self.resolver.evaluate_order(self.base_order, history, self.now) is None
 
+    def test_missing_bar_timestamp_cannot_abort_resolution(self):
+        history = bars(("2026-10-27", 100, 130, 99, 125))
+        history.index = pd.DatetimeIndex([pd.NaT])
+        assert self.resolver.evaluate_order(self.base_order, history, self.now) is None
+
     def test_stale_history_cannot_supply_expiration_price(self):
         history = bars(("2026-10-27", 100, 105, 95, 101))
         assert (

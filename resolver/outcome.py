@@ -58,6 +58,8 @@ def resolve_from_bars(
     covers_expiry = False
 
     for timestamp, bar in bars.sort_index().iterrows():
+        if not isinstance(timestamp, datetime) or timestamp != timestamp:
+            continue
         session = timestamp.date()
         if session <= entry_session or session > now_session:
             continue
