@@ -15,6 +15,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+import math
 import time
 from datetime import date, datetime, timezone
 from typing import Any
@@ -56,6 +57,14 @@ def get_db_connection() -> Connection:
     )
 
 
+def _entry_time(value: datetime | str) -> datetime:
+    if isinstance(value, str):
+        value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if not isinstance(value, datetime):
+        raise ValueError("Invalid entry timestamp")
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+
+
 class TradeResolver:
     """Evaluates and resolves active trade recommendations."""
 
@@ -70,6 +79,8 @@ class TradeResolver:
         self.batch_size = batch_size
         self._running = False
         self._producer = None
+        self._last_order: tuple[datetime, int] | None = None
+        self._sweep_until: datetime | None = None
 
     def get_kafka_producer(self) -> Any | None:
         """Lazily initialize Kafka producer for emitting resolution events."""
@@ -89,21 +100,36 @@ class TradeResolver:
             return None
 
     def fetch_active_orders(self, conn: Connection) -> list[dict[str, Any]]:
-        """Query open active orders ordered by creation time."""
+        """Read the next bounded batch, wrapping so unresolved orders are revisited."""
         with conn.cursor() as cur:
-            cur.execute(
-                """
+            for _ in range(2):
+                if self._last_order is None:
+                    self._sweep_until = datetime.now(timezone.utc)
+                after = "AND (timestamp_utc, id) > (%s, %s)" if self._last_order else ""
+                params = (
+                    (self._sweep_until, *self._last_order, self.batch_size)
+                    if self._last_order
+                    else (self._sweep_until, self.batch_size)
+                )
+                cur.execute(
+                    f"""
                 SELECT id, ticker, timestamp_utc, action, strategy_used,
                        recommended_size_usd, limit_price, stop_loss, target_price,
                        conviction_score, catalyst_type, status
                 FROM trade_orders
                 WHERE status = 'ACTIVE'
-                ORDER BY timestamp_utc ASC
+                AND timestamp_utc <= %s
+                {after}
+                ORDER BY timestamp_utc ASC, id ASC
                 LIMIT %s
                 """,
-                (self.batch_size,),
-            )
-            return list(cur.fetchall())
+                    params,
+                )
+                orders = list(cur.fetchall())
+                if orders or self._last_order is None:
+                    return orders
+                self._last_order = None
+        return []
 
     def fetch_daily_bars(self, ticker: str, start: date):
         """Unadjusted daily bars, so stops and targets compare with the prices quoted at entry."""
@@ -134,18 +160,26 @@ class TradeResolver:
         if bars is None:
             return None
         now = now or datetime.now(timezone.utc)
-        limit_price = float(order.get("limit_price") or 0.0)
-        if limit_price <= 0:
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        try:
+            limit_price = float(order["limit_price"])
+            stop = float(order["stop_loss"])
+            target = float(order["target_price"])
+            recommended_size = float(order["recommended_size_usd"])
+            entered_at = _entry_time(order["timestamp_utc"])
+        except (KeyError, TypeError, ValueError, OverflowError):
             return None
-        action = str(order.get("action") or "BUY").upper()
-        entered_at = order["timestamp_utc"]
-        if isinstance(entered_at, str):
-            entered_at = datetime.fromisoformat(entered_at.replace("Z", "+00:00"))
+        if not all(math.isfinite(value) for value in (limit_price, stop, target, recommended_size)):
+            return None
+        if limit_price <= 0 or recommended_size <= 0 or stop < 0 or target < 0:
+            return None
+        action = str(order.get("action") or "").upper()
 
         outcome = resolve_from_bars(
             action,
-            float(order.get("stop_loss") or 0.0),
-            float(order.get("target_price") or 0.0),
+            stop,
+            target,
             bars,
             entered_at,
             now,
@@ -155,7 +189,9 @@ class TradeResolver:
             return None
 
         pnl_pct = pnl_percent(action, limit_price, outcome.price)
-        recommended_size = float(order.get("recommended_size_usd") or 0.0)
+        pnl_usd = recommended_size * (pnl_pct / 100.0)
+        if not math.isfinite(pnl_pct) or not math.isfinite(pnl_usd):
+            return None
         return {
             "id": order["id"],
             "timestamp_utc": order["timestamp_utc"],
@@ -165,13 +201,13 @@ class TradeResolver:
             "limit_price": limit_price,
             "resolved_price": round(outcome.price, 4),
             "pnl_percent": round(pnl_pct, 4),
-            "realized_pnl_usd": round(recommended_size * pnl_pct / 100.0, 2),
+            "realized_pnl_usd": round(pnl_usd, 2),
             "resolved_session": outcome.session.isoformat(),
             "resolved_at": now.isoformat(),
         }
 
     def process_cycle(self, conn: Connection) -> list[dict[str, Any]]:
-        """Run a single resolution sweep across all active orders."""
+        """Resolve one bounded batch; subsequent cycles continue and wrap."""
         active_orders = self.fetch_active_orders(conn)
         if not active_orders:
             logger.debug("No active orders found to resolve.")
@@ -179,55 +215,72 @@ class TradeResolver:
 
         now = datetime.now(timezone.utc)
         first_entry: dict[str, date] = {}
+        valid_orders = []
         for order in active_orders:
-            ticker = order["ticker"].strip().upper()
-            entered = order["timestamp_utc"]
-            if isinstance(entered, str):
-                entered = datetime.fromisoformat(entered.replace("Z", "+00:00"))
-            day = entered.astimezone(MARKET_TZ).date() if entered.tzinfo else entered.date()
+            try:
+                ticker = order["ticker"].strip().upper()
+                day = _entry_time(order["timestamp_utc"]).astimezone(MARKET_TZ).date()
+                if not ticker:
+                    raise ValueError("Empty ticker")
+            except (KeyError, AttributeError, TypeError, ValueError):
+                logger.warning("Skipping malformed order %s", order.get("id"))
+                continue
             first_entry[ticker] = min(day, first_entry.get(ticker, day))
+            valid_orders.append(order)
         bars = {ticker: self.fetch_daily_bars(ticker, day) for ticker, day in first_entry.items()}
 
         resolved_records: list[dict[str, Any]] = []
-        for order in active_orders:
+        for order in valid_orders:
             resolution = self.evaluate_order(order, bars[order["ticker"].strip().upper()], now)
             if resolution is not None:
                 resolved_records.append(resolution)
 
         if not resolved_records:
+            self._last_order = (active_orders[-1]["timestamp_utc"], active_orders[-1]["id"])
             return []
 
         # Batch update database
-        with conn.cursor() as cur:
-            for r in resolved_records:
-                cur.execute(
-                    """
+        committed_records = []
+        try:
+            with conn.cursor() as cur:
+                for r in resolved_records:
+                    cur.execute(
+                        """
                     UPDATE trade_orders
                     SET status = %s,
                         resolved_at = %s,
                         resolved_price = %s,
                         pnl_percent = %s,
                         realized_pnl_usd = %s
-                    WHERE id = %s AND timestamp_utc = %s
+                    WHERE id = %s AND timestamp_utc = %s AND status = 'ACTIVE'
+                    RETURNING id
                     """,
-                    (
-                        r["status"],
-                        r["resolved_at"],
-                        r["resolved_price"],
-                        r["pnl_percent"],
-                        r["realized_pnl_usd"],
-                        r["id"],
-                        r["timestamp_utc"],
-                    ),
-                )
+                        (
+                            r["status"],
+                            r["resolved_at"],
+                            r["resolved_price"],
+                            r["pnl_percent"],
+                            r["realized_pnl_usd"],
+                            r["id"],
+                            r["timestamp_utc"],
+                        ),
+                    )
+                    if cur.fetchone() is not None:
+                        committed_records.append(r)
             conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
-        logger.info("Resolved %d trade orders in this cycle.", len(resolved_records))
+        self._last_order = (active_orders[-1]["timestamp_utc"], active_orders[-1]["id"])
+        logger.info("Resolved %d trade orders in this cycle.", len(committed_records))
+        if not committed_records:
+            return []
 
         # Emit events to Kafka
         producer = self.get_kafka_producer()
         if producer is not None:
-            for r in resolved_records:
+            for r in committed_records:
                 try:
                     producer.send(TRADE_RESOLUTIONS_TOPIC, r)
                 except Exception as exc:
@@ -235,7 +288,7 @@ class TradeResolver:
             with contextlib.suppress(Exception):
                 producer.flush(timeout=3)
 
-        return resolved_records
+        return committed_records
 
     def run(self) -> None:
         """Main service loop."""

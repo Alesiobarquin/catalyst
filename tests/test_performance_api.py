@@ -224,8 +224,14 @@ class TestComputeTickerPerformanceHelper:
     @patch("api.routers.performance.yf.Ticker")
     def test_uses_resolver_expiry_not_ninety_days(self, mock_ticker_cls):
         mock_ticker_cls.return_value.history.return_value = pd.DataFrame(
-            {"Close": [101.0, 104.0], "Low": [99.0, 102.0], "High": [103.0, 105.0]},
-            index=SESSIONS,
+            {
+                "Close": [101.0, 104.0, 108.0],
+                "Low": [99.0, 102.0, 105.0],
+                "High": [103.0, 105.0, 110.0],
+            },
+            index=pd.DatetimeIndex(
+                ["2026-03-02", "2026-03-13", "2026-03-16"], tz="America/New_York"
+            ),
         )
         result = _compute_ticker_performance(
             order_id=9,
@@ -242,6 +248,24 @@ class TestComputeTickerPerformanceHelper:
         mock_ticker_cls.return_value.history.assert_called_once_with(
             start="2026-03-01", interval="1d", auto_adjust=False
         )
+
+    @patch("api.routers.performance.yf.Ticker")
+    def test_stale_bars_do_not_expire_an_active_order(self, mock_ticker_cls):
+        mock_ticker_cls.return_value.history.return_value = pd.DataFrame(
+            {"Close": [101.0, 104.0], "Low": [99.0, 102.0], "High": [103.0, 105.0]},
+            index=SESSIONS,
+        )
+        result = _compute_ticker_performance(
+            order_id=9,
+            ticker="XYZ",
+            signal_dt=datetime(2026, 3, 1, 10, 0, tzinfo=timezone.utc),
+            entry_price=100.0,
+            stop_loss=90.0,
+            target_price=120.0,
+            db_status="ACTIVE",
+            now=datetime(2026, 3, 20, 10, 0, tzinfo=timezone.utc),
+        )
+        assert result["status"] == "ACTIVE"
 
     @patch("api.routers.performance.yf.Ticker")
     def test_a_nan_close_does_not_fail_the_lookup(self, mock_ticker_cls):

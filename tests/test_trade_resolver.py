@@ -6,6 +6,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
+import pytest
 
 from resolver.trade_resolver import TradeResolver, serialize_resolution
 
@@ -71,6 +72,19 @@ class TestTradeResolverEvaluation:
             == 80.0
         )
 
+    @pytest.mark.parametrize(
+        ("action", "stop", "target", "row", "status", "price"),
+        [
+            ("BUY", 90, 120, ("2026-10-27", 130, 132, 128, 131), "HIT_TARGET", 130),
+            ("SELL", 115, 85, ("2026-10-27", 130, 132, 128, 131), "HIT_STOP", 130),
+            ("SELL", 115, 85, ("2026-10-27", 80, 82, 78, 81), "HIT_TARGET", 80),
+        ],
+    )
+    def test_gap_fills_preserve_direction(self, action, stop, target, row, status, price):
+        order = dict(self.base_order, action=action, stop_loss=stop, target_price=target)
+        resolution = self.resolver.evaluate_order(order, bars(row), self.now)
+        assert (resolution["status"], resolution["resolved_price"]) == (status, price)
+
     def test_entry_session_bar_is_ignored(self):
         history = bars(("2026-10-26", 100, 130, 80, 101), ("2026-10-27", 101, 105, 97, 102))
         assert self.resolver.evaluate_order(self.base_order, history, self.now) is None
@@ -99,6 +113,68 @@ class TestTradeResolverEvaluation:
         zero_limit = dict(self.base_order, limit_price=0.0)
         history = bars(("2026-10-27", 100, 130, 99, 125))
         assert self.resolver.evaluate_order(zero_limit, history, self.now) is None
+
+    @pytest.mark.parametrize(
+        "field", ["limit_price", "stop_loss", "target_price", "recommended_size_usd"]
+    )
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), -1.0, "invalid"])
+    def test_invalid_financial_inputs_stay_active(self, field, value):
+        order = dict(self.base_order, **{field: value})
+        history = bars(("2026-10-27", 100, 130, 99, 125))
+        assert self.resolver.evaluate_order(order, history, self.now) is None
+
+    def test_overflowed_pnl_stays_active(self):
+        order = dict(self.base_order, limit_price=1e-308)
+        history = bars(("2026-10-27", 100, 130, 99, 125))
+        assert self.resolver.evaluate_order(order, history, self.now) is None
+
+    @pytest.mark.parametrize("action", ["HOLD", "", None])
+    def test_unknown_action_stays_active(self, action):
+        order = dict(self.base_order, action=action)
+        history = bars(("2026-10-27", 100, 130, 99, 125))
+        assert self.resolver.evaluate_order(order, history, self.now) is None
+
+    @pytest.mark.parametrize(
+        "row",
+        [
+            ("2026-10-27", -1, 130, -2, 125),
+            ("2026-10-27", 100, 130, 0, 125),
+            ("2026-10-27", 121, 125, 130, 120),
+            ("2026-10-27", 100, 130, 99, 140),
+            ("2026-10-27", float("inf"), 130, 99, 125),
+        ],
+    )
+    def test_invalid_ohlc_cannot_resolve(self, row):
+        assert self.resolver.evaluate_order(self.base_order, bars(row), self.now) is None
+
+    def test_future_bar_cannot_resolve(self):
+        history = bars(("2026-10-30", 100, 130, 99, 125))
+        assert self.resolver.evaluate_order(self.base_order, history, self.now) is None
+
+    def test_stale_history_cannot_supply_expiration_price(self):
+        history = bars(("2026-10-27", 100, 105, 95, 101))
+        assert (
+            self.resolver.evaluate_order(self.base_order, history, ENTERED + timedelta(days=16))
+            is None
+        )
+
+    def test_unfinished_expiry_session_stays_active_until_close(self):
+        history = bars(("2026-11-09", 100, 105, 95, 101))
+        assert (
+            self.resolver.evaluate_order(self.base_order, history, ENTERED + timedelta(days=14))
+            is None
+        )
+
+    def test_after_hours_entry_keeps_the_full_holding_period(self):
+        order = dict(self.base_order, timestamp_utc=ENTERED + timedelta(hours=9))
+        history = bars(("2026-11-09", 100, 105, 95, 101))
+        now = datetime(2026, 11, 9, 21, 0, tzinfo=timezone.utc)
+        assert self.resolver.evaluate_order(order, history, now) is None
+
+    def test_unsorted_bars_resolve_at_first_crossing(self):
+        history = bars(("2026-10-28", 100, 130, 99, 125), ("2026-10-27", 99, 101, 88, 99))
+        resolution = self.resolver.evaluate_order(self.base_order, history, self.now)
+        assert (resolution["status"], resolution["resolved_session"]) == ("HIT_STOP", "2026-10-27")
 
 
 class TestTradeResolverBars:
@@ -174,3 +250,90 @@ class TestTradeResolverProcessCycle:
         self.resolver.stop()
         assert mock_producer.close.called
         assert self.resolver._producer is None
+
+    @staticmethod
+    def order(order_id=1):
+        return dict(
+            id=order_id,
+            ticker="NVDA",
+            timestamp_utc=ENTERED,
+            action="BUY",
+            limit_price=100.0,
+            stop_loss=90.0,
+            target_price=120.0,
+            recommended_size_usd=10000.0,
+        )
+
+    @patch.object(TradeResolver, "fetch_daily_bars")
+    def test_batches_advance_past_active_orders_and_wrap(self, fetch_bars):
+        self.resolver.batch_size = 1
+        conn = MagicMock()
+        cur = conn.cursor.return_value.__enter__.return_value
+        first, second = self.order(1), self.order(2)
+        cur.fetchall.side_effect = [[first], [second], [], [first]]
+        fetch_bars.return_value = bars(("2026-10-27", 100, 105, 95, 101))
+
+        for _ in range(3):
+            assert self.resolver.process_cycle(conn) == []
+
+        assert fetch_bars.call_count == 3
+        queries = cur.execute.call_args_list
+        cutoff = queries[0].args[1][0]
+        assert queries[0].args[1] == (cutoff, 1)
+        assert queries[1].args[1] == (cutoff, ENTERED, 1, 1)
+        assert queries[2].args[1] == (cutoff, ENTERED, 2, 1)
+        assert queries[3].args[1][-1] == 1
+        assert queries[3].args[1][0] >= cutoff
+        assert all("AND timestamp_utc <= %s" in query.args[0] for query in queries)
+        assert "ORDER BY timestamp_utc ASC, id ASC" in queries[1].args[0]
+
+    @patch.object(TradeResolver, "fetch_active_orders")
+    @patch.object(TradeResolver, "fetch_daily_bars")
+    def test_bad_order_cannot_abort_other_orders(self, fetch_bars, fetch_orders):
+        fetch_orders.return_value = [dict(self.order(1), timestamp_utc="invalid"), self.order(2)]
+        fetch_bars.return_value = bars(("2026-10-27", 100, 130, 99, 125))
+        conn = MagicMock()
+        self.resolver._producer = MagicMock()
+        assert [r["id"] for r in self.resolver.process_cycle(conn)] == [2]
+        conn.commit.assert_called_once()
+
+    @patch.object(TradeResolver, "fetch_active_orders")
+    @patch.object(TradeResolver, "fetch_daily_bars")
+    def test_concurrent_resolution_is_not_overwritten_or_emitted(self, fetch_bars, fetch_orders):
+        fetch_orders.return_value = [self.order(1), self.order(2)]
+        fetch_bars.return_value = bars(("2026-10-27", 100, 130, 99, 125))
+        conn = MagicMock()
+        cur = conn.cursor.return_value.__enter__.return_value
+        cur.fetchone.side_effect = [{"id": 1}, None]
+        producer = self.resolver._producer = MagicMock()
+        producer.send.side_effect = lambda *_: conn.commit.assert_called_once()
+
+        assert [r["id"] for r in self.resolver.process_cycle(conn)] == [1]
+        producer.send.assert_called_once()
+        assert producer.send.call_args.args[1]["id"] == 1
+        for query in cur.execute.call_args_list:
+            assert "AND status = 'ACTIVE'" in query.args[0]
+            assert "RETURNING id" in query.args[0]
+
+    @pytest.mark.parametrize("failure", ["update", "commit"])
+    @patch.object(TradeResolver, "fetch_active_orders")
+    @patch.object(TradeResolver, "fetch_daily_bars")
+    def test_failed_transaction_rolls_back_without_emitting(
+        self, fetch_bars, fetch_orders, failure
+    ):
+        fetch_orders.return_value = [self.order(1), self.order(2)]
+        fetch_bars.return_value = bars(("2026-10-27", 100, 130, 99, 125))
+        conn = MagicMock()
+        cur = conn.cursor.return_value.__enter__.return_value
+        if failure == "update":
+            cur.execute.side_effect = [None, RuntimeError("update failed")]
+        else:
+            conn.commit.side_effect = RuntimeError("commit failed")
+        producer = self.resolver._producer = MagicMock()
+
+        with pytest.raises(RuntimeError, match="failed"):
+            self.resolver.process_cycle(conn)
+
+        conn.rollback.assert_called_once()
+        producer.send.assert_not_called()
+        assert self.resolver._last_order is None

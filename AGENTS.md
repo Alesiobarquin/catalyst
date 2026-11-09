@@ -239,9 +239,12 @@ Next.js 16 (App Router) + React 19 + Tailwind CSS 4:
 
 ### 3.9 Trade Resolution Daemon (`resolver/`)
 Recommendation resolution microservice:
-- Polls `trade_orders` with status `ACTIVE`, by default every 300 seconds.
-- Fetches unadjusted Yahoo daily bars once per ticker and applies `resolver/outcome.py`, which `/performance` also uses. Bars start the session after entry; each bar checks the stop before the target; fills are at the stop/target or the gapped open; orders expire at the last close after the holding period.
+- Polls `trade_orders` with status `ACTIVE`, by default every 300 seconds. Bounded batches advance by `(timestamp_utc, id)` up to a sweep-start timestamp, then wrap to revisit unresolved orders; an unresolved oldest batch no longer blocks later orders, and new arrivals cannot indefinitely postpone wraparound. The cursor is in memory and resets on restart.
+- Fetches unadjusted Yahoo daily bars once per ticker and applies `resolver/outcome.py`, which `/performance` also uses. Bars start the session after entry, are walked chronologically, and exclude future sessions and invalid/nonpositive OHLC values. Each bar checks the stop before the target; fills are at the stop/target or the gapped open.
+- Expiration requires valid history reaching the expiry date and waits until 16:00 New York time on that date. For weekend/holiday expiry, the next available bar establishes coverage; the fill remains the last close within the holding period. Stale partial history leaves the order active. This conservative check uses no exchange holiday calendar and may defer expiration until more history is available.
+- Invalid/non-finite financial inputs, unknown actions and non-finite calculated PnL leave the order active. Malformed entry timestamps are skipped without aborting other orders; naive entry timestamps mean UTC.
 - Updates status to `HIT_TARGET`, `HIT_STOP`, or `EXPIRED` after a default maximum holding period of 14 calendar days. It persists `resolved_at`, `resolved_price`, `pnl_percent`, and `realized_pnl_usd`, and emits `trade-resolutions` events.
+- Updates use the composite order key and an `ACTIVE` status guard. Only rows returned by a successful committed update emit events; failed update/commit rolls back the batch. Kafka delivery remains best effort after commit, without a transactional outbox.
 - PnL is modeled from the recommended allocation and reference prices. This daemon does not query Alpaca fills, submit closing orders, or measure realized brokerage PnL. A daily scan can miss intraday stop/target crossings; public analytics must disclose that limitation.
 
 ### 3.10 Notification Dispatcher (`notifier/`)
